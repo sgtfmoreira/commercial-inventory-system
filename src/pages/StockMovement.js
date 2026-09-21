@@ -7,6 +7,7 @@ import api from "../services/api";
 import toast from "react-hot-toast";
 import { Input } from "../components/FormFields";
 import Select from "../components/Select";
+import SupplierReturnForm from "../components/SupplierReturnForm";
 import { MdAddCircle, MdRemoveCircle, MdUploadFile, MdShoppingCart, MdLocalBar } from "react-icons/md";
 
 const SearchInput = styled.input`
@@ -273,7 +274,7 @@ export default function StockMovement() {
                 <div>
                     <PageTitle>Movimentação</PageTitle>
                     <PageSubtitle>
-                        {mode === "BONUS" ? "Entrada de bonificação" :
+                        {mode === "SUPPLIER_RETURN" ? "Devolução vinculada à compra original" : mode === "BONUS" ? "Entrada de bonificação" :
                             mode === "INTERNAL_USE" ? "Saída para uso interno" : 
                             mode === "OPERATIONAL_USE" ? "Saída de produtos consumidos pela equipe" :
                             mode === "MANUAL_SALE" ? "Lançamento manual múltiplo" : "Importação de vendas"}
@@ -282,6 +283,9 @@ export default function StockMovement() {
             </PageHeader>
 
             <ButtonGroup>
+                <Button variant={mode === "SUPPLIER_RETURN" ? "primary" : "secondary"} onClick={() => setMode("SUPPLIER_RETURN")}>
+                    <MdRemoveCircle /> Devolução ao fornecedor
+                </Button>
                 <Button
                     variant={mode === "BONUS" ? "primary" : "secondary"}
                     onClick={() => { setMode("BONUS"); setProductId(""); setSearchTerm(""); setLocationId(""); }}
@@ -318,7 +322,7 @@ export default function StockMovement() {
                 </Button>
             </ButtonGroup>
 
-            {mode === "MANUAL_SALE" ? (
+            {mode === "SUPPLIER_RETURN" ? <SupplierReturnForm products={state.products || []} locations={locations} onSaved={fetchAllData} /> : mode === "MANUAL_SALE" ? (
                 <Card>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <Select

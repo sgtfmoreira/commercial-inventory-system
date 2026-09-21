@@ -538,7 +538,7 @@ const Reports = () => {
 
         const map = {};
         movements.forEach((m) => {
-            if ((m.type === 'OUT' && m.reason !== 'LOSS' && m.reason !== 'OPERATIONAL_LOSS') || (m.type === 'IN' && m.reason === 'MARKETING_EVENT_IN')) {
+            if ((m.type === 'OUT' && !['LOSS', 'OPERATIONAL_LOSS', 'CONSIGNMENT_RETURN', 'SUPPLIER_RETURN'].includes(m.reason)) || (m.type === 'IN' && m.reason === 'MARKETING_EVENT_IN')) {
                 if (!map[m.productId]) {
                     const product = state.products?.find(p => p.id === m.productId);
                     map[m.productId] = {
@@ -687,6 +687,13 @@ const Reports = () => {
             });
         });
 
+        movements.filter(m => ['CONSIGNMENT_RETURN', 'SUPPLIER_RETURN'].includes(m.reason)).forEach(m => {
+            const name = m.supplier?.name || state.suppliers?.find(s => s.id === m.supplierId)?.name || 'Sem fornecedor';
+            if (!map[name]) map[name] = { name, purchaseQuantity: 0, purchaseValue: 0, bonusQuantity: 0, bonusValue: 0, orderCount: 0 };
+            map[name].purchaseQuantity -= Number(m.purchaseReturn?.purchaseQuantity || 0);
+            map[name].purchaseValue -= Number(m.totalCost || 0);
+        });
+
         // 3. FORNECEDOR QUE MAIS BONIFICA (Aceita novo formato type=IN+reason=BONUS E legado type=BONUS)
         movements
             .filter(m => (m.type === 'IN' && m.reason === 'BONUS') || m.type === 'BONUS')
@@ -729,7 +736,7 @@ const Reports = () => {
                 totalValue: item.purchaseValue // compatibility alias for UI
             }))
             .sort((a, b) => b.purchaseValue - a.purchaseValue); // Ranking por Valor de Compra
-    }, [state.purchaseOrders, state.stockMovements, state.products, dateFrom, dateTo]);
+    }, [state.purchaseOrders, state.stockMovements, state.products, state.suppliers, dateFrom, dateTo]);
 
 
     const purchaseVsConsumption = useMemo(() => {
@@ -761,7 +768,7 @@ const Reports = () => {
 
         // 🟢 CONSUMO (Saídas gerais e CSV, ignora perdas mas abate devoluções)
         movements.forEach((m) => {
-            if ((m.type === 'OUT' && m.reason !== 'LOSS' && m.reason !== 'OPERATIONAL_LOSS') || (m.type === 'IN' && m.reason === 'MARKETING_EVENT_IN')) {
+            if ((m.type === 'OUT' && !['LOSS', 'OPERATIONAL_LOSS', 'CONSIGNMENT_RETURN', 'SUPPLIER_RETURN'].includes(m.reason)) || (m.type === 'IN' && m.reason === 'MARKETING_EVENT_IN')) {
                 if (!map[m.productId]) {
                     map[m.productId] = { 
                         productId: m.productId,
@@ -793,6 +800,11 @@ const Reports = () => {
                 }
                 map[item.productId].purchased += Number(item.adjustedQuantity || 0);
             });
+        });
+
+        movements.filter(m => ['CONSIGNMENT_RETURN', 'SUPPLIER_RETURN'].includes(m.reason)).forEach(m => {
+            if (!map[m.productId]) map[m.productId] = { productId: m.productId, name: m.productName, consumed: 0, purchased: 0, bonus: 0 };
+            map[m.productId].purchased -= Number(m.purchaseReturn?.purchaseQuantity || 0);
         });
 
         // 🟡 BONIFICAÇÕES (Entradas tipo BONUS ou legados)
@@ -846,7 +858,7 @@ const Reports = () => {
                 };
             })
             .sort((a, b) => b.purchased - a.purchased);
-    }, [state.stockMovements, state.purchaseOrders, dateFrom, dateTo]);
+    }, [state.stockMovements, state.purchaseOrders, state.products, dateFrom, dateTo]);
 
     const purchaseInsight = useMemo(() => {
         if (!purchaseVsConsumption.length) return null;
@@ -890,7 +902,7 @@ const Reports = () => {
         // 🔵 CONSUMO (base para %)
         const LOSS_REASONS = ['LOSS', 'OPERATIONAL_LOSS'];
         movements.forEach((m) => {
-            if ((m.type === 'OUT' && !LOSS_REASONS.includes(m.reason)) || (m.type === 'IN' && m.reason === 'MARKETING_EVENT_IN')) {
+            if ((m.type === 'OUT' && !LOSS_REASONS.includes(m.reason) && !['CONSIGNMENT_RETURN', 'SUPPLIER_RETURN'].includes(m.reason)) || (m.type === 'IN' && m.reason === 'MARKETING_EVENT_IN')) {
                 if (!consumptionMap[m.productId]) {
                     consumptionMap[m.productId] = 0;
                 }
@@ -957,9 +969,13 @@ const Reports = () => {
             movements = movements.filter(m => new Date(m.createdAt) <= new Date(dateTo + 'T23:59:59'));
         }
 
-        const totalSpent = orders.reduce((acc, order) =>
+        const grossPurchases = orders.reduce((acc, order) =>
             acc + (order.items || []).reduce((s, i) =>
                 s + Number(i.adjustedQuantity || 0) * Number(i.unitPrice || 0), 0), 0);
+
+        const purchaseReturns = movements.filter(m => ['CONSIGNMENT_RETURN', 'SUPPLIER_RETURN'].includes(m.reason))
+            .reduce((sum, m) => sum + Number(m.totalCost || 0), 0);
+        const totalSpent = grossPurchases - purchaseReturns;
 
         const bonusValue = movements
             .filter(m => (m.type === 'IN' && m.reason === 'BONUS') || m.type === 'BONUS')
@@ -1056,7 +1072,7 @@ const Reports = () => {
         );
 
         return {
-            totalSpent, orderCount: orders.length, bonusValue, lowStockCount,
+            totalSpent, grossPurchases, purchaseReturns, orderCount: orders.length, bonusValue, lowStockCount,
             totalConsumptionCost, totalConsumptionQty,
             totalLossCost, totalLossQty,
             doubleDrinkCount: ddData.count, doubleDrinkCost: ddData.cost, doubleDrinkTable: ddData.table,
@@ -1097,8 +1113,22 @@ const Reports = () => {
             map[key].total += orderTotal;
         });
 
+        const sixAgo = new Date();
+        sixAgo.setMonth(sixAgo.getMonth() - 5);
+        sixAgo.setDate(1);
+        sixAgo.setHours(0, 0, 0, 0);
+        (state.stockMovements || []).filter(m => ['CONSIGNMENT_RETURN', 'SUPPLIER_RETURN'].includes(m.reason)).forEach(m => {
+            const date = new Date(m.createdAt);
+            if (dateFrom && date < new Date(dateFrom)) return;
+            if (dateTo && date > new Date(dateTo + 'T23:59:59')) return;
+            if (!dateFrom && !dateTo && date < sixAgo) return;
+            const key = `${date.getFullYear()}-${date.getMonth()}`;
+            if (!map[key]) map[key] = { month: `${monthNames[date.getMonth()]}/${date.getFullYear().toString().slice(-2)}`, total: 0, sortKey: date.getTime() };
+            map[key].total -= Number(m.totalCost || 0);
+        });
+
         return Object.values(map).sort((a, b) => a.sortKey - b.sortKey);
-    }, [state.purchaseOrders, dateFrom, dateTo]);
+    }, [state.purchaseOrders, state.stockMovements, dateFrom, dateTo]);
 
     return (
         <>
@@ -1140,9 +1170,9 @@ const Reports = () => {
             {/* 📊 KPI Cards — Compras */}
             <KpiGrid>
                 <Card padding="20px" style={{ borderLeft: '3px solid #3B82F6' }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Gasto em Compras</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Compras líquidas</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#1E293B' }}>{formatCurrency(kpiData.totalSpent)}</div>
-                    <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>{kpiData.orderCount} ordem(ns) concluída(s) no período</div>
+                    <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>Brutas: {formatCurrency(kpiData.grossPurchases)} · Devoluções: {formatCurrency(kpiData.purchaseReturns)}</div>
                 </Card>
                 <Card padding="20px" style={{ borderLeft: '3px solid #10B981' }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Ganho em Bonificações</div>
@@ -1543,7 +1573,7 @@ const Reports = () => {
                                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                                          />
                                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                        <Bar dataKey="purchased" name="Compras (O.C. + Bônus)" fill="#10B981" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="purchased" name="Compras líquidas + Bônus" fill="#10B981" radius={[4, 4, 0, 0]} />
                                         <Bar dataKey="consumed" name="Consumo (Convertido)" fill="#DC2626" radius={[4, 4, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -1560,7 +1590,7 @@ const Reports = () => {
                             <thead>
                                 <tr>
                                     <Th>Produto</Th>
-                                    <Th>Comprado (un. compra)</Th>
+                                    <Th>Comprado líquido (un. compra)</Th>
                                     <Th>Consumido (un. compra)</Th>
                                     <Th>Diferença</Th>
                                     <Th>Status</Th>
@@ -1689,9 +1719,9 @@ const Reports = () => {
                                 <tr>
                                     <Th>Fornecedor</Th>
                                     <Th>Ordens Recebidas</Th>
-                                    <Th>Qtd Comprada</Th>
-                                    <Th>Valor Investido</Th>
-                                    <Th>Média por Ordem</Th>
+                                    <Th>Qtd líquida comprada</Th>
+                                    <Th>Compras líquidas</Th>
+                                    <Th>Valor líquido por ordem</Th>
                                     <Th>Qtd. Bonificada</Th>
                                     <Th>Ganha em Bonificação</Th>
                                 </tr>
@@ -1799,10 +1829,10 @@ const Reports = () => {
                         <Card padding="24px" style={{ marginBottom: 20 }}>
                             <div style={{ marginBottom: 20 }}>
                                 <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1E293B', marginBottom: 4 }}>
-                                    Evolução Mensal de Gastos com Compras
+                                    Evolução Mensal de Compras Líquidas
                                 </h3>
                                 <p style={{ color: '#64748B', fontSize: '0.875rem' }}>
-                                    Total investido em ordens de compra finalizadas ({dateFrom || dateTo ? 'período filtrado' : 'últimos 6 meses'}).
+                                    Compras finalizadas menos devoluções registradas ({dateFrom || dateTo ? 'período filtrado' : 'últimos 6 meses'}).
                                 </p>
                             </div>
                             <div style={{ height: 300, width: '100%' }}>
@@ -1819,7 +1849,7 @@ const Reports = () => {
                                             <Tooltip
                                                 cursor={{ fill: '#F1F5F9', radius: 4 }}
                                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', padding: '12px', background: '#FFF' }}
-                                                formatter={(value) => [formatCurrency(value), 'Gasto em Compras']}
+                                                formatter={(value) => [formatCurrency(value), 'Compras líquidas']}
                                                 labelStyle={{ fontWeight: 600, color: '#1E293B', marginBottom: 4 }}
                                             />
                                             <Bar dataKey="total" fill="#3B82F6" radius={[6, 6, 0, 0]} barSize={32} />
@@ -1946,25 +1976,21 @@ const Reports = () => {
 
                         <KpiGrid>
                             <Card padding="20px" style={{ borderLeft: '3px solid #3B82F6' }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Total Comprado</div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Compras brutas</div>
                                 <div style={{ fontSize: 22, fontWeight: 700, color: '#1E293B' }}>
-                                    {purchasesData.reduce((acc, item) => acc + Number(item.adjustedQuantity || 0), 0).toFixed(2)}
+                                    {formatCurrency(purchasesData.filter(item => item.rowType !== 'RETURN').reduce((sum, item) => sum + Number(item.totalAmount ?? Number(item.adjustedQuantity) * Number(item.unitPrice)), 0))}
                                 </div>
                             </Card>
                             <Card padding="20px" style={{ borderLeft: '3px solid #10B981' }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Valor Investido</div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Compras líquidas</div>
                                 <div style={{ fontSize: 22, fontWeight: 700, color: '#10B981' }}>
-                                    {formatCurrency(purchasesData.reduce((acc, item) => acc + (Number(item.adjustedQuantity || 0) * Number(item.unitPrice || 0)), 0))}
+                                    {formatCurrency(purchasesData.reduce((acc, item) => acc + (Number(item.totalAmount ?? (Number(item.adjustedQuantity || 0) * Number(item.unitPrice || 0)))), 0))}
                                 </div>
                             </Card>
                             <Card padding="20px" style={{ borderLeft: '3px solid #8B5CF6' }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Preço Médio Pago</div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Devoluções no período</div>
                                 <div style={{ fontSize: 22, fontWeight: 700, color: '#8B5CF6' }}>
-                                    {(() => {
-                                        const totalQty = purchasesData.reduce((acc, item) => acc + Number(item.adjustedQuantity || 0), 0);
-                                        const totalVal = purchasesData.reduce((acc, item) => acc + (Number(item.adjustedQuantity || 0) * Number(item.unitPrice || 0)), 0);
-                                        return totalQty > 0 ? formatCurrency(totalVal / totalQty) : 'R$ 0,00';
-                                    })()}
+                                    {formatCurrency(purchasesData.filter(item => item.rowType === 'RETURN').reduce((sum, item) => sum - Number(item.totalAmount || 0), 0))}
                                 </div>
                             </Card>
                         </KpiGrid>
@@ -1981,15 +2007,15 @@ const Reports = () => {
                                             <Th>Data</Th>
                                             <Th>Fornecedor</Th>
                                             {!purchaseFilterProduct && <Th>Produto</Th>}
-                                            <Th style={{ textAlign: 'right' }}>Qtd Comprada</Th>
+                                            <Th style={{ textAlign: 'right' }}>Quantidade (+ compra / − devolução)</Th>
                                             <Th style={{ textAlign: 'right' }}>Preço Un.</Th>
-                                            <Th style={{ textAlign: 'right' }}>Total Pago</Th>
+                                            <Th style={{ textAlign: 'right' }}>Valor</Th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {purchasesData.map(item => (
                                             <Tr key={item.id}>
-                                                <Td>{new Date(item.purchaseOrder?.completedAt).toLocaleDateString('pt-BR')}</Td>
+                                                <Td>{new Date(item.eventAt || item.purchaseOrder?.completedAt).toLocaleDateString('pt-BR')} — {item.rowType === 'RETURN' ? 'Devolução' : 'Compra'}</Td>
                                                 <Td>{item.supplier?.name || '-'}</Td>
                                                 {!purchaseFilterProduct && <Td>{item.product?.name || '-'}</Td>}
                                                 <Td style={{ textAlign: 'right', fontWeight: 600 }}>
@@ -1997,7 +2023,7 @@ const Reports = () => {
                                                 </Td>
                                                 <Td style={{ textAlign: 'right', color: '#64748b' }}>{formatCurrency(Number(item.unitPrice))}</Td>
                                                 <Td style={{ textAlign: 'right', fontWeight: 700, color: '#059669' }}>
-                                                    {formatCurrency(Number(item.adjustedQuantity) * Number(item.unitPrice))}
+                                                    {formatCurrency(item.totalAmount ?? Number(item.adjustedQuantity) * Number(item.unitPrice))}
                                                 </Td>
                                             </Tr>
                                         ))}

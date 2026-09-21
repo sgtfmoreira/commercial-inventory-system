@@ -25,7 +25,7 @@ test('recebimento persiste preço editado no item, produto, fornecedor e histór
             updateMany: async ({ data }) => data.status === 'processing' ? { count: 1 } : { count: 1 }
         },
         product: {
-            findFirst: async () => ({ packQuantity: 10 }),
+            findFirst: async () => ({ packQuantity: 10, unit: 'un' }),
             updateMany: async (args) => { calls.product = args.data; return { count: 1 }; }
         },
         purchaseOrderItem: {
@@ -64,12 +64,13 @@ test('recebimento persiste preço editado no item, produto, fornecedor e histór
         '00000000-0000-0000-0000-000000000006'
     );
 
-    assert.deepEqual(calls.item, { adjustedQuantity: 3, unitPrice: 125 });
+    assert.deepEqual(calls.item, { adjustedQuantity: 3, unitPrice: 125, receivedStockQuantity: 30, receivedUnitCost: 12.5, receivedUnit: 'un' });
     assert.deepEqual(calls.product, { unitPrice: 125, currentCost: 12.5 });
     assert.deepEqual(calls.supplier, { price: 125 });
     assert.equal(calls.history.price, 125);
     assert.equal(calls.history.purchaseOrderId, order.id);
     assert.equal(calls.stock.unitCost, 12.5);
+    assert.equal(calls.stock.supplierId, order.items[0].supplierId);
 });
 
 test('recebimento inclui produto extra e não movimenta item ausente', async () => {

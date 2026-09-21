@@ -343,7 +343,7 @@ const Dashboard = () => {
     if (!filteredMovements?.length) return 0;
 
     const outValue = filteredMovements
-      .filter(m => m.type === "OUT" && m.reason !== "LOSS" && m.reason !== "OPERATIONAL_LOSS")
+      .filter(m => m.type === "OUT" && !["LOSS", "OPERATIONAL_LOSS", "CONSIGNMENT_RETURN", "SUPPLIER_RETURN"].includes(m.reason))
       .reduce((sum, m) => sum + Number(m.totalCost || 0), 0);
 
     const inValue = filteredMovements
@@ -437,7 +437,7 @@ const Dashboard = () => {
     const map = {};
 
     filteredMovements.forEach(m => {
-      if ((m.type === "OUT" && m.reason !== "LOSS") || (m.type === "IN" && m.reason === "MARKETING_EVENT_IN")) {
+      if ((m.type === "OUT" && !["LOSS", "CONSIGNMENT_RETURN", "SUPPLIER_RETURN"].includes(m.reason)) || (m.type === "IN" && m.reason === "MARKETING_EVENT_IN")) {
         if (!map[m.productId]) {
           map[m.productId] = {
             id: m.productId,
@@ -468,7 +468,7 @@ const Dashboard = () => {
     const map = {};
 
     filteredMovements.forEach(m => {
-      if ((m.type === "OUT" && m.reason !== "LOSS") || (m.type === "IN" && m.reason === "MARKETING_EVENT_IN")) {
+      if ((m.type === "OUT" && !["LOSS", "CONSIGNMENT_RETURN", "SUPPLIER_RETURN"].includes(m.reason)) || (m.type === "IN" && m.reason === "MARKETING_EVENT_IN")) {
         if (!map[m.productId]) {
           map[m.productId] = {
             name: m.productName,

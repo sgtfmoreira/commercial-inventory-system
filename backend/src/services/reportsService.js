@@ -144,6 +144,10 @@ const getFinancialSummary = async (establishmentId, dateFrom, dateTo) => {
         grossProfit: null,
         grossMarginPercentage: null,
         revenueAvailable: false,
+        grossPurchases: 0,
+        purchaseReturns: 0,
+        netPurchases: 0,
+        returnsByClassification: {},
         internalConsumption: 0,
         operationalConsumption: 0,
         beverageOperationalConsumption: 0,
@@ -198,6 +202,11 @@ const getFinancialSummary = async (establishmentId, dateFrom, dateTo) => {
         }
 
         const classification = m.purchaseClassification || m.product?.purchaseClassification || 'EXCLUDED';
+
+        if (['CONSIGNMENT_RETURN', 'SUPPLIER_RETURN'].includes(reason)) {
+            summary.purchaseReturns += cost;
+            summary.returnsByClassification[classification] = (summary.returnsByClassification[classification] || 0) + cost;
+        }
 
         if (reason === 'SALE' && classification === 'CMV_BEVERAGES') {
             summary.salesCogs += cost;
@@ -271,6 +280,13 @@ const getFinancialSummary = async (establishmentId, dateFrom, dateTo) => {
             Number(item.adjustedQuantity || 0) * Number(item.unitPrice || 0);
     });
 
+    summary.grossPurchases = Object.values(summary.purchasesByClassification).reduce((sum, value) => sum + value, 0);
+    summary.grossPurchasesByClassification = { ...summary.purchasesByClassification };
+    Object.entries(summary.returnsByClassification).forEach(([classification, value]) => {
+        summary.purchasesByClassification[classification] = (summary.purchasesByClassification[classification] || 0) - value;
+    });
+    summary.netPurchases = summary.grossPurchases - summary.purchaseReturns;
+
     sales.forEach(sale => {
         const gross = Number(sale.grossTotal || 0);
         const discount = Number(sale.discountTotal || 0);
@@ -341,8 +357,8 @@ const getPurchasesByProduct = async (establishmentId, productId, dateFrom, dateT
 
     if (dateFrom || dateTo) {
         where.purchaseOrder.completedAt = {};
-        if (dateFrom) where.purchaseOrder.completedAt.gte = new Date(dateFrom);
-        if (dateTo) where.purchaseOrder.completedAt.lte = new Date(dateTo + 'T23:59:59.999Z');
+        if (dateFrom) where.purchaseOrder.completedAt.gte = parseBusinessDateBoundary(dateFrom);
+        if (dateTo) where.purchaseOrder.completedAt.lte = parseBusinessDateBoundary(dateTo, true);
     }
 
     const items = await prisma.purchaseOrderItem.findMany({
@@ -366,7 +382,24 @@ const getPurchasesByProduct = async (establishmentId, productId, dateFrom, dateT
         }
     });
 
-    return items;
+    const returns = await prisma.purchaseReturn.findMany({
+        where: {
+            establishmentId,
+            ...(productId ? { purchaseOrderItem: { productId } } : {}),
+            ...(where.purchaseOrder.completedAt ? { returnedAt: where.purchaseOrder.completedAt } : {})
+        },
+        include: { purchaseOrderItem: { include: { product: true, supplier: { select: { name: true } }, purchaseOrder: { select: { id: true, completedAt: true } } } } }
+    });
+    return [
+        ...items.map(item => ({ ...item, rowType: 'PURCHASE', eventAt: item.purchaseOrder.completedAt, totalAmount: Number(item.adjustedQuantity) * Number(item.unitPrice) })),
+        ...returns.map(item => ({
+            id: item.id, rowType: 'RETURN', eventAt: item.returnedAt,
+            purchaseOrder: item.purchaseOrderItem.purchaseOrder,
+            product: item.purchaseOrderItem.product, supplier: item.purchaseOrderItem.supplier,
+            adjustedQuantity: -Number(item.purchaseQuantity), unitPrice: Number(item.purchaseOrderItem.unitPrice),
+            totalAmount: -Number(item.totalCost)
+        }))
+    ].sort((a, b) => new Date(b.eventAt) - new Date(a.eventAt));
 };
 
 module.exports = {

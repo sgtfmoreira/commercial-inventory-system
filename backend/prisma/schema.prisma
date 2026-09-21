@@ -176,12 +176,42 @@ model PurchaseOrderItem {
 
   createdAt DateTime @default(now())
 
+  receivedStockQuantity Decimal? @db.Decimal(12, 3)
+  receivedUnitCost      Decimal? @db.Decimal(12, 4)
+  receivedUnit          String?
+  returns               PurchaseReturn[]
+
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
   product       Product?      @relation(fields: [productId], references: [id])
   supplier      Supplier?     @relation(fields: [supplierId], references: [id])
 
   @@index([purchaseClassification])
   @@map("purchase_order_items")
+}
+
+model PurchaseReturn {
+  id                  String @id @default(uuid()) @db.Uuid
+  establishmentId     String @db.Uuid
+  requestId           String @db.Uuid
+  purchaseOrderItemId  String @db.Uuid
+  purchaseOrderItem    PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  stockMovementId     String @unique @db.Uuid
+  stockMovement       StockMovement @relation(fields: [stockMovementId], references: [id], onDelete: Restrict)
+  quantity            Decimal @db.Decimal(12, 3)
+  purchaseQuantity    Decimal @db.Decimal(18, 9)
+  unitCost            Decimal @db.Decimal(12, 4)
+  totalCost           Decimal @db.Decimal(14, 4)
+  returnedAt          DateTime
+  createdAt           DateTime @default(now())
+  recordedByUserId    String @db.Uuid
+  reason              String
+  financialTreatment  String @default("PENDING")
+  notes               String?
+
+  @@unique([establishmentId, requestId])
+  @@index([establishmentId, returnedAt])
+  @@index([purchaseOrderItemId])
+  @@map("purchase_returns")
 }
 
 model StockMovement {
@@ -219,6 +249,7 @@ model StockMovement {
   periodFrom             DateTime?
   periodTo               DateTime?
   recordedByUserId       String?                 @db.Uuid
+  purchaseReturn        PurchaseReturn?
 
   @@index([establishmentId])
   @@index([productId])

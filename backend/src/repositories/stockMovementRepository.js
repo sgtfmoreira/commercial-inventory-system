@@ -81,6 +81,7 @@ const findAll = (filters = {}) => {
             product: { select: { id: true, name: true, unit: true } },
             supplier: { select: { name: true } },
             location: { select: { id: true, name: true } },
+            purchaseReturn: { select: { purchaseQuantity: true, financialTreatment: true, purchaseOrderItemId: true } },
         },
         orderBy: { createdAt: 'desc' },
     });

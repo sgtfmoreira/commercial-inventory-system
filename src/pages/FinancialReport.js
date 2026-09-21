@@ -326,7 +326,8 @@ const FinancialReport = () => {
         ['Bebidas / CMV', summary.purchasesByClassification?.CMV_BEVERAGES],
         ['Limpeza', summary.purchasesByClassification?.CLEANING],
         ['Descartáveis', summary.purchasesByClassification?.DISPOSABLES],
-        ['Outros operacionais', summary.purchasesByClassification?.OPERATING]
+        ['Outros operacionais', summary.purchasesByClassification?.OPERATING],
+        ['Fora do CMV', summary.purchasesByClassification?.EXCLUDED]
     ];
 
     return (
@@ -443,7 +444,11 @@ const FinancialReport = () => {
                 </DetailPanel>
 
                 <DetailPanel>
-                    <PanelHeader><ChartTitle>Compras concluídas</ChartTitle></PanelHeader>
+                    <PanelHeader><ChartTitle>Compras e devoluções</ChartTitle></PanelHeader>
+                    <DetailRow><span>Compras brutas</span><strong>{formatCurrency(summary.grossPurchases)}</strong></DetailRow>
+                    <DetailRow><span>Devoluções no período</span><strong>{formatCurrency(summary.purchaseReturns)}</strong></DetailRow>
+                    <DetailRow><span>Compras líquidas</span><strong>{formatCurrency(summary.netPurchases)}</strong></DetailRow>
+                    <p>Valores líquidos por classificação. Devoluções consideradas na data em que ocorreram; não representam reembolsos recebidos.</p>
                     {purchaseDetails.map(([label, value]) => (
                         <DetailRow key={label}>
                             <span>{label}</span>

@@ -56,3 +56,49 @@ test('consumo operacional permanece na movimentação e baixa produtos em unidad
         container.remove();
     }
 });
+
+test('devolução usa unidades de estoque, mostra custo original e repete requestId após falha', async () => {
+    jest.clearAllMocks();
+    global.IS_REACT_ACT_ENVIRONMENT = true;
+    Object.defineProperty(global, 'crypto', { configurable: true, value: { randomUUID: jest.fn(() => 'request-id') } });
+    api.get.mockImplementation(url => {
+        if (url === '/stock-locations') return Promise.resolve([{ id: 'loc', name: 'Bar', isDefault: true }]);
+        if (url.startsWith('/stock-movements/return-receipts')) return Promise.resolve([{
+            id: 'receipt', purchaseOrderId: 'order-123456', supplierName: 'Fornecedor original',
+            completedAt: '2026-08-01T15:00:00Z', receivedQuantity: 20, returnedQuantity: 0,
+            remainingQuantity: 20, unit: 'un', unitCost: 10
+        }]);
+        return Promise.resolve([]);
+    });
+    api.post.mockRejectedValueOnce(new Error('Conexão interrompida')).mockResolvedValueOnce({ id: 'return' });
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const changeField = (label, value) => act(async () => {
+        const node = [...container.querySelectorAll('label')].find(element => element.textContent.startsWith(label));
+        Simulate.change(node.querySelector('select, input, textarea'), { target: { value } });
+    });
+    try {
+        await act(async () => root.render(<ThemeProvider theme={theme}><StockMovement /></ThemeProvider>));
+        await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent.includes('Devolução ao fornecedor')).click());
+        await changeField('Produto devolvido', 'drink');
+        await changeField('Compra original', 'receipt');
+        await changeField('Quantidade devolvida', '8');
+        await changeField('Data da devolução', '2026-09-01');
+        expect(container.textContent).toContain('Fornecedor original');
+        expect(container.textContent.replace(/\s/g, '')).toContain('R$80,00');
+        await act(async () => Simulate.submit(container.querySelector('form')));
+        expect(toast.error).toHaveBeenCalledWith('Conexão interrompida');
+        await act(async () => Simulate.submit(container.querySelector('form')));
+        expect(api.post).toHaveBeenCalledTimes(2);
+        expect(api.post.mock.calls[0][1]).toEqual(api.post.mock.calls[1][1]);
+        expect(api.post).toHaveBeenLastCalledWith('/stock-movements/supplier-returns', expect.objectContaining({
+            purchaseOrderItemId: 'receipt', locationId: 'loc', quantity: 8,
+            requestId: 'request-id', reason: 'CONSIGNMENT_RETURN', financialTreatment: 'PENDING'
+        }));
+        expect(toast.success).toHaveBeenCalledWith('Devolução registrada. Estoque e compras líquidas atualizados.');
+    } finally {
+        await act(async () => root.unmount());
+        container.remove();
+    }
+});

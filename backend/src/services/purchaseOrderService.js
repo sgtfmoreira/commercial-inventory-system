@@ -156,7 +156,10 @@ const completeOrder = async (orderId, establishmentId, incomingItems = [], invoi
                 where: { id: dbItem.id },
                 data: {
                     adjustedQuantity: quantity,
-                    unitPrice: unitPrice
+                    unitPrice: unitPrice,
+                    receivedStockQuantity: finalQuantity,
+                    receivedUnitCost: finalUnitCost,
+                    receivedUnit: product.unit
                 }
             });
 
@@ -168,6 +171,7 @@ const completeOrder = async (orderId, establishmentId, incomingItems = [], invoi
                     establishmentId,
                     reason: "PURCHASE",
                     reference: ref,
+                    supplierId: dbItem.supplierId,
                     unitCost: finalUnitCost
                 }, tx);
 
@@ -261,7 +265,10 @@ const completeOrder = async (orderId, establishmentId, incomingItems = [], invoi
  * 🔐 EXCLUIR ORDEM
  */
 const deleteOrder = async (id, establishmentId) => {
-    await getOrderById(id, establishmentId);
+    const order = await getOrderById(id, establishmentId);
+    if (order.status !== 'pending') {
+        throw new AppError('Somente ordens pendentes podem ser excluídas. Registre uma devolução para produtos já recebidos.', 409);
+    }
     await purchaseOrderRepo.remove(id, establishmentId);
 
     await auditLogRepo.create({
