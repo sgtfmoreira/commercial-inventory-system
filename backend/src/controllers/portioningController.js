@@ -63,6 +63,19 @@ const updateRecipeItemCost = asyncHandler(async (req, res) => {
     });
 });
 
+const updateRecipe = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { items } = req.body;
+    const establishmentId = req.user.establishmentId;
+
+    const recipe = await portioningService.updateRecipe(id, items, establishmentId);
+
+    res.status(200).json({
+        success: true,
+        data: recipe
+    });
+});
+
 const createOrder = asyncHandler(async (req, res) => {
     const establishmentId = req.user.establishmentId;
     const createdBy = req.user.id;
@@ -120,6 +133,7 @@ module.exports = {
     addRecipeItem,
     removeRecipeItem,
     updateRecipeItemCost,
+    updateRecipe,
     createOrder,
     listOrders,
     completeOrder,

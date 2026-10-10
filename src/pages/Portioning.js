@@ -6,7 +6,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
     MdAdd, MdClose, MdCheckCircle, MdCancel, MdPendingActions,
-    MdFactory, MdSearch, MdRefresh, MdContentCut, MdInfo
+    MdFactory, MdSearch, MdRefresh, MdContentCut, MdInfo, MdEdit
 } from "react-icons/md";
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -105,6 +105,7 @@ export default function Portioning() {
     const [recipeSourceId, setRecipeSourceId] = useState('');
     const [recipeItems, setRecipeItems] = useState([]); // { id: string, targetProductId: string, percentage: string }
     const [submittingRecipe, setSubmittingRecipe] = useState(false);
+    const [editingRecipe, setEditingRecipe] = useState(null);
 
     const [recipes, setRecipes] = useState([]);
     const [loadingRecipes, setLoadingRecipes] = useState(false);
@@ -218,6 +219,32 @@ export default function Portioning() {
         setRecipeItems([...recipeItems, { id: Math.random().toString(), targetProductId: '', percentage: '' }]);
     };
 
+    const closeRecipeModal = () => {
+        if (submittingRecipe) return;
+        setShowRecipeModal(false);
+        setEditingRecipe(null);
+        setRecipeSourceId('');
+        setRecipeItems([]);
+    };
+
+    const openNewRecipeModal = () => {
+        setEditingRecipe(null);
+        setRecipeSourceId('');
+        setRecipeItems([]);
+        setShowRecipeModal(true);
+    };
+
+    const openEditRecipeModal = (recipe) => {
+        setEditingRecipe(recipe);
+        setRecipeSourceId(recipe.sourceProductId);
+        setRecipeItems((recipe.items || []).map(item => ({
+            id: item.id,
+            targetProductId: item.targetProductId,
+            percentage: String(item.costAllocationPercentage)
+        })));
+        setShowRecipeModal(true);
+    };
+
     const handleCreateRecipe = async () => {
         if (!recipeSourceId) {
             return toast.error('Selecione o produto de origem');
@@ -236,20 +263,28 @@ export default function Portioning() {
 
         setSubmittingRecipe(true);
         try {
-            // Create Recipe
-            const res = await api.post('/portioning/recipes', { sourceProductId: recipeSourceId });
-            const recipeId = res.data.data.id;
-
-            // Add Items
-            for (const item of recipeItems) {
-                await api.post(`/portioning/recipes/${recipeId}/items`, {
-                    targetProductId: item.targetProductId,
-                    costAllocationPercentage: Number(item.percentage)
+            if (editingRecipe) {
+                await api.put(`/portioning/recipes/${editingRecipe.id}`, {
+                    items: recipeItems.map(item => ({
+                        targetProductId: item.targetProductId,
+                        costAllocationPercentage: Number(item.percentage)
+                    }))
                 });
+            } else {
+                const res = await api.post('/portioning/recipes', { sourceProductId: recipeSourceId });
+                const recipeId = res.data.data.id;
+
+                for (const item of recipeItems) {
+                    await api.post(`/portioning/recipes/${recipeId}/items`, {
+                        targetProductId: item.targetProductId,
+                        costAllocationPercentage: Number(item.percentage)
+                    });
+                }
             }
 
-            toast.success('Ficha Técnica criada com sucesso!');
+            toast.success(editingRecipe ? 'Ficha atualizada com sucesso!' : 'Ficha Técnica criada com sucesso!');
             setShowRecipeModal(false);
+            setEditingRecipe(null);
             setRecipeSourceId('');
             setRecipeItems([]);
             loadRecipes();
@@ -389,7 +424,7 @@ export default function Portioning() {
                         <span style={{ fontWeight: 700, fontSize: 15 }}>Fichas de Desossa Ativas</span>
                         <div style={{ display: 'flex', gap: 8 }}>
                             <Button variant="secondary" onClick={loadRecipes}><MdRefresh /></Button>
-                            <Button variant="primary" onClick={() => setShowRecipeModal(true)}>+ Nova Ficha</Button>
+                            <Button variant="primary" onClick={openNewRecipeModal}>+ Nova Ficha</Button>
                         </div>
                     </div>
                     {loadingRecipes ? (
@@ -400,7 +435,10 @@ export default function Portioning() {
                         <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {recipes.map(({ product, recipe }) => (
                                 <div key={product.id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
-                                    <div style={{ fontWeight: 700, fontSize: 14 }}>{product.name} ({product.unit})</div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                                        <div style={{ fontWeight: 700, fontSize: 14 }}>{product.name} ({product.unit})</div>
+                                        <Button variant="secondary" onClick={() => openEditRecipeModal(recipe)}><MdEdit /> Editar</Button>
+                                    </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
                                         {recipe?.items?.map(i => (
                                             <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, background: '#f8fafc', padding: '6px 12px', borderRadius: 6 }}>
@@ -462,24 +500,32 @@ export default function Portioning() {
 
             <Modal 
                 isOpen={showRecipeModal} 
-                onClose={() => !submittingRecipe && setShowRecipeModal(false)} 
-                title="📑 Nova Ficha de Desossa"
+                onClose={closeRecipeModal}
+                title={editingRecipe ? "Editar Ficha de Desossa" : "📑 Nova Ficha de Desossa"}
                 footer={
                     <>
-                        <Button variant="secondary" onClick={() => setShowRecipeModal(false)}>Cancelar</Button>
+                        <Button variant="secondary" onClick={closeRecipeModal}>Cancelar</Button>
                         <Button variant="primary" onClick={handleCreateRecipe} disabled={submittingRecipe}>
-                            {submittingRecipe ? 'Salvando...' : 'Salvar Ficha'}
+                            {submittingRecipe ? 'Salvando...' : (editingRecipe ? 'Salvar Alterações' : 'Salvar Ficha')}
                         </Button>
                     </>
                 }
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <Select 
-                        label="Produto Inteiro (Origem) *" 
-                        value={recipeSourceId} 
-                        onChange={setRecipeSourceId} 
-                        options={[{ value: "", label: "Selecione o insumo..." }, ...inventoryProducts.map(p => ({ value: p.id, label: p.name }))]}
-                    />
+                    {editingRecipe ? (
+                        <Input
+                            label="Produto Inteiro (Origem)"
+                            value={editingRecipe.sourceProduct?.name || ''}
+                            disabled
+                        />
+                    ) : (
+                        <Select
+                            label="Produto Inteiro (Origem) *"
+                            value={recipeSourceId}
+                            onChange={setRecipeSourceId}
+                            options={[{ value: "", label: "Selecione o insumo..." }, ...inventoryProducts.map(p => ({ value: p.id, label: p.name }))]}
+                        />
+                    )}
 
                     <div style={{ marginTop: 8, marginBottom: 8, fontWeight: 600, fontSize: 14 }}>Cortes Resultantes (Destino) *</div>
                     

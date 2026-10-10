@@ -8,6 +8,7 @@ router.use(authMiddleware);
 // Receitas de Porcionamento
 router.post('/recipes', portioningController.createRecipe);
 router.get('/recipes/product/:productId', portioningController.getRecipeByProduct);
+router.put('/recipes/:id', portioningController.updateRecipe);
 router.post('/recipes/:id/items', portioningController.addRecipeItem);
 router.delete('/recipes/items/:itemId', portioningController.removeRecipeItem);
 router.patch('/recipes/items/:itemId/cost', portioningController.updateRecipeItemCost);

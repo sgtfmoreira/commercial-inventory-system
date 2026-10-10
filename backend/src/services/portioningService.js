@@ -55,6 +55,79 @@ const updateRecipeItemCost = async (id, costAllocationPercentage, establishmentI
     return { success: true };
 };
 
+const updateRecipe = async (recipeId, items, establishmentId) => {
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new AppError('Adicione ao menos um corte resultante.', 400);
+    }
+
+    const normalizedItems = items.map(item => ({
+        targetProductId: item.targetProductId,
+        costAllocationPercentage: Number(item.costAllocationPercentage)
+    }));
+
+    if (normalizedItems.some(item => !item.targetProductId
+        || !Number.isFinite(item.costAllocationPercentage)
+        || item.costAllocationPercentage <= 0
+        || item.costAllocationPercentage > 100)) {
+        throw new AppError('Produto de destino ou percentual de custo inválido.', 400);
+    }
+
+    const targetIds = normalizedItems.map(item => item.targetProductId);
+    if (new Set(targetIds).size !== targetIds.length) {
+        throw new AppError('Um corte resultante não pode ser informado mais de uma vez.', 400);
+    }
+
+    const totalPercentage = normalizedItems.reduce(
+        (total, item) => total + item.costAllocationPercentage,
+        0
+    );
+    if (Math.abs(totalPercentage - 100) > 0.01) {
+        throw new AppError(`A soma das porcentagens deve ser 100% (atual: ${totalPercentage}%).`, 400);
+    }
+
+    return prisma.$transaction(async (tx) => {
+        const recipe = await tx.portioningRecipe.findFirst({
+            where: { id: recipeId, establishmentId }
+        });
+        if (!recipe) throw new AppError('Ficha não encontrada.', 404);
+
+        if (targetIds.includes(recipe.sourceProductId)) {
+            throw new AppError('O produto de origem não pode ser também um corte resultante.', 400);
+        }
+
+        const validTargets = await tx.product.findMany({
+            where: {
+                id: { in: targetIds },
+                establishmentId,
+                isActive: true,
+                type: { not: 'ASSET' }
+            },
+            select: { id: true }
+        });
+        if (validTargets.length !== targetIds.length) {
+            throw new AppError('Um ou mais cortes são inválidos ou pertencem a outro estabelecimento.', 400);
+        }
+
+        await tx.portioningRecipeItem.deleteMany({
+            where: { portioningRecipeId: recipeId }
+        });
+        await tx.portioningRecipeItem.createMany({
+            data: normalizedItems.map(item => ({
+                portioningRecipeId: recipeId,
+                ...item
+            }))
+        });
+
+        return tx.portioningRecipe.findUnique({
+            where: { id: recipeId },
+            include: {
+                sourceProduct: true,
+                items: { include: { targetProduct: true } }
+            }
+        });
+    });
+};
+
 // ─── ORDER ──────────────────────────────────────────────────────────────
 
 const createOrder = async ({ sourceProductId, sourceQuantity, notes, items, establishmentId, createdBy }) => {
@@ -175,6 +248,7 @@ module.exports = {
     addRecipeItem,
     removeRecipeItem,
     updateRecipeItemCost,
+    updateRecipe,
     createOrder,
     listOrders,
     completeOrder,
