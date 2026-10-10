@@ -15,6 +15,7 @@ import Modal from '../components/Modal';
 import { Input } from '../components/FormFields';
 import Select from '../components/Select';
 import EmptyState from '../components/EmptyState';
+import { getPortioningSourceProducts, getPortioningTargetProducts } from '../utils/portioningProducts';
 
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`;
 const spin = keyframes`from { transform: rotate(0deg); } to { transform: rotate(360deg); }`;
@@ -77,7 +78,13 @@ export default function Portioning() {
 
     // Apenas insumos podem ser desossados
     const inventoryProducts = useMemo(() => {
-        return products.filter(p => p.type === 'INVENTORY' && p.isActive !== false);
+        return getPortioningSourceProducts(products);
+    }, [products]);
+
+    // Cortes resultantes podem ser insumos ou produtos de producao.
+    // Ativos imobilizados nao representam uma saida valida de desossa.
+    const targetProducts = useMemo(() => {
+        return getPortioningTargetProducts(products);
     }, [products]);
 
     const [tab, setTab] = useState('orders');
@@ -487,7 +494,7 @@ export default function Portioning() {
                                         newItems[index].targetProductId = val;
                                         setRecipeItems(newItems);
                                     }}
-                                    options={[{ value: "", label: "Selecione o corte..." }, ...inventoryProducts.filter(p => p.id !== recipeSourceId).map(p => ({ value: p.id, label: p.name }))]}
+                                    options={[{ value: "", label: "Selecione o corte..." }, ...targetProducts.filter(p => p.id !== recipeSourceId).map(p => ({ value: p.id, label: p.name }))]}
                                 />
                             </div>
                             <div style={{ width: 120 }}>
