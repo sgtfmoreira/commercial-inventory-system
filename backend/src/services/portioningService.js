@@ -128,6 +128,13 @@ const updateRecipe = async (recipeId, items, establishmentId) => {
     });
 };
 
+const deleteRecipe = async (recipeId, establishmentId) => {
+    const deleted = await portioningRecipeRepo.deleteRecipe(recipeId, establishmentId);
+    if (deleted.count === 0) throw new AppError('Ficha não encontrada.', 404);
+
+    return { success: true, message: 'Ficha excluída com sucesso!' };
+};
+
 // ─── ORDER ──────────────────────────────────────────────────────────────
 
 const createOrder = async ({ sourceProductId, sourceQuantity, notes, items, establishmentId, createdBy }) => {
@@ -249,6 +256,7 @@ module.exports = {
     removeRecipeItem,
     updateRecipeItemCost,
     updateRecipe,
+    deleteRecipe,
     createOrder,
     listOrders,
     completeOrder,

@@ -6,7 +6,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
     MdAdd, MdClose, MdCheckCircle, MdCancel, MdPendingActions,
-    MdFactory, MdSearch, MdRefresh, MdContentCut, MdInfo, MdEdit
+    MdFactory, MdSearch, MdRefresh, MdContentCut, MdInfo, MdEdit, MdDelete
 } from "react-icons/md";
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -106,6 +106,8 @@ export default function Portioning() {
     const [recipeItems, setRecipeItems] = useState([]); // { id: string, targetProductId: string, percentage: string }
     const [submittingRecipe, setSubmittingRecipe] = useState(false);
     const [editingRecipe, setEditingRecipe] = useState(null);
+    const [deleteRecipeTarget, setDeleteRecipeTarget] = useState(null);
+    const [deletingRecipe, setDeletingRecipe] = useState(false);
 
     const [recipes, setRecipes] = useState([]);
     const [loadingRecipes, setLoadingRecipes] = useState(false);
@@ -271,14 +273,18 @@ export default function Portioning() {
                     }))
                 });
             } else {
-                const res = await api.post('/portioning/recipes', { sourceProductId: recipeSourceId });
-                const recipeId = res.data.data.id;
+                const recipe = await api.post('/portioning/recipes', { sourceProductId: recipeSourceId });
 
-                for (const item of recipeItems) {
-                    await api.post(`/portioning/recipes/${recipeId}/items`, {
-                        targetProductId: item.targetProductId,
-                        costAllocationPercentage: Number(item.percentage)
-                    });
+                try {
+                    for (const item of recipeItems) {
+                        await api.post(`/portioning/recipes/${recipe.id}/items`, {
+                            targetProductId: item.targetProductId,
+                            costAllocationPercentage: Number(item.percentage)
+                        });
+                    }
+                } catch (error) {
+                    await api.delete(`/portioning/recipes/${recipe.id}`).catch(() => undefined);
+                    throw error;
                 }
             }
 
@@ -292,6 +298,21 @@ export default function Portioning() {
             toast.error(e.response?.data?.error || 'Erro ao criar ficha técnica');
         } finally {
             setSubmittingRecipe(false);
+        }
+    };
+
+    const handleDeleteRecipe = async () => {
+        if (!deleteRecipeTarget) return;
+        setDeletingRecipe(true);
+        try {
+            await api.delete(`/portioning/recipes/${deleteRecipeTarget.id}`);
+            toast.success('Ficha excluída com sucesso!');
+            setDeleteRecipeTarget(null);
+            loadRecipes();
+        } catch (e) {
+            toast.error(e.message || 'Erro ao excluir ficha');
+        } finally {
+            setDeletingRecipe(false);
         }
     };
 
@@ -437,7 +458,10 @@ export default function Portioning() {
                                 <div key={product.id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                                         <div style={{ fontWeight: 700, fontSize: 14 }}>{product.name} ({product.unit})</div>
-                                        <Button variant="secondary" onClick={() => openEditRecipeModal(recipe)}><MdEdit /> Editar</Button>
+                                        <ActionRow>
+                                            <Button variant="secondary" onClick={() => openEditRecipeModal(recipe)}><MdEdit /> Editar</Button>
+                                            <Button variant="danger" onClick={() => setDeleteRecipeTarget(recipe)}><MdDelete /> Excluir</Button>
+                                        </ActionRow>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
                                         {recipe?.items?.map(i => (
@@ -476,6 +500,25 @@ export default function Portioning() {
 
                     <Input label="Observações" value={modalNotes} onChange={e => setModalNotes(e.target.value)} />
                 </div>
+            </Modal>
+
+            <Modal
+                isOpen={!!deleteRecipeTarget}
+                onClose={() => !deletingRecipe && setDeleteRecipeTarget(null)}
+                title="Excluir Ficha de Desossa"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setDeleteRecipeTarget(null)} disabled={deletingRecipe}>Cancelar</Button>
+                        <Button variant="danger" onClick={handleDeleteRecipe} disabled={deletingRecipe}>
+                            {deletingRecipe ? 'Excluindo...' : 'Excluir Ficha'}
+                        </Button>
+                    </>
+                }
+            >
+                <p style={{ margin: 0, color: '#475569', lineHeight: 1.5 }}>
+                    A ficha de <strong>{deleteRecipeTarget?.sourceProduct?.name}</strong> e seus cortes serão excluídos.
+                    Ordens de porcionamento já registradas não serão alteradas.
+                </p>
             </Modal>
 
             <Modal isOpen={!!completeTarget} onClose={() => !processing && setCompleteTarget(null)} title="✅ Concluir Desossa" footer={<><Button variant="secondary" onClick={() => !processing && setCompleteTarget(null)} disabled={processing}>Cancelar</Button><Button variant="primary" onClick={handleComplete} disabled={processing}>Confirmar</Button></>}>

@@ -76,6 +76,14 @@ const updateRecipe = asyncHandler(async (req, res) => {
     });
 });
 
+const deleteRecipe = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const establishmentId = req.user.establishmentId;
+
+    const result = await portioningService.deleteRecipe(id, establishmentId);
+    res.status(200).json(result);
+});
+
 const createOrder = asyncHandler(async (req, res) => {
     const establishmentId = req.user.establishmentId;
     const createdBy = req.user.id;
@@ -134,6 +142,7 @@ module.exports = {
     removeRecipeItem,
     updateRecipeItemCost,
     updateRecipe,
+    deleteRecipe,
     createOrder,
     listOrders,
     completeOrder,

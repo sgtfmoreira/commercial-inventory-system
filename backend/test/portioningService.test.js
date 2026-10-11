@@ -6,6 +6,14 @@ const prismaPath = require.resolve('../src/config/prisma');
 let deletedItems = false;
 let createdItems = [];
 
+const prismaMock = {
+    portioningRecipe: {
+        deleteMany: async ({ where }) => ({
+            count: where.id === 'recipe' && where.establishmentId === 'establishment' ? 1 : 0
+        })
+    }
+};
+
 const tx = {
     portioningRecipe: {
         findFirst: async ({ where }) => where.id === 'recipe'
@@ -31,12 +39,12 @@ require.cache[prismaPath] = {
     id: prismaPath,
     filename: prismaPath,
     loaded: true,
-    exports: {
+    exports: Object.assign(prismaMock, {
         $transaction: async callback => callback(tx)
-    }
+    })
 };
 
-const { updateRecipe } = require('../src/services/portioningService');
+const { updateRecipe, deleteRecipe } = require('../src/services/portioningService');
 
 test.beforeEach(() => {
     deletedItems = false;
@@ -76,5 +84,15 @@ test('rejeita o mesmo corte informado mais de uma vez', async () => {
             { targetProductId: 'escalope', costAllocationPercentage: 50 }
         ], 'establishment'),
         /não pode ser informado mais de uma vez/
+    );
+});
+
+test('exclui somente a ficha pertencente ao estabelecimento', async () => {
+    const result = await deleteRecipe('recipe', 'establishment');
+    assert.equal(result.success, true);
+
+    await assert.rejects(
+        deleteRecipe('recipe', 'outro-estabelecimento'),
+        /Ficha não encontrada/
     );
 });
