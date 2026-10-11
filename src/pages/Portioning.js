@@ -6,7 +6,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
     MdAdd, MdClose, MdCheckCircle, MdCancel, MdPendingActions,
-    MdFactory, MdSearch, MdRefresh, MdContentCut, MdInfo, MdEdit, MdDelete
+    MdSearch, MdRefresh, MdContentCut, MdInfo, MdEdit, MdDelete
 } from "react-icons/md";
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -18,7 +18,6 @@ import EmptyState from '../components/EmptyState';
 import { getPortioningSourceProducts, getPortioningTargetProducts } from '../utils/portioningProducts';
 
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`;
-const spin = keyframes`from { transform: rotate(0deg); } to { transform: rotate(360deg); }`;
 
 const Container = styled.div`padding: ${({ theme }) => theme.spacing.lg}; animation: ${fadeIn} 0.3s ease;`;
 const PageHeader = styled.div`display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 12px; flex-wrap: wrap;`;
@@ -74,7 +73,7 @@ const formatDate = (d) => {
 
 export default function Portioning() {
     const { state } = useApp();
-    const { products = [], establishment } = state;
+    const { products = [] } = state;
 
     // Apenas insumos podem ser desossados
     const inventoryProducts = useMemo(() => {
@@ -122,7 +121,7 @@ export default function Portioning() {
         setLoadingOrders(true);
         try {
             const res = await api.get('/portioning/orders');
-            setOrders(Array.isArray(res?.data?.data) ? res.data.data : []);
+            setOrders(Array.isArray(res) ? res : []);
         } catch {
             toast.error('Erro ao carregar ordens de desossa');
         } finally {
@@ -169,11 +168,11 @@ export default function Portioning() {
         if (modalProductId) {
             api.get(`/portioning/recipes/product/${modalProductId}`)
                 .then(res => {
-                    setSelectedRecipe(res.data?.data || null);
+                    setSelectedRecipe(res || null);
                     // Reset yields
                     const initialYields = {};
-                    if (res.data?.data?.items) {
-                        res.data.data.items.forEach(i => initialYields[i.targetProductId] = '');
+                    if (res?.items) {
+                        res.items.forEach(i => initialYields[i.targetProductId] = '');
                     }
                     setYields(initialYields);
                 })
@@ -197,6 +196,11 @@ export default function Portioning() {
                 };
             }).filter(i => i.quantity > 0);
 
+            if (items.length === 0) {
+                toast.error('Informe a quantidade produzida de ao menos um corte');
+                return;
+            }
+
             await api.post('/portioning/orders', {
                 sourceProductId: modalProductId,
                 sourceQuantity: Number(modalQty),
@@ -211,7 +215,7 @@ export default function Portioning() {
             setYields({});
             loadOrders();
         } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao criar ordem');
+            toast.error(e.message || 'Erro ao criar ordem');
         } finally {
             setSubmitting(false);
         }

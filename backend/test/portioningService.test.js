@@ -44,7 +44,7 @@ require.cache[prismaPath] = {
     })
 };
 
-const { updateRecipe, deleteRecipe } = require('../src/services/portioningService');
+const { updateRecipe, deleteRecipe, createOrder } = require('../src/services/portioningService');
 
 test.beforeEach(() => {
     deletedItems = false;
@@ -94,5 +94,30 @@ test('exclui somente a ficha pertencente ao estabelecimento', async () => {
     await assert.rejects(
         deleteRecipe('recipe', 'outro-estabelecimento'),
         /Ficha não encontrada/
+    );
+});
+
+test('rejeita criação de ordem sem usuário autenticado', async () => {
+    await assert.rejects(
+        createOrder({
+            sourceProductId: 'source',
+            sourceQuantity: 1,
+            items: [{ targetProductId: 'escalope', quantity: 1, costAllocationPercentage: 100 }],
+            establishmentId: 'establishment'
+        }),
+        error => error.statusCode === 403 && /Usuário ou estabelecimento/.test(error.message)
+    );
+});
+
+test('rejeita criação de ordem sem nenhum corte produzido', async () => {
+    await assert.rejects(
+        createOrder({
+            sourceProductId: 'source',
+            sourceQuantity: 1,
+            items: [],
+            establishmentId: 'establishment',
+            createdBy: 'authenticated-user'
+        }),
+        error => error.statusCode === 400 && /ao menos um corte/.test(error.message)
     );
 });

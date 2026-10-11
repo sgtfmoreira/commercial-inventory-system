@@ -138,8 +138,16 @@ const deleteRecipe = async (recipeId, establishmentId) => {
 // ─── ORDER ──────────────────────────────────────────────────────────────
 
 const createOrder = async ({ sourceProductId, sourceQuantity, notes, items, establishmentId, createdBy }) => {
+    if (!createdBy || !establishmentId) {
+        throw new AppError('Usuário ou estabelecimento não identificado.', 403);
+    }
+
     const qty = Number(sourceQuantity);
     if (!qty || qty <= 0) throw new AppError('Quantidade de origem inválida.', 400);
+
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new AppError('Informe ao menos um corte com quantidade produzida.', 400);
+    }
 
     const recipe = await portioningRecipeRepo.findBySourceProductId(sourceProductId, establishmentId);
     if (!recipe) throw new AppError('Ficha de porcionamento não encontrada.', 400);
@@ -150,6 +158,10 @@ const createOrder = async ({ sourceProductId, sourceQuantity, notes, items, esta
         quantity: Number(item.quantity),
         costAllocationPercentage: Number(item.costAllocationPercentage)
     }));
+
+    if (orderItems.some(item => !item.targetProductId || !item.quantity || item.quantity <= 0)) {
+        throw new AppError('Os cortes devem ter produto e quantidade maior que zero.', 400);
+    }
 
     // Verifica total de porcentagem
     const totalPercentage = orderItems.reduce((acc, item) => acc + item.costAllocationPercentage, 0);

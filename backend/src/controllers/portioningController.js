@@ -86,7 +86,7 @@ const deleteRecipe = asyncHandler(async (req, res) => {
 
 const createOrder = asyncHandler(async (req, res) => {
     const establishmentId = req.user.establishmentId;
-    const createdBy = req.user.id;
+    const createdBy = req.user.userId;
 
     const order = await portioningService.createOrder({
         ...req.body,
