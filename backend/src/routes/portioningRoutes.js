@@ -17,6 +17,7 @@ router.patch('/recipes/items/:itemId/cost', portioningController.updateRecipeIte
 // Ordens de Porcionamento
 router.post('/orders', portioningController.createOrder);
 router.get('/orders', portioningController.listOrders);
+router.get('/lots', portioningController.listLots);
 router.patch('/orders/:id/complete', portioningController.completeOrder);
 router.patch('/orders/:id/cancel', portioningController.cancelOrder);
 

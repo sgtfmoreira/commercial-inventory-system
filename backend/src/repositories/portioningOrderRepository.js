@@ -19,6 +19,7 @@ const findById = (id, establishmentId) => {
                 }
             },
             sourceProduct: true,
+            sourceLot: true,
             user: {
                 select: { id: true, name: true }
             }
@@ -40,6 +41,10 @@ const findAll = ({ establishmentId, status, page = 1, limit = 10 }) => {
             where,
             include: {
                 sourceProduct: true,
+                sourceLot: true,
+                items: {
+                    include: { targetProduct: true }
+                },
                 user: { select: { id: true, name: true } }
             },
             orderBy: { createdAt: 'desc' },

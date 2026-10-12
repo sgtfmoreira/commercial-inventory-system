@@ -5,12 +5,24 @@ const prismaPath = require.resolve('../src/config/prisma');
 
 let deletedItems = false;
 let createdItems = [];
+let createdOrderData;
 
 const prismaMock = {
     portioningRecipe: {
         deleteMany: async ({ where }) => ({
             count: where.id === 'recipe' && where.establishmentId === 'establishment' ? 1 : 0
-        })
+        }),
+        findFirst: async ({ where }) => where.sourceProductId === 'source' ? {
+            id: 'recipe',
+            sourceProduct: { id: 'source', unit: 'kg' },
+            items: [{ targetProductId: 'escalope', targetProduct: { id: 'escalope', unit: 'un' } }]
+        } : null
+    },
+    inventoryLot: {
+        findFirst: async ({ where }) => where.id === 'lot' ? { id: 'lot', remainingQuantity: 15 } : null
+    },
+    portioningOrder: {
+        create: async ({ data }) => { createdOrderData = data; return { id: 'order', ...data }; }
     }
 };
 
@@ -49,6 +61,7 @@ const { updateRecipe, deleteRecipe, createOrder } = require('../src/services/por
 test.beforeEach(() => {
     deletedItems = false;
     createdItems = [];
+    createdOrderData = undefined;
 });
 
 test('edita os cortes da ficha de forma atômica', async () => {
@@ -120,4 +133,24 @@ test('rejeita criação de ordem sem nenhum corte produzido', async () => {
         }),
         error => error.statusCode === 400 && /ao menos um corte/.test(error.message)
     );
+});
+
+test('registra lote, quantidade em unidades e peso real do rendimento', async () => {
+    await createOrder({
+        sourceProductId: 'source',
+        sourceQuantity: 1,
+        sourceLotId: 'lot',
+        items: [{
+            targetProductId: 'escalope',
+            quantity: 4,
+            netWeightKg: 1,
+            costAllocationPercentage: 100
+        }],
+        establishmentId: 'establishment',
+        createdBy: 'authenticated-user'
+    });
+
+    assert.equal(createdOrderData.sourceLotId, 'lot');
+    assert.equal(createdOrderData.items.create[0].quantity, 4);
+    assert.equal(createdOrderData.items.create[0].netWeightKg, 1);
 });

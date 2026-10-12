@@ -137,7 +137,7 @@ const deleteRecipe = async (recipeId, establishmentId) => {
 
 // ─── ORDER ──────────────────────────────────────────────────────────────
 
-const createOrder = async ({ sourceProductId, sourceQuantity, notes, items, establishmentId, createdBy }) => {
+const createOrder = async ({ sourceProductId, sourceQuantity, sourceLotId, notes, items, establishmentId, createdBy }) => {
     if (!createdBy || !establishmentId) {
         throw new AppError('Usuário ou estabelecimento não identificado.', 403);
     }
@@ -152,15 +152,46 @@ const createOrder = async ({ sourceProductId, sourceQuantity, notes, items, esta
     const recipe = await portioningRecipeRepo.findBySourceProductId(sourceProductId, establishmentId);
     if (!recipe) throw new AppError('Ficha de porcionamento não encontrada.', 400);
 
-    // items array format: [{ targetProductId, quantity, costAllocationPercentage }]
+    let sourceLot = null;
+    if (sourceLotId) {
+        sourceLot = await prisma.inventoryLot.findFirst({
+            where: { id: sourceLotId, productId: sourceProductId, establishmentId }
+        });
+        if (!sourceLot) throw new AppError('Lote de origem não encontrado para este produto.', 400);
+        if (Number(sourceLot.remainingQuantity) < qty) {
+            throw new AppError('O lote selecionado não possui saldo suficiente.', 400);
+        }
+    }
+
+    // items array format: [{ targetProductId, quantity, netWeightKg, costAllocationPercentage }]
     const orderItems = items.map(item => ({
         targetProductId: item.targetProductId,
         quantity: Number(item.quantity),
+        netWeightKg: item.netWeightKg === undefined || item.netWeightKg === null || item.netWeightKg === ''
+            ? null
+            : Number(item.netWeightKg),
         costAllocationPercentage: Number(item.costAllocationPercentage)
     }));
 
     if (orderItems.some(item => !item.targetProductId || !item.quantity || item.quantity <= 0)) {
         throw new AppError('Os cortes devem ter produto e quantidade maior que zero.', 400);
+    }
+
+    const recipeProducts = new Map(recipe.items.map(item => [item.targetProductId, item.targetProduct]));
+    if (orderItems.some(item => !recipeProducts.has(item.targetProductId))) {
+        throw new AppError('Um dos cortes não pertence à ficha selecionada.', 400);
+    }
+    for (const item of orderItems) {
+        const unit = String(recipeProducts.get(item.targetProductId)?.unit || '').trim().toLowerCase();
+        const isWeightUnit = ['kg', 'quilo', 'quilos', 'quilograma', 'quilogramas'].includes(unit);
+        if (isWeightUnit) item.netWeightKg = item.quantity;
+        if (!isWeightUnit && (!Number.isFinite(item.netWeightKg) || item.netWeightKg <= 0)) {
+            throw new AppError('Informe o peso total em kg dos cortes controlados por unidade.', 400);
+        }
+    }
+    const totalNetWeightKg = orderItems.reduce((total, item) => total + Number(item.netWeightKg || 0), 0);
+    if (String(recipe.sourceProduct.unit || '').trim().toLowerCase() === 'kg' && totalNetWeightKg > qty + 0.001) {
+        throw new AppError('O peso total dos cortes não pode superar o peso de origem.', 400);
     }
 
     // Verifica total de porcentagem
@@ -174,6 +205,7 @@ const createOrder = async ({ sourceProductId, sourceQuantity, notes, items, esta
     const order = await portioningOrderRepo.create({
         sourceProductId,
         sourceQuantity: qty,
+        sourceLotId: sourceLot?.id || null,
         notes,
         establishmentId,
         createdBy,
@@ -189,6 +221,18 @@ const listOrders = async ({ establishmentId, status, page, limit }) => {
     return portioningOrderRepo.findAll({ establishmentId, status, page, limit });
 };
 
+const listLots = async ({ establishmentId, productId }) => {
+    if (!productId) throw new AppError('Produto de origem não informado.', 400);
+    return prisma.inventoryLot.findMany({
+        where: { establishmentId, productId, remainingQuantity: { gt: 0 } },
+        include: {
+            supplier: { select: { id: true, name: true } },
+            purchaseOrderItem: { select: { purchaseOrderId: true } }
+        },
+        orderBy: { receivedAt: 'asc' }
+    });
+};
+
 const completeOrder = async (orderId, establishmentId) => {
     const order = await portioningOrderRepo.findById(orderId, establishmentId);
     if (!order) throw new AppError('Ordem não encontrada.', 404);
@@ -200,6 +244,21 @@ const completeOrder = async (orderId, establishmentId) => {
 
     await prisma.$transaction(async (tx) => {
         const sourceQty = Number(order.sourceQuantity);
+
+        if (order.sourceLotId) {
+            const consumedLot = await tx.inventoryLot.updateMany({
+                where: {
+                    id: order.sourceLotId,
+                    establishmentId,
+                    productId: order.sourceProductId,
+                    remainingQuantity: { gte: order.sourceQuantity }
+                },
+                data: { remainingQuantity: { decrement: order.sourceQuantity } }
+            });
+            if (consumedLot.count !== 1) {
+                throw new AppError('O lote selecionado não possui mais saldo suficiente.', 409);
+            }
+        }
 
         // Verifica estoque origem
         const sourceProd = await tx.product.findFirst({
@@ -271,6 +330,7 @@ module.exports = {
     deleteRecipe,
     createOrder,
     listOrders,
+    listLots,
     completeOrder,
     cancelOrder
 };

@@ -40,6 +40,9 @@ test('recebimento persiste preço editado no item, produto, fornecedor e histór
         purchaseInvoice: {
             create: async ({ data }) => ({ id: 'invoice-id', ...data })
         },
+        inventoryLot: {
+            upsert: async args => { calls.lot = args.create; return args.create; }
+        },
         auditLog: { create: async () => ({}) }
     };
 
@@ -71,6 +74,9 @@ test('recebimento persiste preço editado no item, produto, fornecedor e histór
     assert.equal(calls.history.purchaseOrderId, order.id);
     assert.equal(calls.stock.unitCost, 12.5);
     assert.equal(calls.stock.supplierId, order.items[0].supplierId);
+    assert.equal(calls.lot.purchaseOrderItemId, order.items[0].id);
+    assert.equal(calls.lot.initialQuantity, 30);
+    assert.equal(calls.lot.remainingQuantity, 30);
 });
 
 test('recebimento inclui produto extra e não movimenta item ausente', async () => {
@@ -93,6 +99,7 @@ test('recebimento inclui produto extra e não movimenta item ausente', async () 
         productSupplier: { upsert: async () => ({}) },
         supplierPriceHistory: { create: async () => ({}) },
         purchaseInvoice: { create: async ({ data }) => { invoiceItems = data.items.create; return { id: 'invoice', ...data }; } },
+        inventoryLot: { upsert: async ({ create }) => create },
         auditLog: { create: async () => ({}) }
     };
     mockModule('../src/repositories/purchaseOrderRepository', { findById: async () => order });

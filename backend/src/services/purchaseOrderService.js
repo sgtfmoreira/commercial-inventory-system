@@ -175,6 +175,23 @@ const completeOrder = async (orderId, establishmentId, incomingItems = [], invoi
                     unitCost: finalUnitCost
                 }, tx);
 
+                const lotCode = `LOT-${dbItem.id.replace(/-/g, '').slice(0, 12).toUpperCase()}`;
+                await tx.inventoryLot.upsert({
+                    where: { purchaseOrderItemId: dbItem.id },
+                    update: {},
+                    create: {
+                        code: lotCode,
+                        establishmentId,
+                        productId: dbItem.productId,
+                        supplierId: dbItem.supplierId,
+                        purchaseOrderItemId: dbItem.id,
+                        initialQuantity: finalQuantity,
+                        remainingQuantity: finalQuantity,
+                        unit: product.unit,
+                        receivedAt: new Date()
+                    }
+                });
+
                 // 🔹 ATUALIZA CUSTO DO PRODUTO
                 await tx.product.updateMany({
                     where: { id: dbItem.productId, establishmentId },

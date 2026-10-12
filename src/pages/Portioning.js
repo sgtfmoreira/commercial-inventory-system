@@ -67,6 +67,7 @@ const statusConfig = {
 };
 
 const formatQty = (v, unit) => `${Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${unit || ''}`;
+const isWeightUnit = unit => ['kg', 'quilo', 'quilos', 'quilograma', 'quilogramas'].includes(String(unit || '').trim().toLowerCase());
 const formatDate = (d) => {
     try { return new Date(d).toLocaleString('pt-BR'); } catch { return d; }
 };
@@ -95,8 +96,11 @@ export default function Portioning() {
     const [modalProductId, setModalProductId] = useState('');
     const [modalQty, setModalQty] = useState('');
     const [modalNotes, setModalNotes] = useState('');
+    const [sourceLots, setSourceLots] = useState([]);
+    const [sourceLotId, setSourceLotId] = useState('');
     const [selectedRecipe, setSelectedRecipe] = useState(null);
     const [yields, setYields] = useState({}); // { targetProductId: quantity }
+    const [yieldWeights, setYieldWeights] = useState({}); // peso total em kg para produtos controlados por unidade
     const [submitting, setSubmitting] = useState(false);
 
     // Modal de Nova Ficha Técnica
@@ -166,19 +170,30 @@ export default function Portioning() {
     // Handle product selection in modal
     useEffect(() => {
         if (modalProductId) {
-            api.get(`/portioning/recipes/product/${modalProductId}`)
-                .then(res => {
-                    setSelectedRecipe(res || null);
+            Promise.all([
+                api.get(`/portioning/recipes/product/${modalProductId}`),
+                api.get(`/portioning/lots?productId=${modalProductId}`).catch(() => [])
+            ]).then(([recipe, lots]) => {
+                    setSelectedRecipe(recipe || null);
+                    setSourceLots(Array.isArray(lots) ? lots : []);
+                    setSourceLotId(lots?.length === 1 ? lots[0].id : '');
                     // Reset yields
                     const initialYields = {};
-                    if (res?.items) {
-                        res.items.forEach(i => initialYields[i.targetProductId] = '');
+                    if (recipe?.items) {
+                        recipe.items.forEach(i => initialYields[i.targetProductId] = '');
                     }
                     setYields(initialYields);
+                    setYieldWeights({});
                 })
-                .catch(() => setSelectedRecipe(null));
+                .catch(() => {
+                    setSelectedRecipe(null);
+                    setSourceLots([]);
+                    setSourceLotId('');
+                });
         } else {
             setSelectedRecipe(null);
+            setSourceLots([]);
+            setSourceLotId('');
         }
     }, [modalProductId]);
 
@@ -192,6 +207,9 @@ export default function Portioning() {
                 return {
                     targetProductId,
                     quantity: Number(quantity) || 0,
+                    netWeightKg: isWeightUnit(recipeItem?.targetProduct?.unit)
+                        ? Number(quantity) || 0
+                        : Number(yieldWeights[targetProductId]) || 0,
                     costAllocationPercentage: recipeItem?.costAllocationPercentage || 0
                 };
             }).filter(i => i.quantity > 0);
@@ -200,10 +218,15 @@ export default function Portioning() {
                 toast.error('Informe a quantidade produzida de ao menos um corte');
                 return;
             }
+            if (items.some(item => item.netWeightKg <= 0)) {
+                toast.error('Informe o peso total em kg dos cortes produzidos');
+                return;
+            }
 
             await api.post('/portioning/orders', {
                 sourceProductId: modalProductId,
                 sourceQuantity: Number(modalQty),
+                sourceLotId: sourceLotId || null,
                 notes: modalNotes,
                 items
             });
@@ -213,6 +236,8 @@ export default function Portioning() {
             setModalQty('');
             setModalNotes('');
             setYields({});
+            setYieldWeights({});
+            setSourceLotId('');
             loadOrders();
         } catch (e) {
             toast.error(e.message || 'Erro ao criar ordem');
@@ -403,6 +428,9 @@ export default function Portioning() {
                                     <Th>ID</Th>
                                     <Th>Origem</Th>
                                     <Th>Qtd Original</Th>
+                                    <Th>Lote</Th>
+                                    <Th>Rendimento</Th>
+                                    <Th>Aproveitamento</Th>
                                     <Th>Status</Th>
                                     <Th>Criado por</Th>
                                     <Th>Data</Th>
@@ -411,16 +439,35 @@ export default function Portioning() {
                             </thead>
                             <tbody>
                                 {loadingOrders ? (
-                                    <tr><Td colSpan={7} style={{ textAlign: 'center', padding: 40 }}>Carregando...</Td></tr>
+                                    <tr><Td colSpan={10} style={{ textAlign: 'center', padding: 40 }}>Carregando...</Td></tr>
                                 ) : filteredOrders.length === 0 ? (
-                                    <tr><Td colSpan={7}><EmptyState title="Nenhuma ordem encontrada" subtitle="Clique em 'Novo Porcionamento' para começar" /></Td></tr>
+                                    <tr><Td colSpan={10}><EmptyState title="Nenhuma ordem encontrada" subtitle="Clique em 'Novo Porcionamento' para começar" /></Td></tr>
                                 ) : filteredOrders.map(order => {
                                     const s = statusConfig[order.status] || {};
+                                    const hasCompleteWeightData = (order.items || []).length > 0 && (order.items || []).every(item => item.netWeightKg !== null && item.netWeightKg !== undefined);
+                                    const totalNetWeight = (order.items || []).reduce((sum, item) => sum + Number(item.netWeightKg || 0), 0);
+                                    const sourceWeight = isWeightUnit(order.sourceProduct?.unit) ? Number(order.sourceQuantity) : 0;
+                                    const yieldPercentage = sourceWeight > 0 && hasCompleteWeightData ? (totalNetWeight / sourceWeight) * 100 : null;
                                     return (
                                         <Tr key={order.id}>
                                             <Td style={{ fontFamily: 'monospace', fontSize: 12 }}>#{order.id.slice(0, 8).toUpperCase()}</Td>
                                             <Td><strong>{order.sourceProduct?.name}</strong></Td>
                                             <Td><strong>{formatQty(order.sourceQuantity, order.sourceProduct?.unit)}</strong></Td>
+                                            <Td style={{ fontSize: 12 }}>{order.sourceLot?.code || 'Sem lote'}</Td>
+                                            <Td style={{ fontSize: 12 }}>
+                                                {(order.items || []).map(item => (
+                                                    <div key={item.id}>
+                                                        {item.targetProduct?.name}: {formatQty(item.quantity, item.targetProduct?.unit)}
+                                                        {!isWeightUnit(item.targetProduct?.unit) && item.netWeightKg ? ` (${formatQty(item.netWeightKg, 'kg')})` : ''}
+                                                    </div>
+                                                ))}
+                                            </Td>
+                                            <Td style={{ fontSize: 12 }}>
+                                                {yieldPercentage === null ? '-' : <>
+                                                    <strong>{yieldPercentage.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</strong>
+                                                    <div>Perda: {formatQty(Math.max(0, sourceWeight - totalNetWeight), 'kg')}</div>
+                                                </>}
+                                            </Td>
                                             <Td><Badge variant={s.variant}><div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>{s.icon} {s.label}</div></Badge></Td>
                                             <Td>{order.user?.name || '-'}</Td>
                                             <Td style={{ fontSize: 12 }}>{formatDate(order.createdAt)}</Td>
@@ -482,18 +529,36 @@ export default function Portioning() {
                 </Card>
             )}
 
-            <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="✂️ Nova Ordem de Porcionamento" footer={<><Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button><Button variant="primary" onClick={handleCreate} disabled={submitting || !modalProductId || !modalQty}>Criar Ordem</Button></>}>
+            <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="✂️ Nova Ordem de Porcionamento" footer={<><Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button><Button variant="primary" onClick={handleCreate} disabled={submitting || !modalProductId || !modalQty || (sourceLots.length > 0 && !sourceLotId)}>Criar Ordem</Button></>}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <Select label="Produto Inteiro (Origem) *" value={modalProductId} onChange={setModalProductId} options={[{ value: "", label: "-- Selecione --" }, ...inventoryProducts.map(p => ({ value: p.id, label: `${p.name} (${p.unit})` }))]} />
                     <Input label="Peso Original (Quantidade de Origem) *" type="number" step="0.001" value={modalQty} onChange={e => setModalQty(e.target.value)} />
+                    {sourceLots.length > 0 ? (
+                        <Select
+                            label="Lote de origem *"
+                            value={sourceLotId}
+                            onChange={setSourceLotId}
+                            options={[{ value: '', label: 'Selecione o lote...' }, ...sourceLots.map(lot => ({
+                                value: lot.id,
+                                label: `${lot.code} — saldo ${formatQty(lot.remainingQuantity, lot.unit)}${lot.supplier?.name ? ` — ${lot.supplier.name}` : ''}`
+                            }))]}
+                        />
+                    ) : modalProductId ? (
+                        <div style={{ fontSize: 12, color: '#92400e', background: '#fef3c7', padding: '8px 12px', borderRadius: 8 }}>
+                            Este produto ainda não possui lote disponível. A ordem ficará sem vínculo com uma compra específica.
+                        </div>
+                    ) : null}
                     
                     {selectedRecipe ? (
                         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 16 }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: 13, color: '#b45309' }}>Rendimentos Esperados (Informe o peso gerado para cada corte)</h4>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: 13, color: '#b45309' }}>Rendimento real produzido</h4>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {selectedRecipe.items?.map(i => (
-                                    <Input key={i.id} label={`${i.targetProduct?.name} (${i.targetProduct?.unit}) - ${i.costAllocationPercentage}% custo`} type="number" step="0.001" value={yields[i.targetProductId] || ''} onChange={e => setYields({ ...yields, [i.targetProductId]: e.target.value })} />
-                                ))}
+                                {selectedRecipe.items?.map(i => <div key={i.id} style={{ display: 'grid', gridTemplateColumns: isWeightUnit(i.targetProduct?.unit) ? '1fr' : '1fr 1fr', gap: 10 }}>
+                                    <Input label={`${i.targetProduct?.name} (${i.targetProduct?.unit}) - quantidade`} type="number" step={isWeightUnit(i.targetProduct?.unit) ? '0.001' : '1'} value={yields[i.targetProductId] || ''} onChange={e => setYields({ ...yields, [i.targetProductId]: e.target.value })} />
+                                    {!isWeightUnit(i.targetProduct?.unit) && (
+                                        <Input label="Peso total produzido (kg)" type="number" step="0.001" value={yieldWeights[i.targetProductId] || ''} onChange={e => setYieldWeights({ ...yieldWeights, [i.targetProductId]: e.target.value })} />
+                                    )}
+                                </div>)}
                             </div>
                         </div>
                     ) : modalProductId ? (

@@ -117,6 +117,15 @@ const listOrders = asyncHandler(async (req, res) => {
     });
 });
 
+const listLots = asyncHandler(async (req, res) => {
+    const establishmentId = req.user.establishmentId;
+    const lots = await portioningService.listLots({
+        establishmentId,
+        productId: req.query.productId
+    });
+    res.status(200).json({ success: true, data: lots });
+});
+
 const completeOrder = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const establishmentId = req.user.establishmentId;
@@ -145,6 +154,7 @@ module.exports = {
     deleteRecipe,
     createOrder,
     listOrders,
+    listLots,
     completeOrder,
     cancelOrder
 };
