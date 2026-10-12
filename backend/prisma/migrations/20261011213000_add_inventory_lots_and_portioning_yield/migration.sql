@@ -20,7 +20,7 @@ CREATE INDEX "inventory_lots_establishmentId_remainingQuantity_idx" ON "inventor
 
 ALTER TABLE "inventory_lots" ADD CONSTRAINT "inventory_lots_establishmentId_fkey" FOREIGN KEY ("establishmentId") REFERENCES "establishments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "inventory_lots" ADD CONSTRAINT "inventory_lots_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "inventory_lots" ADD CONSTRAINT "inventory_lots_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "inventory_lots" ADD CONSTRAINT "inventory_lots_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "inventory_lots" ADD CONSTRAINT "inventory_lots_purchaseOrderItemId_fkey" FOREIGN KEY ("purchaseOrderItemId") REFERENCES "purchase_order_items"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 ALTER TABLE "portioning_orders" ADD COLUMN "sourceLotId" UUID;
