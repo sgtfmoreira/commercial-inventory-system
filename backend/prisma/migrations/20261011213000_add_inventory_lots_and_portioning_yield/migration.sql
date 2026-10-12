@@ -60,7 +60,7 @@ INSERT INTO "inventory_lots" (
 )
 SELECT
     gen_random_uuid(),
-    'LOT-' || UPPER(SUBSTRING(REPLACE(poi."id"::text, '-', ''), 1, 12)),
+    'LOT-' || UPPER(SUBSTRING(REPLACE(rl."id"::text, '-', ''), 1, 12)),
     rl."establishmentId",
     rl."productId",
     rl."supplierId",
