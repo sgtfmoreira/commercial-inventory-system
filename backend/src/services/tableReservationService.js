@@ -66,6 +66,34 @@ function createTableReservationService({ repository = defaultRepository, databas
             }
         },
 
+        async createBatch(input, establishmentId, userId) {
+            const { tableNumbers, ...details } = input;
+            try {
+                return await database.$transaction(async tx => {
+                    const reservationDate = asDate(details.reservationDate);
+                    const existing = await repository.findActiveForKeys(
+                        establishmentId,
+                        tableNumbers.map(tableNumber => ({ tableNumber, reservationDate })),
+                        tx
+                    );
+                    if (existing.length) {
+                        const numbers = existing.map(item => item.tableNumber).sort((a, b) => a - b).join(', ');
+                        throw new AppError(`As mesas ${numbers} já estão reservadas para a data selecionada. Nenhuma reserva foi criada.`, 409);
+                    }
+                    const created = await Promise.all(tableNumbers.map(tableNumber => repository.create({
+                        ...normalizeData({ ...details, tableNumber }),
+                        establishmentId,
+                        status: 'CONFIRMED',
+                        createdByUserId: userId,
+                        updatedByUserId: userId
+                    }, tx)));
+                    return { count: created.length, reservations: created.map(toDto) };
+                });
+            } catch (error) {
+                mapDatabaseConflict(error);
+            }
+        },
+
         async update(id, input, establishmentId, userId) {
             try {
                 return await database.$transaction(async tx => {

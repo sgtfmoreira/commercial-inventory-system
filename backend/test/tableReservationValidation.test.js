@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
     createTableReservationSchema,
+    createBatchTableReservationsSchema,
     updateTableReservationSchema,
     listTableReservationsQuerySchema
 } = require('../src/validations/tableReservationValidation');
@@ -20,6 +21,14 @@ test('aceita reserva válida e converte inteiros', () => {
     const parsed = createTableReservationSchema.parse({ ...valid, tableNumber: '26', partySize: '4' });
     assert.equal(parsed.tableNumber, 26);
     assert.equal(parsed.partySize, 4);
+});
+
+test('aceita várias mesas distintas e rejeita seleção duplicada', () => {
+    const { tableNumber, ...details } = valid;
+    const parsed = createBatchTableReservationsSchema.parse({ ...details, tableNumbers: ['2', '26'] });
+    assert.deepEqual(parsed.tableNumbers, [2, 26]);
+    assert.equal(createBatchTableReservationsSchema.safeParse({ ...details, tableNumbers: [2] }).success, false);
+    assert.equal(createBatchTableReservationsSchema.safeParse({ ...details, tableNumbers: [2, 2] }).success, false);
 });
 
 test('rejeita mesa inexistente, quantidade inválida e tenant forjado', () => {

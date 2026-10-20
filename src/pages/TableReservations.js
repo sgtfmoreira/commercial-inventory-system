@@ -45,11 +45,12 @@ const MapViewport = styled.div`overflow:auto;max-height:74vh;border-radius:10px;
 const MapCanvas = styled.div`position:relative;width:${({$zoom})=>$zoom*100}%;min-width:${({$zoom})=>Math.round(690*$zoom)}px;line-height:0;transition:width .2s ease;`;
 const MapImage = styled.img`width:100%;height:auto;user-select:none;`;
 const TableHit = styled.button.attrs(({ $table }) => ({ style: { left:`${$table.x-$table.w/2}%`,top:`${$table.y-$table.h/2}%`,width:`${$table.w}%`,height:`${$table.h}%` } }))`
-  position:absolute;border:2px solid ${({$reserved})=>$reserved?'#ef4444':'#22c55e'};border-radius:10px;background:${({$reserved})=>$reserved?'rgba(239,68,68,.20)':'rgba(34,197,94,.12)'};color:white;line-height:1;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55);transition:.15s;cursor:pointer;
+  position:absolute;border:2px solid ${({$reserved,$selected})=>$reserved?'#ef4444':$selected?'#facc15':'#22c55e'};border-radius:10px;background:${({$reserved,$selected})=>$reserved?'rgba(239,68,68,.20)':$selected?'rgba(250,204,21,.35)':'rgba(34,197,94,.12)'};color:white;line-height:1;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px;box-shadow:${({$selected})=>$selected?'0 0 0 3px rgba(250,204,21,.75), inset 0 0 0 1px #fff':'inset 0 0 0 1px rgba(255,255,255,.55)'};transition:.15s;cursor:pointer;
   &:hover,&:focus-visible{z-index:4;outline:3px solid #fff;transform:scale(1.06);}
 `;
-const TableBadge = styled.span`min-width:22px;height:22px;padding:0 4px;border-radius:999px;background:${({$reserved})=>$reserved?'#b91c1c':'#047857'};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 1px 4px #000;`;
+const TableBadge = styled.span`min-width:22px;height:22px;padding:0 4px;border-radius:999px;background:${({$reserved,$selected})=>$reserved?'#b91c1c':$selected?'#a16207':'#047857'};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 1px 4px #000;`;
 const Legend = styled.div`display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;color:${({theme})=>theme.colors.textSecondary};font-size:.85rem;span{display:flex;align-items:center;gap:6px;}i{width:13px;height:13px;border-radius:4px;display:inline-block;}`;
+const SelectionBar = styled.div`display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:12px 14px;border:1px solid #eab308;border-radius:${({theme})=>theme.radii.md};background:rgba(250,204,21,.12);color:${({theme})=>theme.colors.textPrimary};strong{color:#a16207;}`;
 const SearchBox = styled.div`position:relative;flex:1;min-width:220px;svg{position:absolute;left:11px;top:11px;color:${({theme})=>theme.colors.textMuted};}input{width:100%;padding:9px 12px 9px 36px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};}`;
 const ReservationList = styled.div`display:flex;flex-direction:column;gap:8px;max-height:68vh;overflow:auto;`;
 const ReservationRow = styled.button`text-align:left;width:100%;padding:12px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};&:hover{border-color:${({theme})=>theme.colors.primary};}.top{display:flex;justify-content:space-between;gap:10px;font-weight:700}.meta{color:${({theme})=>theme.colors.textSecondary};font-size:.86rem;margin-top:5px;}`;
@@ -70,6 +71,9 @@ const shiftDate = (value, days) => {
 };
 const formatDate = value => new Intl.DateTimeFormat('pt-BR', { dateStyle:'full', timeZone:'UTC' }).format(new Date(`${value}T12:00:00Z`));
 const emptyForm = (tableNumber, reservationDate) => ({ tableNumber, reservationDate, reservationTime:'19:00', customerName:'', phone:'', partySize:'', notes:'' });
+const toggleTableSelection = (selected, tableNumber) => selected.includes(tableNumber)
+  ? selected.filter(number => number !== tableNumber)
+  : [...selected, tableNumber].sort((a, b) => a - b);
 
 function normalizeBackup(raw) {
   const source = Array.isArray(raw) ? raw : raw?.reservations || raw?.reservas;
@@ -85,7 +89,7 @@ function normalizeBackup(raw) {
   }));
 }
 
-export { TABLES, normalizeBackup, shiftDate };
+export { TABLES, normalizeBackup, shiftDate, toggleTableSelection };
 
 export default function TableReservations() {
   const { state } = useApp();
@@ -101,6 +105,9 @@ export default function TableReservations() {
   const [zoom, setZoom] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [selectedTables, setSelectedTables] = useState([]);
+  const [creatingBatch, setCreatingBatch] = useState(false);
   const [form, setForm] = useState(emptyForm(1, localToday()));
   const [saving, setSaving] = useState(false);
   const [importPreview, setImportPreview] = useState(null);
@@ -115,6 +122,8 @@ export default function TableReservations() {
   const changeDate = value => {
     requestId.current += 1;
     selectedDateRef.current = value;
+    setMultiSelect(false);
+    setSelectedTables([]);
     setSelectedDate(value);
   };
 
@@ -146,6 +155,9 @@ export default function TableReservations() {
       establishmentRef.current = establishmentId;
       setModalOpen(false);
       setEditing(null);
+      setMultiSelect(false);
+      setSelectedTables([]);
+      setCreatingBatch(false);
       setImportPreview(null);
     }
   }, [establishmentId]);
@@ -168,6 +180,7 @@ export default function TableReservations() {
   const openTable = tableNumber => {
     const reservation = activeByTable.get(tableNumber) || null;
     setEditing(reservation);
+    setCreatingBatch(false);
     setForm(reservation ? {
       tableNumber: reservation.tableNumber, reservationDate: reservation.reservationDate,
       reservationTime: reservation.reservationTime, customerName: reservation.customerName,
@@ -176,17 +189,47 @@ export default function TableReservations() {
     setModalOpen(true);
   };
 
-  const closeModal = () => { if (!saving) { setModalOpen(false); setEditing(null); } };
+  const handleTableClick = tableNumber => {
+    const reservation = activeByTable.get(tableNumber);
+    if (reservation || !multiSelect) return openTable(tableNumber);
+    setSelectedTables(current => toggleTableSelection(current, tableNumber));
+  };
+
+  const toggleMultiSelect = () => {
+    setMultiSelect(current => !current);
+    setSelectedTables([]);
+  };
+
+  const openBatch = () => {
+    if (selectedTables.length < 2) return;
+    setEditing(null);
+    setCreatingBatch(true);
+    setForm(emptyForm(selectedTables[0], selectedDate));
+    setModalOpen(true);
+  };
+
+  const closeModal = () => { if (!saving) { setModalOpen(false); setEditing(null); setCreatingBatch(false); } };
   const submit = async event => {
     event.preventDefault();
     setSaving(true);
     const payload = { ...form, tableNumber:Number(form.tableNumber), partySize:Number(form.partySize), phone:form.phone || null, notes:form.notes || null };
     try {
-      if (editing) await tableReservationService.update(editing.id, { ...payload, version:editing.version });
+      if (creatingBatch) {
+        const details = {
+          reservationDate:payload.reservationDate, reservationTime:payload.reservationTime,
+          customerName:payload.customerName, phone:payload.phone,
+          partySize:payload.partySize, notes:payload.notes
+        };
+        const result = await tableReservationService.createBatch({ ...details, tableNumbers:selectedTables });
+        toast.success(`${result.count} mesas reservadas para ${form.customerName}.`);
+        setSelectedTables([]);
+        setMultiSelect(false);
+      } else if (editing) await tableReservationService.update(editing.id, { ...payload, version:editing.version });
       else await tableReservationService.create(payload);
-      toast.success(editing ? 'Reserva atualizada.' : 'Reserva confirmada.');
+      if (!creatingBatch) toast.success(editing ? 'Reserva atualizada.' : 'Reserva confirmada.');
       setModalOpen(false);
       setEditing(null);
+      setCreatingBatch(false);
       await load(false);
     } catch (err) {
       await load(false);
@@ -254,17 +297,19 @@ export default function TableReservations() {
 
     <Grid>
       <Card>
-        <CardHeader><h2>Mapa de mesas</h2><Toolbar><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.max(.85,value-.15))} aria-label="Diminuir zoom"><MdZoomOut/></Button><span>{Math.round(zoom*100)}%</span><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.min(1.8,value+.15))} aria-label="Aumentar zoom"><MdZoomIn/></Button></Toolbar></CardHeader>
+        <CardHeader><h2>Mapa de mesas</h2><Toolbar><Button variant={multiSelect?'danger':'secondary'} size="sm" onClick={toggleMultiSelect}>{multiSelect?'Cancelar seleção':'Selecionar várias mesas'}</Button><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.max(.85,value-.15))} aria-label="Diminuir zoom"><MdZoomOut/></Button><span>{Math.round(zoom*100)}%</span><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.min(1.8,value+.15))} aria-label="Aumentar zoom"><MdZoomIn/></Button></Toolbar></CardHeader>
+        {multiSelect && <SelectionBar><div><strong>{selectedTables.length} mesa(s) selecionada(s)</strong><div>{selectedTables.length ? `Mesas ${selectedTables.join(', ')}` : 'Clique nas mesas livres que deseja reservar.'}</div></div><Button onClick={openBatch} disabled={selectedTables.length<2}>Reservar {selectedTables.length || ''} mesas</Button></SelectionBar>}
         <MapViewport>
           <MapCanvas $zoom={zoom}>
             <MapImage src="/mapa_mesas.png" alt="Mapa aprovado do salão com 27 mesas" draggable="false" />
             {TABLES.map(table => {
               const reservation = activeByTable.get(table.n);
-              return <TableHit key={table.n} $table={table} $reserved={Boolean(reservation)} onClick={()=>openTable(table.n)} aria-label={`Mesa ${table.n}: ${reservation ? `reservada para ${reservation.customerName}` : 'livre'}`} title={reservation ? `Mesa ${table.n} — ${reservation.customerName}, ${reservation.reservationTime}` : `Mesa ${table.n} — livre`}><TableBadge $reserved={Boolean(reservation)}>{reservation ? 'R' : table.n}</TableBadge></TableHit>;
+              const selected = selectedTables.includes(table.n);
+              return <TableHit key={table.n} $table={table} $reserved={Boolean(reservation)} $selected={selected} onClick={()=>handleTableClick(table.n)} aria-pressed={multiSelect&&!reservation?selected:undefined} aria-label={`Mesa ${table.n}: ${reservation ? `reservada para ${reservation.customerName}` : selected ? 'selecionada' : 'livre'}`} title={reservation ? `Mesa ${table.n} — ${reservation.customerName}, ${reservation.reservationTime}` : selected ? `Mesa ${table.n} — selecionada` : `Mesa ${table.n} — livre`}><TableBadge $reserved={Boolean(reservation)} $selected={selected}>{reservation ? 'R' : table.n}</TableBadge></TableHit>;
             })}
           </MapCanvas>
         </MapViewport>
-        <Legend><span><i style={{background:'#047857'}}/>Livre (número da mesa)</span><span><i style={{background:'#b91c1c'}}/>Reservada (R)</span><span>Toque ou clique na área contornada para abrir.</span></Legend>
+        <Legend><span><i style={{background:'#047857'}}/>Livre (número da mesa)</span><span><i style={{background:'#a16207'}}/>Selecionada</span><span><i style={{background:'#b91c1c'}}/>Reservada (R)</span><span>{multiSelect?'Clique para selecionar ou remover mesas livres.':'Toque ou clique na área contornada para abrir.'}</span></Legend>
       </Card>
 
       <Card>
@@ -278,8 +323,8 @@ export default function TableReservations() {
       </Card>
     </Grid>
 
-    <Modal isOpen={modalOpen} onClose={closeModal} title={`${editing ? 'Editar reserva' : 'Nova reserva'} — Mesa ${form.tableNumber}`} maxWidth="640px" footer={<><Button variant="secondary" onClick={closeModal} disabled={saving}>Fechar</Button>{editing&&<Button variant="danger" onClick={cancelReservation} disabled={saving}>Cancelar reserva</Button>}<Button type="submit" form="reservation-form" disabled={saving}>{saving?'Salvando…':editing?'Salvar alterações':'Confirmar reserva'}</Button></>}>
-      <p style={{marginBottom:16}}>Mesa <strong>{form.tableNumber}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. Uma mesa aceita uma reserva ativa por data.</p>
+    <Modal isOpen={modalOpen} onClose={closeModal} title={creatingBatch?`Nova reserva — ${selectedTables.length} mesas`:`${editing ? 'Editar reserva' : 'Nova reserva'} — Mesa ${form.tableNumber}`} maxWidth="640px" footer={<><Button variant="secondary" onClick={closeModal} disabled={saving}>Fechar</Button>{editing&&<Button variant="danger" onClick={cancelReservation} disabled={saving}>Cancelar reserva</Button>}<Button type="submit" form="reservation-form" disabled={saving}>{saving?'Salvando…':editing?'Salvar alterações':creatingBatch?`Confirmar ${selectedTables.length} mesas`:'Confirmar reserva'}</Button></>}>
+      <p style={{marginBottom:16}}>{creatingBatch?<><strong>Mesas {selectedTables.join(', ')}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. Os dados abaixo serão aplicados a cada mesa.</>:<>Mesa <strong>{form.tableNumber}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. Uma mesa aceita uma reserva ativa por data.</>}</p>
       <FormGrid id="reservation-form" onSubmit={submit}>
         <Responsibility>
           Responsável pela reserva: <strong>{editing?.createdByUser?.name || loggedUser?.name || 'Usuário logado'}</strong>
@@ -289,7 +334,7 @@ export default function TableReservations() {
         <Input label="Horário" type="time" required value={form.reservationTime} onChange={event=>setForm({...form,reservationTime:event.target.value})}/>
         <div className="wide"><Input label="Cliente ou responsável" required maxLength="160" value={form.customerName} onChange={event=>setForm({...form,customerName:event.target.value})}/></div>
         <Input label="Telefone (opcional)" maxLength="30" value={form.phone} onChange={event=>setForm({...form,phone:event.target.value})}/>
-        <Input label="Quantidade de pessoas" type="number" min="1" step="1" required value={form.partySize} onChange={event=>setForm({...form,partySize:event.target.value})}/>
+        <Input label={creatingBatch?'Quantidade de pessoas por mesa':'Quantidade de pessoas'} type="number" min="1" step="1" required value={form.partySize} onChange={event=>setForm({...form,partySize:event.target.value})}/>
         <div className="wide"><Textarea label="Observação (opcional)" maxLength="5000" value={form.notes} onChange={event=>setForm({...form,notes:event.target.value})}/></div>
       </FormGrid>
     </Modal>

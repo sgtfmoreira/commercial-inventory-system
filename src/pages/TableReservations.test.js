@@ -1,4 +1,4 @@
-import { TABLES, normalizeBackup, shiftDate } from './TableReservations';
+import { TABLES, normalizeBackup, shiftDate, toggleTableSelection } from './TableReservations';
 
 test('define exatamente uma área clicável para cada mesa de 1 a 27, incluindo a 26', () => {
   expect(TABLES).toHaveLength(27);
@@ -13,6 +13,12 @@ test('define exatamente uma área clicável para cada mesa de 1 a 27, incluindo 
 test('navega entre datas sem depender do fuso UTC', () => {
   expect(shiftDate('2026-10-19', 1)).toBe('2026-10-20');
   expect(shiftDate('2026-03-01', -1)).toBe('2026-02-28');
+});
+
+test('seleciona e remove várias mesas mantendo a ordem do mapa', () => {
+  expect(toggleTableSelection([], 26)).toEqual([26]);
+  expect(toggleTableSelection([26], 2)).toEqual([2, 26]);
+  expect(toggleTableSelection([2, 26], 2)).toEqual([26]);
 });
 
 test('normaliza backup do protótipo e ignora reservas canceladas', () => {

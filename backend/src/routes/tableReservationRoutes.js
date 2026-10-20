@@ -15,6 +15,7 @@ router.use(
 );
 router.get('/', controller.list);
 router.post('/', validate(schemas.createTableReservationSchema), controller.create);
+router.post('/batch', validate(schemas.createBatchTableReservationsSchema), controller.createBatch);
 router.post('/import/preview', validate(schemas.importTableReservationsSchema), controller.previewImport);
 router.post('/import', validate(schemas.importTableReservationsSchema), controller.importReservations);
 router.patch('/:id', validate(schemas.updateTableReservationSchema), controller.update);

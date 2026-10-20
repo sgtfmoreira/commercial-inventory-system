@@ -35,6 +35,39 @@ test('cria com tenant e usuários autenticados e converte conflito simultâneo e
     await assert.rejects(conflicting.create(input, 'est-a', 'user-b'), error => error.statusCode === 409 && /já foi reservada/.test(error.message));
 });
 
+test('cria várias mesas atomicamente para o mesmo cliente', async () => {
+    const created = [];
+    const repository = {
+        findActiveForKeys: async () => [],
+        create: async (data, client) => {
+            assert.equal(client.transaction, true);
+            created.push(data);
+            return record({ ...data, id:`reservation-${data.tableNumber}` });
+        }
+    };
+    const service = createTableReservationService({ repository, database });
+    const { tableNumber, ...details } = input;
+    const result = await service.createBatch({ ...details, tableNumbers:[2, 26] }, 'est-a', 'user-a');
+    assert.equal(result.count, 2);
+    assert.deepEqual(created.map(item => item.tableNumber), [2, 26]);
+    assert.ok(created.every(item => item.customerName === 'Cliente A' && item.establishmentId === 'est-a'));
+});
+
+test('não cria nenhuma mesa quando o lote possui conflito', async () => {
+    let createCalled = false;
+    const repository = {
+        findActiveForKeys: async () => [record({ tableNumber:26 })],
+        create: async () => { createCalled = true; }
+    };
+    const service = createTableReservationService({ repository, database });
+    const { tableNumber, ...details } = input;
+    await assert.rejects(
+        service.createBatch({ ...details, tableNumbers:[2, 26] }, 'est-a', 'user-a'),
+        error => error.statusCode === 409 && /Nenhuma reserva foi criada/.test(error.message)
+    );
+    assert.equal(createCalled, false);
+});
+
 test('impede sobrescrita quando a versão mudou', async () => {
     const repository = { findById: async () => record({ version:3 }) };
     const service = createTableReservationService({ repository, database });

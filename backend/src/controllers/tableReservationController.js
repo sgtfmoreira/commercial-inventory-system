@@ -18,6 +18,9 @@ const list = asyncHandler(async (req, res) => {
 const create = asyncHandler(async (req, res) => res.status(201).json({
     success: true, data: await service.create(req.body, req.user.establishmentId, req.user.userId)
 }));
+const createBatch = asyncHandler(async (req, res) => res.status(201).json({
+    success: true, data: await service.createBatch(req.body, req.user.establishmentId, req.user.userId)
+}));
 const update = asyncHandler(async (req, res) => res.json({
     success: true, data: await service.update(req.params.id, req.body, req.user.establishmentId, req.user.userId)
 }));
@@ -31,4 +34,4 @@ const importReservations = asyncHandler(async (req, res) => res.status(201).json
     success: true, data: await service.importReservations(req.body.reservations, req.user.establishmentId, req.user.userId)
 }));
 
-module.exports = { list, create, update, cancel, previewImport, importReservations };
+module.exports = { list, create, createBatch, update, cancel, previewImport, importReservations };
