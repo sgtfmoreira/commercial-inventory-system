@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
+import { Navigate } from 'react-router-dom';
 import {
   MdArrowBack, MdArrowForward, MdCalendarToday, MdCloudDone, MdFileUpload,
   MdPeople, MdRefresh, MdSearch, MdTableRestaurant, MdZoomIn, MdZoomOut
@@ -9,6 +10,8 @@ import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { Input, Textarea } from '../components/FormFields';
 import tableReservationService from '../services/tableReservationService';
+import { useApp } from '../context/AppContext';
+import { ESTABLISHMENTS } from '../constants/establishments';
 
 const TABLES = [
   { n: 1, x: 49.8, y: 8.2, w: 8.8, h: 9.2 }, { n: 2, x: 63.4, y: 9.9, w: 6.5, h: 5.2 },
@@ -54,6 +57,7 @@ const Empty = styled.div`padding:36px 12px;text-align:center;color:${({theme})=>
 const StatusLine = styled.div`display:flex;align-items:center;gap:8px;color:${({theme,$error})=>$error?theme.colors.danger:theme.colors.textMuted};font-size:.82rem;`;
 const FormGrid = styled.form`display:grid;grid-template-columns:1fr 1fr;gap:14px;@media(max-width:520px){grid-template-columns:1fr;}.wide{grid-column:1/-1;}`;
 const ImportBox = styled.div`margin-top:16px;padding:14px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};h3{font-size:1rem;margin-bottom:8px}.conflicts{color:${({theme})=>theme.colors.danger};margin-top:8px;font-size:.88rem;max-height:120px;overflow:auto;}`;
+const Responsibility = styled.div`grid-column:1/-1;padding:12px 14px;border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.infoLight};color:${({theme})=>theme.colors.textSecondary};font-size:.9rem;strong{color:${({theme})=>theme.colors.textPrimary};}.updated{display:block;margin-top:3px;font-size:.8rem;color:${({theme})=>theme.colors.textMuted};}`;
 
 const localToday = () => {
   const date = new Date();
@@ -84,6 +88,10 @@ function normalizeBackup(raw) {
 export { TABLES, normalizeBackup, shiftDate };
 
 export default function TableReservations() {
+  const { state } = useApp();
+  const establishmentId = state.establishment?.id;
+  const loggedUser = state.user;
+  const isCommercial = establishmentId === ESTABLISHMENTS.COMMERCIAL;
   const [selectedDate, setSelectedDate] = useState(localToday);
   const [data, setData] = useState({ reservations:[], summary:{reservedTables:0,freeTables:27,expectedPeople:0} });
   const [loading, setLoading] = useState(true);
@@ -98,15 +106,31 @@ export default function TableReservations() {
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
   const requestId = useRef(0);
+  const selectedDateRef = useRef(selectedDate);
+  const establishmentRef = useRef(establishmentId);
   const fileInput = useRef(null);
 
+  selectedDateRef.current = selectedDate;
+
+  const changeDate = value => {
+    requestId.current += 1;
+    selectedDateRef.current = value;
+    setSelectedDate(value);
+  };
+
   const load = useCallback(async (showLoading = true) => {
+    if (!isCommercial) {
+      setLoading(false);
+      return;
+    }
     const id = ++requestId.current;
+    const requestedDate = selectedDate;
+    const requestedEstablishment = establishmentId;
     if (showLoading) setLoading(true);
     setError('');
     try {
-      const result = await tableReservationService.list(selectedDate);
-      if (id !== requestId.current) return;
+      const result = await tableReservationService.list(requestedDate);
+      if (id !== requestId.current || requestedDate !== selectedDateRef.current || requestedEstablishment !== establishmentRef.current) return;
       setData(result);
       setUpdatedAt(new Date());
     } catch (err) {
@@ -114,8 +138,17 @@ export default function TableReservations() {
     } finally {
       if (id === requestId.current) setLoading(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate, establishmentId, isCommercial]);
 
+  useEffect(() => {
+    if (establishmentRef.current !== establishmentId) {
+      requestId.current += 1;
+      establishmentRef.current = establishmentId;
+      setModalOpen(false);
+      setEditing(null);
+      setImportPreview(null);
+    }
+  }, [establishmentId]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     const refreshVisible = () => { if (document.visibilityState === 'visible') load(false); };
@@ -196,14 +229,17 @@ export default function TableReservations() {
     finally { setImporting(false); }
   };
 
+  if (!establishmentId) return <Page>Carregando estabelecimento…</Page>;
+  if (!isCommercial) return <Navigate to="/" replace />;
+
   return <Page>
     <Header>
       <div><Title>Reservas de mesas</Title><Subtitle>Mapa e agenda compartilhados de {formatDate(selectedDate)}</Subtitle></div>
       <Toolbar>
-        <Button variant="secondary" size="sm" onClick={()=>setSelectedDate(shiftDate(selectedDate,-1))} aria-label="Dia anterior"><MdArrowBack/> Anterior</Button>
-        <DateInput type="date" value={selectedDate} onChange={event=>setSelectedDate(event.target.value)} aria-label="Data das reservas" />
-        <Button variant="secondary" size="sm" onClick={()=>setSelectedDate(shiftDate(selectedDate,1))}>Próximo <MdArrowForward/></Button>
-        <Button variant="secondary" size="sm" onClick={()=>setSelectedDate(localToday())}><MdCalendarToday/> Hoje</Button>
+        <Button variant="secondary" size="sm" onClick={()=>changeDate(shiftDate(selectedDate,-1))} aria-label="Dia anterior"><MdArrowBack/> Anterior</Button>
+        <DateInput type="date" value={selectedDate} onChange={event=>changeDate(event.target.value)} aria-label="Data das reservas" />
+        <Button variant="secondary" size="sm" onClick={()=>changeDate(shiftDate(selectedDate,1))}>Próximo <MdArrowForward/></Button>
+        <Button variant="secondary" size="sm" onClick={()=>changeDate(localToday())}><MdCalendarToday/> Hoje</Button>
         <Button variant="secondary" size="sm" onClick={()=>load()} disabled={loading}><MdRefresh/> Atualizar</Button>
       </Toolbar>
     </Header>
@@ -236,7 +272,7 @@ export default function TableReservations() {
         <SearchBox><MdSearch/><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Buscar cliente ou mesa" aria-label="Buscar reservas"/></SearchBox>
         {importPreview && <ImportBox><h3>Prévia da importação</h3><p>{importPreview.available.length} pronta(s) para importar; {importPreview.conflicts.length} conflito(s).</p>{importPreview.conflicts.length>0&&<div className="conflicts">{importPreview.conflicts.map((item,index)=><div key={index}>Mesa {item.reservation.tableNumber}, {item.reservation.reservationDate}: {item.reason}</div>)}</div>}<Toolbar style={{marginTop:10}}><Button size="sm" onClick={confirmImport} disabled={!importPreview.available.length||importing}>Importar sem conflitos</Button><Button variant="ghost" size="sm" onClick={()=>setImportPreview(null)}>Fechar</Button></Toolbar></ImportBox>}
         <ReservationList style={{marginTop:12}}>
-          {filtered.map(item=><ReservationRow key={item.id} onClick={()=>openTable(item.tableNumber)}><div className="top"><span>Mesa {item.tableNumber} · {item.customerName}</span><span>{item.reservationTime}</span></div><div className="meta">{item.partySize} pessoa(s){item.phone ? ` · ${item.phone}` : ''}</div></ReservationRow>)}
+          {filtered.map(item=><ReservationRow key={item.id} onClick={()=>openTable(item.tableNumber)}><div className="top"><span>Mesa {item.tableNumber} · {item.customerName}</span><span>{item.reservationTime}</span></div><div className="meta">{item.partySize} pessoa(s){item.phone ? ` · ${item.phone}` : ''}</div><div className="meta">Responsável: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>)}
           {!loading && filtered.length===0 && <Empty>Nenhuma reserva encontrada nesta data.</Empty>}
         </ReservationList>
       </Card>
@@ -245,6 +281,10 @@ export default function TableReservations() {
     <Modal isOpen={modalOpen} onClose={closeModal} title={`${editing ? 'Editar reserva' : 'Nova reserva'} — Mesa ${form.tableNumber}`} maxWidth="640px" footer={<><Button variant="secondary" onClick={closeModal} disabled={saving}>Fechar</Button>{editing&&<Button variant="danger" onClick={cancelReservation} disabled={saving}>Cancelar reserva</Button>}<Button type="submit" form="reservation-form" disabled={saving}>{saving?'Salvando…':editing?'Salvar alterações':'Confirmar reserva'}</Button></>}>
       <p style={{marginBottom:16}}>Mesa <strong>{form.tableNumber}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. Uma mesa aceita uma reserva ativa por data.</p>
       <FormGrid id="reservation-form" onSubmit={submit}>
+        <Responsibility>
+          Responsável pela reserva: <strong>{editing?.createdByUser?.name || loggedUser?.name || 'Usuário logado'}</strong>
+          {editing?.updatedByUser?.name && <span className="updated">Última alteração por {editing.updatedByUser.name}</span>}
+        </Responsibility>
         <Input label="Data" type="date" required value={form.reservationDate} onChange={event=>setForm({...form,reservationDate:event.target.value})}/>
         <Input label="Horário" type="time" required value={form.reservationTime} onChange={event=>setForm({...form,reservationTime:event.target.value})}/>
         <div className="wide"><Input label="Cliente ou responsável" required maxLength="160" value={form.customerName} onChange={event=>setForm({...form,customerName:event.target.value})}/></div>

@@ -29,6 +29,7 @@ import { useTheme } from '../context/ThemeModeProvider';
 import Select from 'react-select';
 
 import logo from '../assets/logobds.png';
+import { ESTABLISHMENTS } from '../constants/establishments';
 
 const shimmer = keyframes`
   0%   { background-position: -200% center; }
@@ -375,7 +376,7 @@ const NAV_GROUPS = [
       { to: '/purchase-suggestions', label: 'Sugestões de Compra', icon: <MdLightbulb /> },
       { to: '/stock-audits', label: 'Auditoria de estoque', icon: <MdLightbulb /> },
       { to: '/stock-transfers', label: 'Transferencia de estoque', icon: <MdCompareArrows /> },
-      { to: '/table-reservations', label: 'Reservas de mesas', icon: <MdEventNote /> },
+      { to: '/table-reservations', label: 'Reservas de mesas', icon: <MdEventNote />, establishmentId: ESTABLISHMENTS.COMMERCIAL },
       { to: '/marketing-events', label: 'Eventos de Marketing', icon: <MdEventNote /> },
       { to: '/entries', label: 'Lançamentos', icon: <MdReceiptLong /> },
       { to: '/material-consumption', label: 'Consumo de materiais', icon: <MdReceiptLong /> },
@@ -560,7 +561,7 @@ const SidebarLayout = ({ children }) => {
                   {group.label}
                 </NavSection>
               )}
-              {group.items.map(({ to, label, icon, badge }) => (
+              {group.items.filter(item => !item.establishmentId || item.establishmentId === establishment?.id).map(({ to, label, icon, badge }) => (
                 <StyledNavLink
                   key={to}
                   to={to}

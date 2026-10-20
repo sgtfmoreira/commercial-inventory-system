@@ -2,11 +2,17 @@ const { Router } = require('express');
 const controller = require('../controllers/tableReservationController');
 const auth = require('../middlewares/authMiddleware');
 const requireRole = require('../middlewares/requireRole');
+const requireEstablishment = require('../middlewares/requireEstablishment');
 const validate = require('../middlewares/validate');
 const schemas = require('../validations/tableReservationValidation');
+const ESTABLISHMENTS = require('../constants/establishments');
 
 const router = Router();
-router.use(auth, requireRole(['ADMIN', 'MANAGER']));
+router.use(
+    auth,
+    requireRole(['ADMIN', 'MANAGER']),
+    requireEstablishment([ESTABLISHMENTS.COMMERCIAL])
+);
 router.get('/', controller.list);
 router.post('/', validate(schemas.createTableReservationSchema), controller.create);
 router.post('/import/preview', validate(schemas.importTableReservationsSchema), controller.previewImport);
