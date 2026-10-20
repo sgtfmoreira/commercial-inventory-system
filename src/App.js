@@ -33,6 +33,7 @@ import SupplierPortalLogin from "./pages/SupplierPortalLogin";
 import SupplierPortalRecovery from "./pages/SupplierPortalRecovery";
 import SupplierPortalDashboard from "./pages/SupplierPortalDashboard";
 import SupplierPortalUsers from "./pages/SupplierPortalUsers";
+import TableReservations from "./pages/TableReservations";
 
 import SidebarLayout from "./components/SidebarLayout";
 import PrivateRoute from "./components/PrivateRoute";
@@ -125,6 +126,7 @@ function App() {
               <Route path="/stock-transfers" element={<StockTransfers />} />
               <Route path="/stock-locations" element={<StockLocations />} />
               <Route path="/marketing-events" element={<MarketingEvents />} />
+              <Route path="/table-reservations" element={<TableReservations />} />
               <Route path="/production" element={<Production />} />
               <Route path="/portioning" element={<Portioning />} />
               <Route path="/patrimony" element={<Patrimony />} />

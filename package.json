@@ -28,6 +28,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "test:stock-movement": "jest --config scripts/stock-movement-jest.config.js --runInBand",
+    "test:table-reservations": "jest --config scripts/table-reservations-jest.config.js --runInBand",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

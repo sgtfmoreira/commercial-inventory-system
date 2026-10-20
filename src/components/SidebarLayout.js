@@ -375,6 +375,7 @@ const NAV_GROUPS = [
       { to: '/purchase-suggestions', label: 'Sugestões de Compra', icon: <MdLightbulb /> },
       { to: '/stock-audits', label: 'Auditoria de estoque', icon: <MdLightbulb /> },
       { to: '/stock-transfers', label: 'Transferencia de estoque', icon: <MdCompareArrows /> },
+      { to: '/table-reservations', label: 'Reservas de mesas', icon: <MdEventNote /> },
       { to: '/marketing-events', label: 'Eventos de Marketing', icon: <MdEventNote /> },
       { to: '/entries', label: 'Lançamentos', icon: <MdReceiptLong /> },
       { to: '/material-consumption', label: 'Consumo de materiais', icon: <MdReceiptLong /> },

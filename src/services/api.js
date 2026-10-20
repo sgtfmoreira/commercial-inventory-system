@@ -20,7 +20,7 @@ const toggleLoading = (show) => {
 
 // 🔐 Adiciona token automaticamente
 api.interceptors.request.use((config) => {
-    toggleLoading(true); // Ativa o overlay
+    if (!config.skipGlobalLoading) toggleLoading(true); // Ativa o overlay
 
     const token = localStorage.getItem("token");
 
@@ -39,7 +39,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
 
     (response) => {
-        toggleLoading(false); // Desativa o overlay no sucesso
+        if (!response.config?.skipGlobalLoading) toggleLoading(false); // Desativa o overlay no sucesso
 
         // Smart Unwrap
         if (response.data && response.data.data !== undefined) {
@@ -49,7 +49,7 @@ api.interceptors.response.use(
     },
 
     (error) => {
-        toggleLoading(false); // Desativa o overlay no erro
+        if (!error.config?.skipGlobalLoading) toggleLoading(false); // Desativa o overlay no erro
 
         const status = error.response?.status;
 

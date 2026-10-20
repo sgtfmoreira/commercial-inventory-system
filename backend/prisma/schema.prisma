@@ -316,6 +316,7 @@ model establishments {
   purchaseInvoices     PurchaseInvoice[]
   bonusReceipts        BonusReceipt[]
   inventoryLots        InventoryLot[]
+  tableReservations    TableReservation[]
 }
 
 model users {
@@ -331,6 +332,40 @@ model users {
   purchase_orders  PurchaseOrder[]
   productionOrders ProductionOrder[]
   portioningOrders PortioningOrder[]
+  tableReservationsCreated TableReservation[] @relation("TableReservationCreatedBy")
+  tableReservationsUpdated TableReservation[] @relation("TableReservationUpdatedBy")
+}
+
+enum TableReservationStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model TableReservation {
+  id              String                 @id @default(uuid()) @db.Uuid
+  establishmentId String                 @db.Uuid
+  establishment   establishments         @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  tableNumber     Int
+  reservationDate DateTime               @db.Date
+  reservationTime DateTime               @db.Time(0)
+  customerName    String                 @db.VarChar(160)
+  phone           String?                @db.VarChar(30)
+  partySize       Int
+  notes           String?
+  status          TableReservationStatus @default(CONFIRMED)
+  version         Int                    @default(1)
+  createdByUserId String                 @db.Uuid
+  createdByUser   users                  @relation("TableReservationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedByUserId String                 @db.Uuid
+  updatedByUser   users                  @relation("TableReservationUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([establishmentId, reservationDate])
+  @@index([establishmentId, reservationDate, status])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@map("table_reservations")
 }
 
 model Sale {
