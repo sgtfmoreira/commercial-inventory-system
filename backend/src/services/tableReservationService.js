@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { randomUUID } = require('node:crypto');
 const defaultRepository = require('../repositories/tableReservationRepository');
 const AppError = require('../utils/AppError');
 
@@ -42,14 +43,33 @@ function createTableReservationService({ repository = defaultRepository, databas
     return {
         async list(establishmentId, { date, includeCancelled = false }) {
             const items = await repository.listByDate(establishmentId, asDate(date), includeCancelled);
-            const reservations = items.map(toDto);
+            const tablesByGroup = items.reduce((groups, item) => {
+                if (!item.reservationGroupId) return groups;
+                const tables = groups.get(item.reservationGroupId) || [];
+                tables.push(item.tableNumber);
+                groups.set(item.reservationGroupId, tables);
+                return groups;
+            }, new Map());
+            const reservations = items.map(item => ({
+                ...toDto(item),
+                groupTableNumbers: item.reservationGroupId
+                    ? tablesByGroup.get(item.reservationGroupId).sort((a, b) => a - b)
+                    : [item.tableNumber]
+            }));
             const active = reservations.filter(item => item.status === 'CONFIRMED');
+            const countedGroups = new Set();
+            const expectedPeople = active.reduce((total, item) => {
+                if (!item.reservationGroupId) return total + item.partySize;
+                if (countedGroups.has(item.reservationGroupId)) return total;
+                countedGroups.add(item.reservationGroupId);
+                return total + item.partySize;
+            }, 0);
             return {
                 reservations,
                 summary: {
                     reservedTables: active.length,
                     freeTables: 27 - active.length,
-                    expectedPeople: active.reduce((total, item) => total + item.partySize, 0)
+                    expectedPeople
                 }
             };
         },
@@ -68,6 +88,7 @@ function createTableReservationService({ repository = defaultRepository, databas
 
         async createBatch(input, establishmentId, userId) {
             const { tableNumbers, ...details } = input;
+            const reservationGroupId = randomUUID();
             try {
                 return await database.$transaction(async tx => {
                     const reservationDate = asDate(details.reservationDate);
@@ -83,6 +104,7 @@ function createTableReservationService({ repository = defaultRepository, databas
                     const created = await Promise.all(tableNumbers.map(tableNumber => repository.create({
                         ...normalizeData({ ...details, tableNumber }),
                         establishmentId,
+                        reservationGroupId,
                         status: 'CONFIRMED',
                         createdByUserId: userId,
                         updatedByUserId: userId
@@ -97,12 +119,21 @@ function createTableReservationService({ repository = defaultRepository, databas
         async update(id, input, establishmentId, userId) {
             try {
                 return await database.$transaction(async tx => {
-                    await ensureEditable(id, establishmentId, input.version, tx);
+                    const current = await ensureEditable(id, establishmentId, input.version, tx);
                     const { version, ...fields } = input;
-                    const result = await repository.updateActiveVersioned(id, establishmentId, version, {
-                        ...normalizeData(fields), updatedByUserId: userId
-                    }, tx);
-                    if (result.count !== 1) throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
+                    const normalized = normalizeData(fields);
+                    if (current.reservationGroupId) delete normalized.tableNumber;
+                    const group = current.reservationGroupId
+                        ? await repository.findActiveGroup(current.reservationGroupId, establishmentId, tx)
+                        : [current];
+                    if (group.some(item => item.version !== version)) {
+                        throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
+                    }
+                    const data = { ...normalized, updatedByUserId: userId };
+                    const result = current.reservationGroupId
+                        ? await repository.updateActiveGroupVersioned(current.reservationGroupId, establishmentId, version, data, tx)
+                        : await repository.updateActiveVersioned(id, establishmentId, version, data, tx);
+                    if (result.count !== group.length) throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
                     return toDto(await repository.findById(id, establishmentId, tx));
                 });
             } catch (error) {
@@ -112,11 +143,18 @@ function createTableReservationService({ repository = defaultRepository, databas
 
         async cancel(id, version, establishmentId, userId) {
             return database.$transaction(async tx => {
-                await ensureEditable(id, establishmentId, version, tx);
-                const result = await repository.updateActiveVersioned(id, establishmentId, version, {
-                    status: 'CANCELLED', updatedByUserId: userId
-                }, tx);
-                if (result.count !== 1) throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
+                const current = await ensureEditable(id, establishmentId, version, tx);
+                const group = current.reservationGroupId
+                    ? await repository.findActiveGroup(current.reservationGroupId, establishmentId, tx)
+                    : [current];
+                if (group.some(item => item.version !== version)) {
+                    throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
+                }
+                const data = { status: 'CANCELLED', updatedByUserId: userId };
+                const result = current.reservationGroupId
+                    ? await repository.updateActiveGroupVersioned(current.reservationGroupId, establishmentId, version, data, tx)
+                    : await repository.updateActiveVersioned(id, establishmentId, version, data, tx);
+                if (result.count !== group.length) throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
                 return toDto(await repository.findById(id, establishmentId, tx));
             });
         },

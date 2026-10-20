@@ -23,6 +23,21 @@ test('lista somente o tenant e calcula resumo das reservas ativas', async () => 
     assert.equal(result.reservations[0].reservationTime, '19:30');
 });
 
+test('conta pessoas uma única vez em reserva de várias mesas', async () => {
+    const repository = {
+        listByDate: async () => [
+            record({ id:'a', tableNumber:15, partySize:20, reservationGroupId:'group-a' }),
+            record({ id:'b', tableNumber:16, partySize:20, reservationGroupId:'group-a' })
+        ]
+    };
+    const service = createTableReservationService({ repository, database });
+    const result = await service.list('est-a', { date:'2026-10-20' });
+    assert.equal(result.summary.reservedTables, 2);
+    assert.equal(result.summary.expectedPeople, 20);
+    assert.deepEqual(result.reservations[0].groupTableNumbers, [15, 16]);
+    assert.deepEqual(result.reservations[1].groupTableNumbers, [15, 16]);
+});
+
 test('cria com tenant e usuários autenticados e converte conflito simultâneo em 409', async () => {
     let created;
     const repository = { create: async data => { created = data; return record(data); } };
@@ -51,6 +66,31 @@ test('cria várias mesas atomicamente para o mesmo cliente', async () => {
     assert.equal(result.count, 2);
     assert.deepEqual(created.map(item => item.tableNumber), [2, 26]);
     assert.ok(created.every(item => item.customerName === 'Cliente A' && item.establishmentId === 'est-a'));
+    assert.ok(created[0].reservationGroupId);
+    assert.equal(created[0].reservationGroupId, created[1].reservationGroupId);
+});
+
+test('atualiza todas as mesas da reserva conjunta com o mesmo total de pessoas', async () => {
+    const group = [
+        record({ id:'a', tableNumber:15, partySize:20, reservationGroupId:'group-a' }),
+        record({ id:'b', tableNumber:16, partySize:20, reservationGroupId:'group-a' })
+    ];
+    let updated;
+    const repository = {
+        findById: async id => ({ ...group.find(item => item.id === id), ...(updated || {}) }),
+        findActiveGroup: async () => group,
+        updateActiveGroupVersioned: async (groupId, establishmentId, version, data) => {
+            updated = data;
+            assert.equal(groupId, 'group-a');
+            assert.equal(version, 1);
+            return { count:2 };
+        }
+    };
+    const service = createTableReservationService({ repository, database });
+    await service.update('a', { partySize:18, tableNumber:15, version:1 }, 'est-a', 'user-b');
+    assert.equal(updated.partySize, 18);
+    assert.equal(updated.tableNumber, undefined);
+    assert.equal(updated.updatedByUserId, 'user-b');
 });
 
 test('não cria nenhuma mesa quando o lote possui conflito', async () => {

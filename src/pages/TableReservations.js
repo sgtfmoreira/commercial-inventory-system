@@ -195,9 +195,15 @@ export default function TableReservations() {
     return TABLES.length - unavailable.size;
   }, [activeByTable, occupiedByTable]);
   const filtered = useMemo(() => {
+    const uniqueReservations = Array.from(data.reservations.reduce((items, item) => {
+      const key = item.reservationGroupId || item.id;
+      if (!items.has(key)) items.set(key, item);
+      return items;
+    }, new Map()).values());
     const term = search.trim().toLocaleLowerCase('pt-BR');
-    if (!term) return data.reservations;
-    return data.reservations.filter(item => item.customerName.toLocaleLowerCase('pt-BR').includes(term) || String(item.tableNumber).includes(term));
+    if (!term) return uniqueReservations;
+    return uniqueReservations.filter(item => item.customerName.toLocaleLowerCase('pt-BR').includes(term)
+      || (item.groupTableNumbers || [item.tableNumber]).some(tableNumber => String(tableNumber).includes(term)));
   }, [data.reservations, search]);
 
   const openTable = tableNumber => {
@@ -316,7 +322,9 @@ export default function TableReservations() {
   };
 
   const cancelReservation = async () => {
-    if (!editing || !window.confirm(`Cancelar a reserva da mesa ${editing.tableNumber}? O histórico será preservado.`)) return;
+    const tables = editing?.groupTableNumbers || [editing?.tableNumber];
+    const tableLabel = tables.length > 1 ? `das mesas ${tables.join(' e ')}` : `da mesa ${tables[0]}`;
+    if (!editing || !window.confirm(`Cancelar a reserva ${tableLabel}? O histórico será preservado.`)) return;
     setSaving(true);
     try {
       await tableReservationService.cancel(editing.id, editing.version);
@@ -400,14 +408,14 @@ export default function TableReservations() {
         {importPreview && <ImportBox><h3>Prévia da importação</h3><p>{importPreview.available.length} pronta(s) para importar; {importPreview.conflicts.length} conflito(s).</p>{importPreview.conflicts.length>0&&<div className="conflicts">{importPreview.conflicts.map((item,index)=><div key={index}>Mesa {item.reservation.tableNumber}, {item.reservation.reservationDate}: {item.reason}</div>)}</div>}<Toolbar style={{marginTop:10}}><Button size="sm" onClick={confirmImport} disabled={!importPreview.available.length||importing}>Importar sem conflitos</Button><Button variant="ghost" size="sm" onClick={()=>setImportPreview(null)}>Fechar</Button></Toolbar></ImportBox>}
         {selectedDate===localToday()&&occupancyData.occupancies.length>0&&<OccupancySection><h3>Ocupações sem reserva agora</h3>{occupancyData.occupancies.map(item=><ReservationRow key={item.id} onClick={()=>openOccupancy(item)}><div className="top"><span>Mesa {item.tableNumber} · {item.customerName || 'Cliente não identificado'}</span><span>Ocupada</span></div><div className="meta">{item.partySize} pessoa(s) · chegada {new Date(item.seatedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><div className="meta">Registrada por: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>)}</OccupancySection>}
         <ReservationList style={{marginTop:12}}>
-          {filtered.map(item=><ReservationRow key={item.id} onClick={()=>openTable(item.tableNumber)}><div className="top"><span>Mesa {item.tableNumber} · {item.customerName}</span><span>{item.reservationTime}</span></div><div className="meta">{item.partySize} pessoa(s){item.phone ? ` · ${item.phone}` : ''}</div><div className="meta">Responsável: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>)}
+          {filtered.map(item=>{const tables=item.groupTableNumbers||[item.tableNumber];return <ReservationRow key={item.reservationGroupId||item.id} onClick={()=>openTable(item.tableNumber)}><div className="top"><span>{tables.length>1?'Mesas':'Mesa'} {tables.join(' e ')} · {item.customerName}</span><span>{item.reservationTime}</span></div><div className="meta">{item.partySize} pessoa(s){tables.length>1?' no total':''}{item.phone ? ` · ${item.phone}` : ''}</div><div className="meta">Responsável: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>})}
           {!loading && filtered.length===0 && <Empty>Nenhuma reserva encontrada nesta data.</Empty>}
         </ReservationList>
       </Card>
     </Grid>
 
-    <Modal isOpen={modalOpen} onClose={closeModal} title={creatingBatch?`Nova reserva — ${selectedTables.length} mesas`:`${editing ? 'Editar reserva' : 'Nova reserva'} — Mesa ${form.tableNumber}`} maxWidth="640px" footer={<><Button variant="secondary" onClick={closeModal} disabled={saving}>Fechar</Button>{editing&&<Button variant="danger" onClick={cancelReservation} disabled={saving}>Cancelar reserva</Button>}<Button type="submit" form="reservation-form" disabled={saving}>{saving?'Salvando…':editing?'Salvar alterações':creatingBatch?`Confirmar ${selectedTables.length} mesas`:'Confirmar reserva'}</Button></>}>
-      <p style={{marginBottom:16}}>{creatingBatch?<><strong>Mesas {selectedTables.join(', ')}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. Os dados abaixo serão aplicados a cada mesa.</>:<>Mesa <strong>{form.tableNumber}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. Uma mesa aceita uma reserva ativa por data.</>}</p>
+    <Modal isOpen={modalOpen} onClose={closeModal} title={creatingBatch?`Nova reserva — ${selectedTables.length} mesas`:`${editing ? 'Editar reserva' : 'Nova reserva'} — ${(editing?.groupTableNumbers?.length||0)>1?'Mesas '+editing.groupTableNumbers.join(' e '):'Mesa '+form.tableNumber}`} maxWidth="640px" footer={<><Button variant="secondary" onClick={closeModal} disabled={saving}>Fechar</Button>{editing&&<Button variant="danger" onClick={cancelReservation} disabled={saving}>Cancelar reserva</Button>}<Button type="submit" form="reservation-form" disabled={saving}>{saving?'Salvando…':editing?'Salvar alterações':creatingBatch?`Confirmar ${selectedTables.length} mesas`:'Confirmar reserva'}</Button></>}>
+      <p style={{marginBottom:16}}>{creatingBatch?<><strong>Mesas {selectedTables.join(', ')}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. A quantidade informada representa o total de pessoas do grupo.</>:editing?.groupTableNumbers?.length>1?<><strong>Mesas {editing.groupTableNumbers.join(' e ')}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. As alterações serão aplicadas à reserva completa.</>:<>Mesa <strong>{form.tableNumber}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. Uma mesa aceita uma reserva ativa por data.</>}</p>
       <FormGrid id="reservation-form" onSubmit={submit}>
         <Responsibility>
           Responsável pela reserva: <strong>{editing?.createdByUser?.name || loggedUser?.name || 'Usuário logado'}</strong>
@@ -417,7 +425,7 @@ export default function TableReservations() {
         <Input label="Horário" type="time" required value={form.reservationTime} onChange={event=>setForm({...form,reservationTime:event.target.value})}/>
         <div className="wide"><Input label="Cliente ou responsável" required maxLength="160" value={form.customerName} onChange={event=>setForm({...form,customerName:event.target.value})}/></div>
         <Input label="Telefone (opcional)" maxLength="30" value={form.phone} onChange={event=>setForm({...form,phone:event.target.value})}/>
-        <Input label={creatingBatch?'Quantidade de pessoas por mesa':'Quantidade de pessoas'} type="number" min="1" step="1" required value={form.partySize} onChange={event=>setForm({...form,partySize:event.target.value})}/>
+        <Input label={creatingBatch||editing?.groupTableNumbers?.length>1?'Quantidade total de pessoas':'Quantidade de pessoas'} type="number" min="1" step="1" required value={form.partySize} onChange={event=>setForm({...form,partySize:event.target.value})}/>
         <div className="wide"><Textarea label="Observação (opcional)" maxLength="5000" value={form.notes} onChange={event=>setForm({...form,notes:event.target.value})}/></div>
       </FormGrid>
     </Modal>

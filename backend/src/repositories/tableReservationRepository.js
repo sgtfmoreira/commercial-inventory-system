@@ -21,6 +21,12 @@ const findById = (id, establishmentId, client) => db(client).tableReservation.fi
     where: { id, establishmentId }, include: includePeople
 });
 
+const findActiveGroup = (reservationGroupId, establishmentId, client) => db(client).tableReservation.findMany({
+    where: { reservationGroupId, establishmentId, status: 'CONFIRMED' },
+    include: includePeople,
+    orderBy: { tableNumber: 'asc' }
+});
+
 const findActiveForKeys = (establishmentId, keys, client) => {
     if (!keys.length) return [];
     return db(client).tableReservation.findMany({
@@ -39,4 +45,12 @@ const updateActiveVersioned = (id, establishmentId, version, data, client) => db
     data: { ...data, version: { increment: 1 } }
 });
 
-module.exports = { listByDate, findById, findActiveForKeys, create, updateActiveVersioned };
+const updateActiveGroupVersioned = (reservationGroupId, establishmentId, version, data, client) => db(client).tableReservation.updateMany({
+    where: { reservationGroupId, establishmentId, version, status: 'CONFIRMED' },
+    data: { ...data, version: { increment: 1 } }
+});
+
+module.exports = {
+    listByDate, findById, findActiveGroup, findActiveForKeys, create,
+    updateActiveVersioned, updateActiveGroupVersioned
+};

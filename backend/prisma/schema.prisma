@@ -354,6 +354,7 @@ model TableReservation {
   customerName    String                 @db.VarChar(160)
   phone           String?                @db.VarChar(30)
   partySize       Int
+  reservationGroupId String?             @db.Uuid
   notes           String?
   status          TableReservationStatus @default(CONFIRMED)
   version         Int                    @default(1)
@@ -366,6 +367,7 @@ model TableReservation {
 
   @@index([establishmentId, reservationDate])
   @@index([establishmentId, reservationDate, status])
+  @@index([reservationGroupId])
   @@index([createdByUserId])
   @@index([updatedByUserId])
   @@map("table_reservations")
