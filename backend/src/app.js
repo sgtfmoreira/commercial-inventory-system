@@ -32,6 +32,7 @@ const organizationSupplierRoutes = require('./routes/organizationSupplierRoutes'
 const supplierPriceUpdateRoutes = require('./routes/supplierPriceUpdateRoutes');
 const supplierPortalRoutes = require('./routes/supplierPortalRoutes');
 const tableReservationRoutes = require('./routes/tableReservationRoutes');
+const tableOccupancyRoutes = require('./routes/tableOccupancyRoutes');
 
 const app = express();
 
@@ -89,6 +90,7 @@ app.use('/api/organization-suppliers', organizationSupplierRoutes);
 app.use('/api/supplier-price-updates', supplierPriceUpdateRoutes);
 app.use('/api/supplier-portal', supplierPortalRoutes);
 app.use('/api/table-reservations', tableReservationRoutes);
+app.use('/api/table-occupancies', tableOccupancyRoutes);
 
 // Fallback for undefined routes
 app.use(notFoundMiddleware);

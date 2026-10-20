@@ -10,6 +10,7 @@ import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { Input, Textarea } from '../components/FormFields';
 import tableReservationService from '../services/tableReservationService';
+import tableOccupancyService from '../services/tableOccupancyService';
 import { useApp } from '../context/AppContext';
 import { ESTABLISHMENTS } from '../constants/establishments';
 
@@ -36,7 +37,7 @@ const Title = styled.h1`font-size:${({theme})=>theme.fontSizes['3xl']};color:${(
 const Subtitle = styled.p`color:${({theme})=>theme.colors.textSecondary};margin-top:4px;`;
 const Toolbar = styled.div`display:flex;align-items:center;gap:8px;flex-wrap:wrap;`;
 const DateInput = styled.input`background:${({theme})=>theme.colors.bgCard};color:${({theme})=>theme.colors.textPrimary};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};padding:9px 12px;font:inherit;`;
-const Stats = styled.div`display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:12px;@media(max-width:650px){grid-template-columns:1fr;}`;
+const Stats = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;`;
 const Stat = styled.div`background:${({theme})=>theme.colors.bgCard};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.lg};padding:16px;display:flex;gap:12px;align-items:center;box-shadow:${({theme})=>theme.shadows.card};svg{font-size:1.65rem;color:${({theme})=>theme.colors.primary};}strong{display:block;font-size:1.5rem;}span{color:${({theme})=>theme.colors.textSecondary};font-size:.875rem;}`;
 const Grid = styled.div`display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.8fr);gap:20px;align-items:start;@media(max-width:1050px){grid-template-columns:1fr;}`;
 const Card = styled.section`background:${({theme})=>theme.colors.bgCard};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.lg};padding:16px;box-shadow:${({theme})=>theme.shadows.card};`;
@@ -45,10 +46,10 @@ const MapViewport = styled.div`overflow:auto;max-height:74vh;border-radius:10px;
 const MapCanvas = styled.div`position:relative;width:${({$zoom})=>$zoom*100}%;min-width:${({$zoom})=>Math.round(690*$zoom)}px;line-height:0;transition:width .2s ease;`;
 const MapImage = styled.img`width:100%;height:auto;user-select:none;`;
 const TableHit = styled.button.attrs(({ $table }) => ({ style: { left:`${$table.x-$table.w/2}%`,top:`${$table.y-$table.h/2}%`,width:`${$table.w}%`,height:`${$table.h}%` } }))`
-  position:absolute;border:2px solid ${({$reserved,$selected})=>$reserved?'#ef4444':$selected?'#facc15':'#22c55e'};border-radius:10px;background:${({$reserved,$selected})=>$reserved?'rgba(239,68,68,.20)':$selected?'rgba(250,204,21,.35)':'rgba(34,197,94,.12)'};color:white;line-height:1;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px;box-shadow:${({$selected})=>$selected?'0 0 0 3px rgba(250,204,21,.75), inset 0 0 0 1px #fff':'inset 0 0 0 1px rgba(255,255,255,.55)'};transition:.15s;cursor:pointer;
+  position:absolute;border:2px solid ${({$occupied,$reserved,$selected})=>$occupied?'#60a5fa':$reserved?'#ef4444':$selected?'#facc15':'#22c55e'};border-radius:10px;background:${({$occupied,$reserved,$selected})=>$occupied?'rgba(59,130,246,.35)':$reserved?'rgba(239,68,68,.20)':$selected?'rgba(250,204,21,.35)':'rgba(34,197,94,.12)'};color:white;line-height:1;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px;box-shadow:${({$selected})=>$selected?'0 0 0 3px rgba(250,204,21,.75), inset 0 0 0 1px #fff':'inset 0 0 0 1px rgba(255,255,255,.55)'};transition:.15s;cursor:pointer;
   &:hover,&:focus-visible{z-index:4;outline:3px solid #fff;transform:scale(1.06);}
 `;
-const TableBadge = styled.span`min-width:22px;height:22px;padding:0 4px;border-radius:999px;background:${({$reserved,$selected})=>$reserved?'#b91c1c':$selected?'#a16207':'#047857'};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 1px 4px #000;`;
+const TableBadge = styled.span`min-width:22px;height:22px;padding:0 4px;border-radius:999px;background:${({$occupied,$reserved,$selected})=>$occupied?'#1d4ed8':$reserved?'#b91c1c':$selected?'#a16207':'#047857'};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 1px 4px #000;`;
 const Legend = styled.div`display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;color:${({theme})=>theme.colors.textSecondary};font-size:.85rem;span{display:flex;align-items:center;gap:6px;}i{width:13px;height:13px;border-radius:4px;display:inline-block;}`;
 const SelectionBar = styled.div`display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:12px 14px;border:1px solid #eab308;border-radius:${({theme})=>theme.radii.md};background:rgba(250,204,21,.12);color:${({theme})=>theme.colors.textPrimary};strong{color:#a16207;}`;
 const SearchBox = styled.div`position:relative;flex:1;min-width:220px;svg{position:absolute;left:11px;top:11px;color:${({theme})=>theme.colors.textMuted};}input{width:100%;padding:9px 12px 9px 36px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};}`;
@@ -59,6 +60,7 @@ const StatusLine = styled.div`display:flex;align-items:center;gap:8px;color:${({
 const FormGrid = styled.form`display:grid;grid-template-columns:1fr 1fr;gap:14px;@media(max-width:520px){grid-template-columns:1fr;}.wide{grid-column:1/-1;}`;
 const ImportBox = styled.div`margin-top:16px;padding:14px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};h3{font-size:1rem;margin-bottom:8px}.conflicts{color:${({theme})=>theme.colors.danger};margin-top:8px;font-size:.88rem;max-height:120px;overflow:auto;}`;
 const Responsibility = styled.div`grid-column:1/-1;padding:12px 14px;border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.infoLight};color:${({theme})=>theme.colors.textSecondary};font-size:.9rem;strong{color:${({theme})=>theme.colors.textPrimary};}.updated{display:block;margin-top:3px;font-size:.8rem;color:${({theme})=>theme.colors.textMuted};}`;
+const OccupancySection = styled.div`margin-top:14px;padding-top:14px;border-top:1px solid ${({theme})=>theme.colors.border};h3{font-size:.95rem;margin-bottom:8px;color:${({theme})=>theme.colors.textPrimary};}`;
 
 const localToday = () => {
   const date = new Date();
@@ -98,6 +100,7 @@ export default function TableReservations() {
   const isCommercial = establishmentId === ESTABLISHMENTS.COMMERCIAL;
   const [selectedDate, setSelectedDate] = useState(localToday);
   const [data, setData] = useState({ reservations:[], summary:{reservedTables:0,freeTables:27,expectedPeople:0} });
+  const [occupancyData, setOccupancyData] = useState({ occupancies:[], summary:{occupiedTables:0,seatedPeople:0} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatedAt, setUpdatedAt] = useState(null);
@@ -108,6 +111,11 @@ export default function TableReservations() {
   const [multiSelect, setMultiSelect] = useState(false);
   const [selectedTables, setSelectedTables] = useState([]);
   const [creatingBatch, setCreatingBatch] = useState(false);
+  const [walkInMode, setWalkInMode] = useState(false);
+  const [occupancyModalOpen, setOccupancyModalOpen] = useState(false);
+  const [occupancyEditing, setOccupancyEditing] = useState(null);
+  const [occupancyForm, setOccupancyForm] = useState({ tableNumber:1, customerName:'', partySize:'', notes:'' });
+  const [occupancySaving, setOccupancySaving] = useState(false);
   const [form, setForm] = useState(emptyForm(1, localToday()));
   const [saving, setSaving] = useState(false);
   const [importPreview, setImportPreview] = useState(null);
@@ -123,6 +131,7 @@ export default function TableReservations() {
     requestId.current += 1;
     selectedDateRef.current = value;
     setMultiSelect(false);
+    setWalkInMode(false);
     setSelectedTables([]);
     setSelectedDate(value);
   };
@@ -138,9 +147,15 @@ export default function TableReservations() {
     if (showLoading) setLoading(true);
     setError('');
     try {
-      const result = await tableReservationService.list(requestedDate);
+      const [result, currentOccupancies] = await Promise.all([
+        tableReservationService.list(requestedDate),
+        requestedDate === localToday()
+          ? tableOccupancyService.list()
+          : Promise.resolve({ occupancies:[], summary:{occupiedTables:0,seatedPeople:0} })
+      ]);
       if (id !== requestId.current || requestedDate !== selectedDateRef.current || requestedEstablishment !== establishmentRef.current) return;
       setData(result);
+      setOccupancyData(currentOccupancies);
       setUpdatedAt(new Date());
     } catch (err) {
       if (id === requestId.current) setError(err.message || 'Não foi possível atualizar as reservas.');
@@ -156,8 +171,11 @@ export default function TableReservations() {
       setModalOpen(false);
       setEditing(null);
       setMultiSelect(false);
+      setWalkInMode(false);
       setSelectedTables([]);
       setCreatingBatch(false);
+      setOccupancyModalOpen(false);
+      setOccupancyEditing(null);
       setImportPreview(null);
     }
   }, [establishmentId]);
@@ -171,6 +189,11 @@ export default function TableReservations() {
   }, [load]);
 
   const activeByTable = useMemo(() => new Map(data.reservations.filter(item => item.status === 'CONFIRMED').map(item => [item.tableNumber, item])), [data.reservations]);
+  const occupiedByTable = useMemo(() => new Map(occupancyData.occupancies.map(item => [item.tableNumber, item])), [occupancyData.occupancies]);
+  const availableTables = useMemo(() => {
+    const unavailable = new Set([...activeByTable.keys(), ...occupiedByTable.keys()]);
+    return TABLES.length - unavailable.size;
+  }, [activeByTable, occupiedByTable]);
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('pt-BR');
     if (!term) return data.reservations;
@@ -190,14 +213,40 @@ export default function TableReservations() {
   };
 
   const handleTableClick = tableNumber => {
+    const occupancy = occupiedByTable.get(tableNumber);
+    if (occupancy) return openOccupancy(occupancy);
     const reservation = activeByTable.get(tableNumber);
-    if (reservation || !multiSelect) return openTable(tableNumber);
-    setSelectedTables(current => toggleTableSelection(current, tableNumber));
+    if (reservation) return openTable(tableNumber);
+    if (walkInMode) return openWalkIn(tableNumber);
+    if (multiSelect) return setSelectedTables(current => toggleTableSelection(current, tableNumber));
+    return openTable(tableNumber);
   };
 
   const toggleMultiSelect = () => {
     setMultiSelect(current => !current);
+    setWalkInMode(false);
     setSelectedTables([]);
+  };
+
+  const toggleWalkInMode = () => {
+    setWalkInMode(current => !current);
+    setMultiSelect(false);
+    setSelectedTables([]);
+  };
+
+  const openOccupancy = occupancy => {
+    setOccupancyEditing(occupancy || null);
+    setOccupancyForm(occupancy ? {
+      tableNumber:occupancy.tableNumber, customerName:occupancy.customerName || '',
+      partySize:String(occupancy.partySize), notes:occupancy.notes || ''
+    } : { tableNumber:1, customerName:'', partySize:'', notes:'' });
+    setOccupancyModalOpen(true);
+  };
+
+  const openWalkIn = tableNumber => {
+    setOccupancyEditing(null);
+    setOccupancyForm({ tableNumber, customerName:'', partySize:'', notes:'' });
+    setOccupancyModalOpen(true);
   };
 
   const openBatch = () => {
@@ -209,6 +258,35 @@ export default function TableReservations() {
   };
 
   const closeModal = () => { if (!saving) { setModalOpen(false); setEditing(null); setCreatingBatch(false); } };
+  const closeOccupancyModal = () => { if (!occupancySaving) { setOccupancyModalOpen(false); setOccupancyEditing(null); } };
+
+  const submitOccupancy = async event => {
+    event.preventDefault();
+    setOccupancySaving(true);
+    try {
+      await tableOccupancyService.create({
+        tableNumber:Number(occupancyForm.tableNumber),
+        customerName:occupancyForm.customerName || null,
+        partySize:Number(occupancyForm.partySize),
+        notes:occupancyForm.notes || null
+      });
+      toast.success(`Mesa ${occupancyForm.tableNumber} marcada como ocupada.`);
+      setOccupancyModalOpen(false); setOccupancyEditing(null); setWalkInMode(false);
+      await load(false);
+    } catch (err) { await load(false); setError(`A ocupação não foi registrada: ${err.message}`); }
+    finally { setOccupancySaving(false); }
+  };
+
+  const releaseOccupancy = async () => {
+    if (!occupancyEditing || !window.confirm(`Liberar a mesa ${occupancyEditing.tableNumber}? O histórico será preservado.`)) return;
+    setOccupancySaving(true);
+    try {
+      await tableOccupancyService.release(occupancyEditing.id, occupancyEditing.version);
+      toast.success(`Mesa ${occupancyEditing.tableNumber} liberada.`);
+      setOccupancyModalOpen(false); setOccupancyEditing(null); await load(false);
+    } catch (err) { await load(false); setError(`A mesa não foi liberada: ${err.message}`); }
+    finally { setOccupancySaving(false); }
+  };
   const submit = async event => {
     event.preventDefault();
     setSaving(true);
@@ -289,33 +367,38 @@ export default function TableReservations() {
 
     <Stats>
       <Stat><MdTableRestaurant/><div><strong>{data.summary.reservedTables}</strong><span>mesas reservadas</span></div></Stat>
-      <Stat><MdTableRestaurant/><div><strong>{data.summary.freeTables}</strong><span>mesas livres</span></div></Stat>
+      <Stat><MdTableRestaurant/><div><strong>{availableTables}</strong><span>mesas livres</span></div></Stat>
       <Stat><MdPeople/><div><strong>{data.summary.expectedPeople}</strong><span>pessoas previstas</span></div></Stat>
+      <Stat><MdPeople/><div><strong>{occupancyData.summary.occupiedTables}</strong><span>mesas ocupadas agora ({occupancyData.summary.seatedPeople} pessoas)</span></div></Stat>
     </Stats>
 
     <StatusLine $error={Boolean(error)}>{error ? 'Falha na atualização: ' + error : <><MdCloudDone/>{loading ? 'Atualizando…' : updatedAt ? `Última atualização às ${updatedAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}` : 'Aguardando atualização'}</>}</StatusLine>
 
     <Grid>
       <Card>
-        <CardHeader><h2>Mapa de mesas</h2><Toolbar><Button variant={multiSelect?'danger':'secondary'} size="sm" onClick={toggleMultiSelect}>{multiSelect?'Cancelar seleção':'Selecionar várias mesas'}</Button><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.max(.85,value-.15))} aria-label="Diminuir zoom"><MdZoomOut/></Button><span>{Math.round(zoom*100)}%</span><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.min(1.8,value+.15))} aria-label="Aumentar zoom"><MdZoomIn/></Button></Toolbar></CardHeader>
+        <CardHeader><h2>Mapa de mesas</h2><Toolbar>{selectedDate===localToday()&&<Button variant={walkInMode?'danger':'secondary'} size="sm" onClick={toggleWalkInMode}>{walkInMode?'Cancelar ocupação':'Registrar chegada sem reserva'}</Button>}<Button variant={multiSelect?'danger':'secondary'} size="sm" onClick={toggleMultiSelect}>{multiSelect?'Cancelar seleção':'Selecionar várias mesas'}</Button><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.max(.85,value-.15))} aria-label="Diminuir zoom"><MdZoomOut/></Button><span>{Math.round(zoom*100)}%</span><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.min(1.8,value+.15))} aria-label="Aumentar zoom"><MdZoomIn/></Button></Toolbar></CardHeader>
+        {walkInMode && <SelectionBar><div><strong>Modo de ocupação sem reserva</strong><div>Clique em uma mesa livre para registrar as pessoas que chegaram agora.</div></div></SelectionBar>}
         {multiSelect && <SelectionBar><div><strong>{selectedTables.length} mesa(s) selecionada(s)</strong><div>{selectedTables.length ? `Mesas ${selectedTables.join(', ')}` : 'Clique nas mesas livres que deseja reservar.'}</div></div><Button onClick={openBatch} disabled={selectedTables.length<2}>Reservar {selectedTables.length || ''} mesas</Button></SelectionBar>}
         <MapViewport>
           <MapCanvas $zoom={zoom}>
             <MapImage src="/mapa_mesas.png" alt="Mapa aprovado do salão com 27 mesas" draggable="false" />
             {TABLES.map(table => {
               const reservation = activeByTable.get(table.n);
+              const occupancy = occupiedByTable.get(table.n);
               const selected = selectedTables.includes(table.n);
-              return <TableHit key={table.n} $table={table} $reserved={Boolean(reservation)} $selected={selected} onClick={()=>handleTableClick(table.n)} aria-pressed={multiSelect&&!reservation?selected:undefined} aria-label={`Mesa ${table.n}: ${reservation ? `reservada para ${reservation.customerName}` : selected ? 'selecionada' : 'livre'}`} title={reservation ? `Mesa ${table.n} — ${reservation.customerName}, ${reservation.reservationTime}` : selected ? `Mesa ${table.n} — selecionada` : `Mesa ${table.n} — livre`}><TableBadge $reserved={Boolean(reservation)} $selected={selected}>{reservation ? 'R' : table.n}</TableBadge></TableHit>;
+              const description = occupancy ? `ocupada por ${occupancy.partySize} pessoa(s)` : reservation ? `reservada para ${reservation.customerName}` : selected ? 'selecionada' : 'livre';
+              return <TableHit key={table.n} $table={table} $occupied={Boolean(occupancy)} $reserved={Boolean(reservation)} $selected={selected} onClick={()=>handleTableClick(table.n)} aria-pressed={multiSelect&&!reservation&&!occupancy?selected:undefined} aria-label={`Mesa ${table.n}: ${description}`} title={`Mesa ${table.n} — ${description}`}><TableBadge $occupied={Boolean(occupancy)} $reserved={Boolean(reservation)} $selected={selected}>{occupancy?'O':reservation?'R':table.n}</TableBadge></TableHit>;
             })}
           </MapCanvas>
         </MapViewport>
-        <Legend><span><i style={{background:'#047857'}}/>Livre (número da mesa)</span><span><i style={{background:'#a16207'}}/>Selecionada</span><span><i style={{background:'#b91c1c'}}/>Reservada (R)</span><span>{multiSelect?'Clique para selecionar ou remover mesas livres.':'Toque ou clique na área contornada para abrir.'}</span></Legend>
+        <Legend><span><i style={{background:'#047857'}}/>Livre (número da mesa)</span><span><i style={{background:'#1d4ed8'}}/>Ocupada agora (O)</span><span><i style={{background:'#a16207'}}/>Selecionada</span><span><i style={{background:'#b91c1c'}}/>Reservada (R)</span><span>{walkInMode?'Clique numa mesa livre para registrar a ocupação.':multiSelect?'Clique para selecionar ou remover mesas livres.':'Toque ou clique na área contornada para abrir.'}</span></Legend>
       </Card>
 
       <Card>
         <CardHeader><h2>Reservas da data</h2><Button variant="secondary" size="sm" onClick={()=>fileInput.current?.click()} disabled={importing}><MdFileUpload/> Importar JSON</Button><input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={handleFile}/></CardHeader>
         <SearchBox><MdSearch/><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Buscar cliente ou mesa" aria-label="Buscar reservas"/></SearchBox>
         {importPreview && <ImportBox><h3>Prévia da importação</h3><p>{importPreview.available.length} pronta(s) para importar; {importPreview.conflicts.length} conflito(s).</p>{importPreview.conflicts.length>0&&<div className="conflicts">{importPreview.conflicts.map((item,index)=><div key={index}>Mesa {item.reservation.tableNumber}, {item.reservation.reservationDate}: {item.reason}</div>)}</div>}<Toolbar style={{marginTop:10}}><Button size="sm" onClick={confirmImport} disabled={!importPreview.available.length||importing}>Importar sem conflitos</Button><Button variant="ghost" size="sm" onClick={()=>setImportPreview(null)}>Fechar</Button></Toolbar></ImportBox>}
+        {selectedDate===localToday()&&occupancyData.occupancies.length>0&&<OccupancySection><h3>Ocupações sem reserva agora</h3>{occupancyData.occupancies.map(item=><ReservationRow key={item.id} onClick={()=>openOccupancy(item)}><div className="top"><span>Mesa {item.tableNumber} · {item.customerName || 'Cliente não identificado'}</span><span>Ocupada</span></div><div className="meta">{item.partySize} pessoa(s) · chegada {new Date(item.seatedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><div className="meta">Registrada por: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>)}</OccupancySection>}
         <ReservationList style={{marginTop:12}}>
           {filtered.map(item=><ReservationRow key={item.id} onClick={()=>openTable(item.tableNumber)}><div className="top"><span>Mesa {item.tableNumber} · {item.customerName}</span><span>{item.reservationTime}</span></div><div className="meta">{item.partySize} pessoa(s){item.phone ? ` · ${item.phone}` : ''}</div><div className="meta">Responsável: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>)}
           {!loading && filtered.length===0 && <Empty>Nenhuma reserva encontrada nesta data.</Empty>}
@@ -337,6 +420,10 @@ export default function TableReservations() {
         <Input label={creatingBatch?'Quantidade de pessoas por mesa':'Quantidade de pessoas'} type="number" min="1" step="1" required value={form.partySize} onChange={event=>setForm({...form,partySize:event.target.value})}/>
         <div className="wide"><Textarea label="Observação (opcional)" maxLength="5000" value={form.notes} onChange={event=>setForm({...form,notes:event.target.value})}/></div>
       </FormGrid>
+    </Modal>
+
+    <Modal isOpen={occupancyModalOpen} onClose={closeOccupancyModal} title={`${occupancyEditing?'Mesa ocupada':'Registrar ocupação'} — Mesa ${occupancyForm.tableNumber}`} maxWidth="560px" footer={<><Button variant="secondary" onClick={closeOccupancyModal} disabled={occupancySaving}>Fechar</Button>{occupancyEditing?<Button variant="danger" onClick={releaseOccupancy} disabled={occupancySaving}>{occupancySaving?'Liberando…':'Liberar mesa'}</Button>:<Button type="submit" form="occupancy-form" disabled={occupancySaving}>{occupancySaving?'Salvando…':'Marcar como ocupada'}</Button>}</>}>
+      {occupancyEditing?<div><p><strong>{occupancyEditing.partySize} pessoa(s)</strong>{occupancyEditing.customerName?` · ${occupancyEditing.customerName}`:''}</p><p style={{marginTop:8,color:'#64748b'}}>Chegada: {new Date(occupancyEditing.seatedAt).toLocaleString('pt-BR')} · registrada por {occupancyEditing.createdByUser?.name || 'usuário não identificado'}.</p>{occupancyEditing.notes&&<p style={{marginTop:12}}>{occupancyEditing.notes}</p>}</div>:<FormGrid id="occupancy-form" onSubmit={submitOccupancy}><div className="wide"><Input label="Cliente ou identificação (opcional)" maxLength="160" value={occupancyForm.customerName} onChange={event=>setOccupancyForm({...occupancyForm,customerName:event.target.value})}/></div><Input label="Quantidade de pessoas" type="number" min="1" step="1" required value={occupancyForm.partySize} onChange={event=>setOccupancyForm({...occupancyForm,partySize:event.target.value})}/><div className="wide"><Textarea label="Observação (opcional)" maxLength="5000" value={occupancyForm.notes} onChange={event=>setOccupancyForm({...occupancyForm,notes:event.target.value})}/></div></FormGrid>}
     </Modal>
   </Page>;
 }
