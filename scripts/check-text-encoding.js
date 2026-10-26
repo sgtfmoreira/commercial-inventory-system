@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const ignoredDirectories = new Set(['.git', '.tools', 'node_modules', 'build', 'coverage']);
+const ignoredDirectories = new Set(['.git', '.tools', '.worktrees', 'node_modules', 'build', 'coverage']);
 const checkedExtensions = new Set(['.js', '.jsx', '.json', '.md', '.html', '.css', '.prisma', '.sql']);
 const corruptedText = /Ã(?:ƒ|§|£|¡|©|µ|­|³|º|ª)|â€”|Â(?:°|º|ª)|�/u;
 const findings = [];
