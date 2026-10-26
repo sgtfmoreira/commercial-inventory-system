@@ -1,0 +1,29 @@
+const {Prisma}=require('@prisma/client');
+const prisma=require('../utils/prisma');
+const defaultRepository=require('../repositories/commercialEventRepository');
+const defaultBudgetService=require('./eventBudgetService');
+const AppError=require('../utils/AppError');
+
+const budgetCopyFields=['validUntil','guestCountSnapshot','costMenu','costStaff','costService','costEquipment','costTransport','costFees','costOther','totalCost','desiredMarginPercent','taxPercent','commissionPercent','cardFeePercent','otherFeePercent','recommendedPrice','quotedPrice','expectedRevenue','expectedFeeAmount','expectedProfit','effectiveMarginPercent','menuCMVPercent','pricePerGuest','costPerGuest','profitPerGuest','calculationVersion','customerProposalNotes','internalNotes'];
+const itemCopyFields=['itemType','costGroup','sourceId','sourceType','nameSnapshot','categorySnapshot','quantityMode','fixedQuantity','quantityPerGuest','guestCountSnapshot','safetyPercent','plannedQuantity','unitSnapshot','unitCostSnapshot','totalCost','suggestedUnitPriceSnapshot','visibleInProposal','proposalLabel','internalNotes','compositionSnapshot','sourceSnapshot','sortOrder'];
+const pick=(source,fields)=>Object.fromEntries(fields.map(field=>[field,source[field]]));
+const date=value=>value instanceof Date?value.toISOString().slice(0,10):String(value).slice(0,10);
+const time=value=>value instanceof Date?value.toISOString().slice(11,16):value||null;
+const snapshots=budget=>({
+  customerSnapshot:{id:budget.event.customer.id,name:budget.event.customer.name,document:budget.event.customer.document,phone:budget.event.customer.phone,email:budget.event.customer.email},
+  eventSnapshot:{id:budget.event.id,code:budget.event.code,name:budget.event.name,type:budget.event.type,eventDate:date(budget.event.eventDate),startTime:time(budget.event.startTime),endTime:time(budget.event.endTime),guestCount:budget.event.guestCount,location:budget.event.location}
+});
+const audit=(actionType,budget,establishmentId,userId,detail='')=>({actionType,entityType:'EVENT_BUDGET',entityId:budget.id,description:`Orçamento revisão ${budget.revision} ${detail} por ${userId}.`,establishmentId});
+const transaction=(database,callback)=>database.$transaction(callback,{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+
+function createEventWorkflowService({repository=defaultRepository,database=prisma,budgetService=defaultBudgetService,clock=()=>new Date()}={}){
+  const get=async(id,establishmentId,client)=>{const budget=await repository.findBudget(id,establishmentId,client);if(!budget)throw new AppError('Orçamento não encontrado.',404);return budget;};
+  return{
+    send(id,establishmentId,userId){return transaction(database,async tx=>{const existing=await get(id,establishmentId,tx);if(existing.status!=='DRAFT')throw new AppError('Somente rascunhos podem ser enviados.',409);const recalculated=await budgetService.recalculateBudget(id,establishmentId,tx);if(!recalculated.readyToSend){const pending=recalculated.qualityChecklist.filter(item=>!item.passed).map(item=>item.label).join('; ');throw new AppError(`Revise o orçamento antes de enviar: ${pending}.`,422);}const now=clock();await repository.updateBudget(id,{status:'SENT',sentAt:now,...snapshots(recalculated)},tx);await repository.createAudit(audit('SEND',existing,establishmentId,userId,'enviado'),tx);return get(id,establishmentId,tx);});},
+    reject(id,reason,establishmentId,userId){return transaction(database,async tx=>{const budget=await get(id,establishmentId,tx);if(budget.status!=='SENT')throw new AppError('Somente orçamentos enviados podem ser rejeitados.',409);await repository.updateBudget(id,{status:'REJECTED'},tx);await repository.createAudit(audit('REJECT',budget,establishmentId,userId,`rejeitado${reason?`: ${reason}`:''}`),tx);return get(id,establishmentId,tx);});},
+    async newRevision(id,establishmentId,userId){try{return await transaction(database,async tx=>{const source=await get(id,establishmentId,tx);if(!['SENT','REJECTED','EXPIRED'].includes(source.status))throw new AppError('Este orçamento não permite uma nova revisão.',409);const latest=await repository.latestBudget(source.eventId,tx);const created=await repository.createBudget({...pick(source,budgetCopyFields),eventId:source.eventId,revision:(latest?.revision||source.revision)+1,parentBudgetId:source.id,status:'DRAFT',customerSnapshot:null,eventSnapshot:null,sentAt:null,approvedAt:null,approvedByUserId:null,createdByUserId:userId,items:{create:source.items.map(item=>pick(item,itemCopyFields))}},tx);await repository.createAudit(audit('NEW_REVISION',source,establishmentId,userId,`copiado para revisão ${created.revision}`),tx);return get(created.id,establishmentId,tx);});}catch(error){if(['P2002','P2034'].includes(error.code))throw new AppError('Outra revisão foi criada ao mesmo tempo. Atualize a página.',409);throw error;}},
+    async approve(id,establishmentId,userId){try{return await transaction(database,async tx=>{const budget=await get(id,establishmentId,tx);if(budget.status!=='SENT')throw new AppError('Somente orçamentos enviados podem ser aprovados.',409);if(budget.event.approvedBudgetId)throw new AppError('Este evento já possui um orçamento aprovado.',409);await repository.updateBudgets({eventId:budget.eventId,id:{not:id},status:{in:['DRAFT','SENT']}},{status:'CANCELLED'},tx);const now=clock();await repository.updateBudget(id,{status:'APPROVED',approvedAt:now,approvedByUserId:userId},tx);await repository.updateEvent(budget.eventId,establishmentId,{status:'APPROVED',approvedBudgetId:id},tx);await repository.createAudit(audit('APPROVE',budget,establishmentId,userId,'aprovado'),tx);return get(id,establishmentId,tx);});}catch(error){if(['P2002','P2034'].includes(error.code))throw new AppError('Outro orçamento deste evento já foi aprovado. Atualize a página.',409);throw error;}}
+  };
+}
+
+module.exports={...createEventWorkflowService(),createEventWorkflowService,snapshots};

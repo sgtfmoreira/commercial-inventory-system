@@ -32,6 +32,61 @@ enum RestockFrequency {
   ON_DEMAND
 }
 
+enum CommercialEventStatus {
+  DRAFT
+  BUDGETING
+  APPROVED
+  PLANNING_PENDING
+  CANCELLED
+}
+
+enum CommercialEventType {
+  CORPORATE
+  WEDDING
+  BIRTHDAY
+  GRADUATION
+  GET_TOGETHER
+  CATERING
+  INTERNAL
+  OTHER
+}
+
+enum EventBudgetStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum EventBudgetItemType {
+  RECIPE
+  PRODUCT
+  MANUAL
+  STAFF
+  SERVICE
+  EQUIPMENT
+  TRANSPORT
+  FEE
+  OTHER
+}
+
+enum EventBudgetCostGroup {
+  MENU
+  STAFF
+  SERVICE
+  EQUIPMENT
+  TRANSPORT
+  FEE
+  OTHER
+}
+
+enum EventQuantityMode {
+  FIXED
+  PER_GUEST
+}
+
 ////////////////////////////////////////////////////////////
 //////////////////// SUPPLIERS //////////////////////////////
 ////////////////////////////////////////////////////////////
@@ -312,6 +367,8 @@ model establishments {
   portioningRecipes    PortioningRecipe[]
   portioningOrders     PortioningOrder[]
   sales                Sale[]
+  eventCustomers       EventCustomer[]
+  commercialEvents     CommercialEvent[]
   commercialAgreements CommercialAgreement[]
   purchaseInvoices     PurchaseInvoice[]
   bonusReceipts        BonusReceipt[]
@@ -333,6 +390,9 @@ model users {
   purchase_orders  PurchaseOrder[]
   productionOrders ProductionOrder[]
   portioningOrders PortioningOrder[]
+  responsibleCommercialEvents CommercialEvent[] @relation("CommercialEventResponsible")
+  eventBudgetsCreated EventBudget[] @relation("EventBudgetCreatedBy")
+  eventBudgetsApproved EventBudget[] @relation("EventBudgetApprovedBy")
   tableReservationsCreated TableReservation[] @relation("TableReservationCreatedBy")
   tableReservationsUpdated TableReservation[] @relation("TableReservationUpdatedBy")
   tableOccupanciesCreated TableOccupancy[] @relation("TableOccupancyCreatedBy")
@@ -401,6 +461,146 @@ model TableOccupancy {
   @@index([createdByUserId])
   @@index([releasedByUserId])
   @@map("table_occupancies")
+}
+
+model EventCustomer {
+  id              String            @id @default(uuid()) @db.Uuid
+  establishmentId String            @db.Uuid
+  establishment   establishments    @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  name            String            @db.VarChar(160)
+  document        String?           @db.VarChar(30)
+  phone           String?           @db.VarChar(30)
+  email           String?           @db.VarChar(254)
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  events          CommercialEvent[]
+
+  @@index([establishmentId, name])
+  @@index([establishmentId, document])
+  @@map("commercial_event_customers")
+}
+
+model CommercialEvent {
+  id                String                @id @default(uuid()) @db.Uuid
+  establishmentId   String                @db.Uuid
+  establishment     establishments        @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  customerId        String                @db.Uuid
+  customer          EventCustomer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  code              String                @db.VarChar(30)
+  name              String                @db.VarChar(180)
+  type              CommercialEventType
+  eventDate         DateTime              @db.Date
+  startTime         DateTime?             @db.Time(0)
+  endTime           DateTime?             @db.Time(0)
+  guestCount        Int
+  location          String?
+  responsibleUserId String?               @db.Uuid
+  responsibleUser   users?                @relation("CommercialEventResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  status            CommercialEventStatus @default(DRAFT)
+  internalNotes     String?
+  approvedBudgetId  String?               @unique @db.Uuid
+  approvedBudget    EventBudget?          @relation("CommercialEventApprovedBudget", fields: [approvedBudgetId], references: [id], onDelete: SetNull)
+  budgets           EventBudget[]         @relation("CommercialEventBudgets")
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@unique([establishmentId, code])
+  @@index([establishmentId, eventDate])
+  @@index([establishmentId, status, eventDate])
+  @@index([customerId])
+  @@map("commercial_events")
+}
+
+model EventBudget {
+  id                     String            @id @default(uuid()) @db.Uuid
+  eventId                String            @db.Uuid
+  event                  CommercialEvent   @relation("CommercialEventBudgets", fields: [eventId], references: [id], onDelete: Cascade)
+  approvedForEvent       CommercialEvent?  @relation("CommercialEventApprovedBudget")
+  revision               Int
+  parentBudgetId         String?           @db.Uuid
+  parentBudget           EventBudget?      @relation("EventBudgetRevisions", fields: [parentBudgetId], references: [id], onDelete: SetNull)
+  childBudgets           EventBudget[]     @relation("EventBudgetRevisions")
+  status                 EventBudgetStatus @default(DRAFT)
+  validUntil             DateTime?         @db.Date
+  customerSnapshot       Json?
+  eventSnapshot          Json?
+  guestCountSnapshot     Int
+  costMenu               Decimal           @default(0) @db.Decimal(14, 4)
+  costStaff              Decimal           @default(0) @db.Decimal(14, 4)
+  costService            Decimal           @default(0) @db.Decimal(14, 4)
+  costEquipment          Decimal           @default(0) @db.Decimal(14, 4)
+  costTransport          Decimal           @default(0) @db.Decimal(14, 4)
+  costFees               Decimal           @default(0) @db.Decimal(14, 4)
+  costOther              Decimal           @default(0) @db.Decimal(14, 4)
+  totalCost              Decimal           @default(0) @db.Decimal(14, 4)
+  desiredMarginPercent   Decimal           @default(30) @db.Decimal(7, 4)
+  taxPercent             Decimal           @default(0) @db.Decimal(7, 4)
+  commissionPercent      Decimal           @default(0) @db.Decimal(7, 4)
+  cardFeePercent         Decimal           @default(0) @db.Decimal(7, 4)
+  otherFeePercent        Decimal           @default(0) @db.Decimal(7, 4)
+  recommendedPrice       Decimal           @default(0) @db.Decimal(14, 4)
+  quotedPrice            Decimal?          @db.Decimal(14, 4)
+  expectedRevenue        Decimal?          @db.Decimal(14, 4)
+  expectedFeeAmount      Decimal?          @db.Decimal(14, 4)
+  expectedProfit         Decimal?          @db.Decimal(14, 4)
+  effectiveMarginPercent Decimal?          @db.Decimal(7, 4)
+  menuCMVPercent         Decimal?          @db.Decimal(7, 4)
+  pricePerGuest          Decimal?          @db.Decimal(14, 4)
+  costPerGuest           Decimal           @default(0) @db.Decimal(14, 4)
+  profitPerGuest         Decimal?          @db.Decimal(14, 4)
+  calculationVersion     String            @default("EVENT_PRICING_V1") @db.VarChar(40)
+  customerProposalNotes  String?
+  internalNotes          String?
+  sentAt                 DateTime?
+  approvedAt             DateTime?
+  createdByUserId        String            @db.Uuid
+  createdByUser          users             @relation("EventBudgetCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedByUserId       String?           @db.Uuid
+  approvedByUser         users?            @relation("EventBudgetApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  items                  EventBudgetItem[]
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  @@unique([eventId, revision])
+  @@index([eventId, status])
+  @@index([createdByUserId])
+  @@index([approvedByUserId])
+  @@map("event_budgets")
+}
+
+model EventBudgetItem {
+  id                         String               @id @default(uuid()) @db.Uuid
+  budgetId                   String               @db.Uuid
+  budget                     EventBudget          @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  itemType                   EventBudgetItemType
+  costGroup                  EventBudgetCostGroup
+  sourceId                   String?              @db.Uuid
+  sourceType                 String?              @db.VarChar(50)
+  nameSnapshot               String               @db.VarChar(180)
+  categorySnapshot           String?              @db.VarChar(100)
+  quantityMode               EventQuantityMode
+  fixedQuantity              Decimal?             @db.Decimal(14, 3)
+  quantityPerGuest           Decimal?             @db.Decimal(14, 4)
+  guestCountSnapshot         Int
+  safetyPercent              Decimal              @default(0) @db.Decimal(7, 4)
+  plannedQuantity            Decimal              @db.Decimal(14, 3)
+  unitSnapshot               String               @db.VarChar(30)
+  unitCostSnapshot           Decimal              @db.Decimal(14, 4)
+  totalCost                  Decimal              @db.Decimal(14, 4)
+  suggestedUnitPriceSnapshot Decimal?             @db.Decimal(14, 4)
+  visibleInProposal          Boolean              @default(true)
+  proposalLabel              String?              @db.VarChar(180)
+  internalNotes              String?
+  compositionSnapshot        Json?
+  sourceSnapshot             Json?
+  sortOrder                  Int                  @default(0)
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime              @updatedAt
+
+  @@index([budgetId, sortOrder])
+  @@index([sourceId])
+  @@map("event_budget_items")
 }
 
 model Sale {

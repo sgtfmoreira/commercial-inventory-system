@@ -1,0 +1,17 @@
+const asyncHandler=require('../utils/asyncHandler');
+const service=require('../services/eventBudgetService');
+const workflow=require('../services/eventWorkflowService');
+const proposalPdf=require('../services/eventProposalPdfService');
+const getById=asyncHandler(async(req,res)=>res.json({success:true,data:await service.getById(req.params.id,req.user.establishmentId)}));
+const getProposal=asyncHandler(async(req,res)=>res.json({success:true,data:await service.getProposal(req.params.id,req.user.establishmentId)}));
+const update=asyncHandler(async(req,res)=>res.json({success:true,data:await service.update(req.params.id,req.body,req.user.establishmentId)}));
+const recalculate=asyncHandler(async(req,res)=>res.json({success:true,data:await service.recalculate(req.params.id,req.user.establishmentId)}));
+const addItem=asyncHandler(async(req,res)=>res.status(201).json({success:true,data:await service.addItem(req.params.id,req.body,req.user.establishmentId)}));
+const updateItem=asyncHandler(async(req,res)=>res.json({success:true,data:await service.updateItem(req.params.id,req.body,req.user.establishmentId)}));
+const removeItem=asyncHandler(async(req,res)=>res.json({success:true,data:await service.removeItem(req.params.id,req.user.establishmentId)}));
+const send=asyncHandler(async(req,res)=>res.json({success:true,data:await workflow.send(req.params.id,req.user.establishmentId,req.user.userId)}));
+const approve=asyncHandler(async(req,res)=>res.json({success:true,data:await workflow.approve(req.params.id,req.user.establishmentId,req.user.userId)}));
+const reject=asyncHandler(async(req,res)=>res.json({success:true,data:await workflow.reject(req.params.id,req.body.reason,req.user.establishmentId,req.user.userId)}));
+const newRevision=asyncHandler(async(req,res)=>res.status(201).json({success:true,data:await workflow.newRevision(req.params.id,req.user.establishmentId,req.user.userId)}));
+const getProposalPdf=asyncHandler(async(req,res)=>{const pdf=await proposalPdf.generate(req.params.id,req.user.establishmentId);res.setHeader('Content-Type','application/pdf');res.setHeader('Content-Disposition',`attachment; filename=proposta-evento-rev-${req.params.id.slice(-6)}.pdf`);res.send(pdf);});
+module.exports={getById,getProposal,getProposalPdf,update,recalculate,addItem,updateItem,removeItem,send,approve,reject,newRevision};

@@ -33,6 +33,11 @@ import SupplierPortalLogin from "./pages/SupplierPortalLogin";
 import SupplierPortalRecovery from "./pages/SupplierPortalRecovery";
 import SupplierPortalDashboard from "./pages/SupplierPortalDashboard";
 import SupplierPortalUsers from "./pages/SupplierPortalUsers";
+import Events from "./pages/Events";
+import NewEvent from "./pages/NewEvent";
+import EventDetail from "./pages/EventDetail";
+import EventBudgetEditor from "./pages/EventBudgetEditor";
+import EventProposal from "./pages/EventProposal";
 import TableReservations from "./pages/TableReservations";
 
 import SidebarLayout from "./components/SidebarLayout";
@@ -126,6 +131,11 @@ function App() {
               <Route path="/stock-transfers" element={<StockTransfers />} />
               <Route path="/stock-locations" element={<StockLocations />} />
               <Route path="/marketing-events" element={<MarketingEvents />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/events/new" element={<NewEvent />} />
+              <Route path="/events/:id" element={<EventDetail />} />
+              <Route path="/events/:eventId/budgets/:budgetId/edit" element={<EventBudgetEditor />} />
+              <Route path="/events/:eventId/budgets/:budgetId/proposal" element={<EventProposal />} />
               <Route path="/table-reservations" element={<TableReservations />} />
               <Route path="/production" element={<Production />} />
               <Route path="/portioning" element={<Portioning />} />

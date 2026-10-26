@@ -31,6 +31,10 @@ const organizationProductRoutes = require('./routes/organizationProductRoutes');
 const organizationSupplierRoutes = require('./routes/organizationSupplierRoutes');
 const supplierPriceUpdateRoutes = require('./routes/supplierPriceUpdateRoutes');
 const supplierPortalRoutes = require('./routes/supplierPortalRoutes');
+const eventCustomerRoutes = require('./routes/eventCustomerRoutes');
+const commercialEventRoutes = require('./routes/commercialEventRoutes');
+const eventBudgetRoutes = require('./routes/eventBudgetRoutes');
+const eventBudgetItemRoutes = require('./routes/eventBudgetItemRoutes');
 const tableReservationRoutes = require('./routes/tableReservationRoutes');
 const tableOccupancyRoutes = require('./routes/tableOccupancyRoutes');
 
@@ -89,6 +93,10 @@ app.use('/api/organization-products', organizationProductRoutes);
 app.use('/api/organization-suppliers', organizationSupplierRoutes);
 app.use('/api/supplier-price-updates', supplierPriceUpdateRoutes);
 app.use('/api/supplier-portal', supplierPortalRoutes);
+app.use('/api/event-customers', eventCustomerRoutes);
+app.use('/api/events', commercialEventRoutes);
+app.use('/api/event-budgets', eventBudgetRoutes);
+app.use('/api/event-budget-items', eventBudgetItemRoutes);
 app.use('/api/table-reservations', tableReservationRoutes);
 app.use('/api/table-occupancies', tableOccupancyRoutes);
 
