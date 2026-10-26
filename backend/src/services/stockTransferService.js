@@ -1,5 +1,47 @@
 const prisma = require('../config/prisma');
 const { consumeProduct, addStock } = require('./stockMovementService');
+const { calculateTransferConversion } = require('../utils/stockTransferConversion');
+
+const conversionData = (conversion) => ({
+    destinationQuantity: conversion.destinationQuantity,
+    sourceUnit: conversion.sourceUnit,
+    destinationUnit: conversion.destinationUnit,
+    sourcePackQuantity: conversion.sourcePackQuantity,
+    destinationPackQuantity: conversion.destinationPackQuantity,
+    conversionFactor: conversion.conversionFactor
+});
+
+const resolveDestinationConversion = async ({
+    db,
+    sourceProduct,
+    destinationProductId,
+    toEstablishmentId,
+    quantity
+}) => {
+    if (!destinationProductId) {
+        return {
+            destinationProduct: null,
+            conversion: calculateTransferConversion({
+                sourceProduct,
+                destinationProduct: sourceProduct,
+                quantity
+            })
+        };
+    }
+
+    const destinationProduct = await db.product.findFirst({
+        where: { id: destinationProductId, establishmentId: toEstablishmentId }
+    });
+
+    if (!destinationProduct) {
+        throw new Error('Produto de destino nao encontrado ou nao pertence ao estabelecimento de destino.');
+    }
+
+    return {
+        destinationProduct,
+        conversion: calculateTransferConversion({ sourceProduct, destinationProduct, quantity })
+    };
+};
 
 /**
  * 🔐 CRIAR TRANSFERÊNCIA
@@ -51,6 +93,13 @@ const createTransfer = async ({
         throw new Error("Produto não encontrado ou não pertence ao seu estabelecimento.");
     }
 
+    const { conversion } = await resolveDestinationConversion({
+        db: prisma,
+        sourceProduct: product,
+        destinationProductId,
+        toEstablishmentId,
+        quantity
+    });
 
     const transfer = await prisma.stockTransfer.create({
         data: {
@@ -60,7 +109,8 @@ const createTransfer = async ({
             fromEstablishmentId,
             toEstablishmentId,
             createdBy: userId,
-            status: "PENDING"
+            status: "PENDING",
+            ...conversionData(conversion)
         }
     });
 
@@ -119,6 +169,13 @@ const createBulkTransfers = async ({
                 throw new Error(`Produto não encontrado na origem.`);
             }
 
+            const { conversion } = await resolveDestinationConversion({
+                db: tx,
+                sourceProduct: product,
+                destinationProductId,
+                toEstablishmentId,
+                quantity
+            });
 
             const transfer = await tx.stockTransfer.create({
                 data: {
@@ -128,7 +185,8 @@ const createBulkTransfers = async ({
                     fromEstablishmentId,
                     toEstablishmentId,
                     createdBy: userId,
-                    status: "PENDING"
+                    status: "PENDING",
+                    ...conversionData(conversion)
                 }
             });
 
@@ -258,11 +316,6 @@ const approveTransfer = async (transferId, userId, establishmentId) => {
                  throw new Error("Produto de destino não encontrado ou não pertence ao estabelecimento de destino.");
              }
 
-             if (destinationProduct.unit.trim().toLowerCase() !== product.unit.trim().toLowerCase()) {
-                 throw new Error(
-                     `Unidades incompatíveis na transferência: origem em ${product.unit} e destino em ${destinationProduct.unit}.`
-                 );
-             }
         }
 
         if (!destinationProduct) {
@@ -312,19 +365,35 @@ const approveTransfer = async (transferId, userId, establishmentId) => {
             });
         }
 
+        const calculatedConversion = calculateTransferConversion({
+            sourceProduct: product,
+            destinationProduct,
+            quantity: Number(quantity)
+        });
+        if (
+            transfer.destinationQuantity != null &&
+            Math.abs(Number(transfer.destinationQuantity) - calculatedConversion.destinationQuantity) > 0.000001
+        ) {
+            throw new Error('A embalagem do produto mudou depois da criacao da transferencia. Rejeite e crie uma nova transferencia.');
+        }
+        const destinationQuantity = transfer.destinationQuantity == null
+            ? calculatedConversion.destinationQuantity
+            : Number(transfer.destinationQuantity);
+
         // BAIXA NO ORIGEM
         await consumeProduct({
             productId,
             quantity,
             establishmentId: fromEstablishmentId,
             reason: "TRANSFER",
-            reference: `Transferência para ${toEstablishmentId}`
+            reference: `Transferência para ${toEstablishmentId}`,
+            enforceAvailableStock: true
         }, tx);
 
         // ENTRADA NO DESTINO
         await addStock({
             productId: destinationProduct.id,
-            quantity,
+            quantity: destinationQuantity,
             establishmentId: toEstablishmentId,
             reason: "TRANSFER",
             reference: `Transferência de ${fromEstablishmentId}`
@@ -333,7 +402,10 @@ const approveTransfer = async (transferId, userId, establishmentId) => {
         return tx.stockTransfer.update({
             where: { id: transferId },
             data: {
-                destinationProductId: destinationProduct.id // Garante que o ID final fique salvo
+                destinationProductId: destinationProduct.id,
+                ...(transfer.destinationQuantity == null
+                    ? conversionData(calculatedConversion)
+                    : {})
             }
         });
     }, { maxWait: 15000, timeout: 60000 });
@@ -407,6 +479,9 @@ const getTransferSummary = async (establishmentId, { startDate, endDate }) => {
             product: {
                 select: { id: true, name: true, unit: true, unitPrice: true, currentCost: true, packQuantity: true }
             },
+            destinationProduct: {
+                select: { id: true, name: true, unit: true, unitPrice: true, currentCost: true, packQuantity: true }
+            },
             fromEstablishment: {
                 select: { id: true, name: true }
             }
@@ -472,8 +547,9 @@ const getTransferSummary = async (establishmentId, { startDate, endDate }) => {
     for (const t of received) {
         const estName = t.fromEstablishment?.name || "Desconhecido";
         const estId = t.fromEstablishment?.id || "unknown";
-        const unitCost = getUnitCost(t.product);
-        const qty = Number(t.quantity);
+        const receivedProduct = t.destinationProduct || t.product;
+        const unitCost = getUnitCost(receivedProduct);
+        const qty = t.destinationQuantity == null ? Number(t.quantity) : Number(t.destinationQuantity);
         const value = unitCost * qty;
 
         totalReceivedQty += qty;
@@ -492,9 +568,9 @@ const getTransferSummary = async (establishmentId, { startDate, endDate }) => {
         receivedByEstablishment[estId].totalQuantity += qty;
         receivedByEstablishment[estId].totalValue += value;
         receivedByEstablishment[estId].products.push({
-            productId: t.product.id,
-            productName: t.product.name,
-            unit: t.product.unit,
+            productId: receivedProduct.id,
+            productName: receivedProduct.name,
+            unit: t.destinationUnit || receivedProduct.unit,
             quantity: qty,
             unitCost,
             totalCost: value,
@@ -532,6 +608,9 @@ const getDestinationProducts = async (establishmentId) => {
             id: true,
             name: true,
             unit: true,
+            purchaseUnit: true,
+            packQuantity: true,
+            organizationProductId: true,
             quantity: true
         },
         orderBy: { name: 'asc' }

@@ -876,6 +876,12 @@ model StockTransfer {
   productId            String  @db.Uuid
   destinationProductId String? @db.Uuid
   quantity             Float
+  destinationQuantity  Float?
+  sourceUnit            String?
+  destinationUnit       String?
+  sourcePackQuantity    Float?
+  destinationPackQuantity Float?
+  conversionFactor      Float?
 
   fromEstablishmentId String @db.Uuid
   toEstablishmentId   String @db.Uuid

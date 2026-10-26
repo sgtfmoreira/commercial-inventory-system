@@ -293,6 +293,36 @@ const ManualGrid = styled.div`
 `;
 
 
+const normalizeTransferUnit = (value) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    return ['un', 'und', 'unid', 'unidade', 'unidades'].includes(normalized) ? 'unidade' : normalized;
+};
+
+const getTransferPreview = (source, destination, quantity) => {
+    const sourceQuantity = Number(quantity);
+    if (!source || !destination || !Number.isFinite(sourceQuantity) || sourceQuantity <= 0) return null;
+
+    if (normalizeTransferUnit(source.unit) === normalizeTransferUnit(destination.unit)) {
+        return { quantity: sourceQuantity, unit: destination.unit };
+    }
+
+    const sourcePurchaseUnit = normalizeTransferUnit(source.purchaseUnit);
+    const destinationPurchaseUnit = normalizeTransferUnit(destination.purchaseUnit);
+    const sourcePack = Number(source.packQuantity ?? 1);
+    const destinationPack = Number(destination.packQuantity ?? 1);
+
+    if (!sourcePurchaseUnit || sourcePurchaseUnit !== destinationPurchaseUnit || sourcePack <= 0 || destinationPack <= 0) {
+        return { error: 'Unidades incompatíveis para conversão.' };
+    }
+
+    const converted = Number(((sourceQuantity / sourcePack) * destinationPack).toFixed(6));
+    if (normalizeTransferUnit(destination.unit) === 'unidade' && !Number.isInteger(converted)) {
+        return { error: `A conversão resulta em ${converted} ${destination.unit}; informe uma quantidade que complete unidades inteiras.` };
+    }
+
+    return { quantity: converted, unit: destination.unit };
+};
+
 export default function StockTransfers() {
 
     const { state } = useApp();
@@ -344,6 +374,7 @@ export default function StockTransfers() {
                 if (sourceProduct) {
                     const sourceName = sourceProduct.name.toLowerCase();
                     const match = destinationProducts.find(p => {
+                        if (sourceProduct.organizationProductId && p.organizationProductId === sourceProduct.organizationProductId) return true;
                         const n = p.name.toLowerCase();
                         return n === sourceName || n.includes(sourceName) || sourceName.includes(n);
                     });
@@ -370,6 +401,7 @@ export default function StockTransfers() {
                     if (sourceProduct) {
                         const sourceName = sourceProduct.name.toLowerCase();
                         const match = destinationProducts.find(p => {
+                            if (sourceProduct.organizationProductId && p.organizationProductId === sourceProduct.organizationProductId) return true;
                             const n = p.name.toLowerCase();
                             return n === sourceName || n.includes(sourceName) || sourceName.includes(n);
                         });
@@ -492,6 +524,12 @@ export default function StockTransfers() {
             const selectedProduct = products.find(p => p.id === item.productId);
             if (selectedProduct && Number(item.quantity) > Number(selectedProduct.quantity)) {
                 toast.error(`Estoque insuficiente no estabelecimento de origem para: ${selectedProduct.name}`);
+                return;
+            }
+            const destinationProduct = destinationProducts.find(p => p.id === item.destinationProductId);
+            const preview = getTransferPreview(selectedProduct, destinationProduct, item.quantity);
+            if (preview?.error) {
+                toast.error(`${selectedProduct.name}: ${preview.error}`);
                 return;
             }
         }
@@ -726,6 +764,8 @@ export default function StockTransfers() {
 
                         {items.map((item, idx) => {
                             const selectedProduct = products.find(p => p.id === item.productId);
+                            const selectedDestinationProduct = destinationProducts.find(p => p.id === item.destinationProductId);
+                            const transferPreview = getTransferPreview(selectedProduct, selectedDestinationProduct, item.quantity);
                             const q = Number(item.quantity);
                             const isExceeded = selectedProduct && q > Number(selectedProduct.quantity);
 
@@ -808,6 +848,16 @@ export default function StockTransfers() {
                                                         <Badge variant="warning">⚠️ Novo produto será criado</Badge>
                                                     )}
                                                 </div>
+                                                {transferPreview && (
+                                                    <div style={{
+                                                        marginTop: 8,
+                                                        fontSize: '0.85rem',
+                                                        color: transferPreview.error ? '#ef4444' : '#166534',
+                                                        fontWeight: 600
+                                                    }}>
+                                                        {transferPreview.error || `Entrada prevista: ${transferPreview.quantity} ${transferPreview.unit}`}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </ManualGrid>
@@ -870,7 +920,14 @@ export default function StockTransfers() {
 
                                     <Td>{transfer.product?.name}</Td>
 
-                                    <Td>{transfer.quantity}</Td>
+                                    <Td>
+                                        {transfer.quantity} {transfer.sourceUnit || transfer.product?.unit}
+                                        {transfer.destinationQuantity != null && transfer.destinationProduct && (
+                                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                Entrada: {transfer.destinationQuantity} {transfer.destinationUnit || transfer.destinationProduct.unit}
+                                            </div>
+                                        )}
+                                    </Td>
 
                                     <Td>{transfer.toEstablishment?.name}</Td>
 
@@ -926,9 +983,17 @@ export default function StockTransfers() {
 
                                     <Tr key={transfer.id}>
 
-                                        <Td>{transfer.product?.name}</Td>
+                                        <Td>{transfer.destinationProduct?.name || transfer.product?.name}</Td>
 
-                                        <Td>{transfer.quantity}</Td>
+                                        <Td>
+                                            {transfer.destinationQuantity ?? transfer.quantity}{' '}
+                                            {transfer.destinationUnit || transfer.destinationProduct?.unit || transfer.product?.unit}
+                                            {transfer.destinationQuantity != null && (
+                                                <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                    Origem: {transfer.quantity} {transfer.sourceUnit || transfer.product?.unit}
+                                                </div>
+                                            )}
+                                        </Td>
 
                                         <Td>{transfer.fromEstablishment?.name}</Td>
 
