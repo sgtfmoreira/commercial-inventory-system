@@ -3,20 +3,25 @@ import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useApp } from "../context/AppContext";
+import Button from "../components/Button";
+import { Input } from "../components/FormFields";
 
 const Wrapper = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  padding: ${({ theme }) => theme.spacing.md};
+  background: ${({ theme }) => theme.colors.bg};
 `;
 
 const Card = styled.div`
   background: ${({ theme }) => theme.colors.bgCard};
-  border-radius: ${({ theme }) => theme.radii.lg};
-  box-shadow: ${({ theme }) => theme.shadows.card};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.radii.xl};
+  box-shadow: ${({ theme }) => theme.shadows.raised};
   padding: ${({ theme }) => theme.spacing.xl};
-  width: 420px;
+  width: min(100%, 420px);
 `;
 
 const Title = styled.h2`
@@ -31,35 +36,9 @@ const Form = styled.form`
   gap: ${({ theme }) => theme.spacing.md};
 `;
 
-const Input = styled.input`
-  padding: 12px;
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  background: ${({ theme }) => theme.colors.bgInput};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.colors.borderFocus};
-  }
-`;
-
-const Button = styled.button`
-  margin-top: ${({ theme }) => theme.spacing.sm};
-  padding: 12px;
-  border-radius: ${({ theme }) => theme.radii.md};
-  background: ${({ theme }) => theme.colors.primary};
-  color: white;
-  font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  transition: ${({ theme }) => theme.transition};
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.primaryHover};
-  }
-`;
-
 const LoginLink = styled.span`
-  color: ${({ theme }) => theme.colors.info};
+  color: ${({ theme }) => theme.colors.primary};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
   cursor: pointer;
 `;
 
@@ -125,6 +104,7 @@ export default function Register() {
                 <Form onSubmit={handleRegister}>
 
                     <Input
+                        label="Nome"
                         placeholder="Nome"
                         value={nome}
                         onChange={(e) => setNome(e.target.value)}
@@ -132,6 +112,7 @@ export default function Register() {
                     />
 
                     <Input
+                        label="E-mail"
                         placeholder="Email"
                         type="email"
                         value={email}
@@ -140,6 +121,7 @@ export default function Register() {
                     />
 
                     <Input
+                        label="Senha"
                         placeholder="Senha"
                         type="password"
                         value={password}
@@ -147,8 +129,8 @@ export default function Register() {
                         required
                     />
 
-                    <Button type="submit" disabled={loading}>
-                        {loading ? "Criando..." : "Criar Conta"}
+                    <Button type="submit" fullWidth loading={loading} loadingLabel="Criando conta">
+                        Criar Conta
                     </Button>
 
                 </Form>

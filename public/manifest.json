@@ -1,15 +1,15 @@
 {
-  "short_name": "BDS",
-  "name": "Controle de Compras BDS",
+  "short_name": "Bastidor OS",
+  "name": "Bastidor OS",
   "icons": [
     {
-      "src": "bds_logo.png",
+      "src": "bastidor-os-icon.svg",
       "sizes": "any",
-      "type": "image/png"
+      "type": "image/svg+xml"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#0066CC",
+  "theme_color": "#6D5EF4",
   "background_color": "#ffffff"
 }

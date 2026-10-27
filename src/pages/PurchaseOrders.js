@@ -1,3 +1,4 @@
+import DataTable, { TableSurface } from '../components/Table';
 import React, { useState, useMemo, useEffect } from "react";
 import styled from "styled-components";
 import {
@@ -12,64 +13,21 @@ import Modal from '../components/Modal';
 import { useApp, ACTIONS } from "../context/AppContext";
 import { formatCurrency } from "../utils/formatCurrency";
 
-import Card from "../components/Card";
 import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
-import { Input, CurrencyInput } from "../components/FormFields";
+import { Input, CurrencyInput, SelectControl } from "../components/FormFields";
 import Select from "../components/Select";
 import toast from "react-hot-toast";
 
 import api from "../services/api";
+import { Page, PageHeader, PageHeading, PageTitle, PageSubtitle, SectionTitle } from '../components/PageLayout';
+import { Tabs, Tab } from '../components/Tabs';
 
 /* -------------------------------------------------------------------------- */
 /*                                Styled UI                                   */
 /* -------------------------------------------------------------------------- */
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const PageHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
-`;
-
-const PageTitle = styled.h1`
-  font-size: ${({ theme }) => theme.fontSizes['3xl']};
-  font-weight: ${({ theme }) => theme.fontWeights.bold};
-  color: ${({ theme }) => theme.colors.textPrimary};
-`;
-
-const PageSubtitle = styled.p`
-  color: ${({ theme }) => theme.colors.textMuted};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  margin-top: 4px;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: ${({ theme }) => theme.fontSizes.xl};
-  font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  color: ${({ theme }) => theme.colors.textPrimary};
-  margin-bottom: ${({ theme }) => theme.spacing.md};
-`;
-
-const TableWrapper = styled.div`
-  width: 100%;
-  overflow-x: auto;
-`;
-
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
   @media (max-width: 768px) {
@@ -160,16 +118,6 @@ const ManualItemNumber = styled.span`
   border-radius: 999px;
 `;
 
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: ${({ theme }) => theme.spacing.md};
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
 const ManualGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -210,6 +158,12 @@ const EMPTY_ITEM = () => ({
     quantity: "",
     unitPrice: ""
 });
+
+const formatInvoiceDate = (value) => {
+    if (!value) return "—";
+    const [year, month, day] = String(value).slice(0, 10).split('-');
+    return year && month && day ? `${day}/${month}/${year}` : "—";
+};
 
 /* -------------------------------------------------------------------------- */
 /*                            ManualOrderModal                                 */
@@ -688,7 +642,7 @@ Segue o pedido em PDF.
     /* -------------------------------------------------------------------------- */
 
     return (
-        <>
+        <Page>
             <ManualOrderModal
                 isOpen={showManualModal}
                 onClose={() => setShowManualModal(false)}
@@ -698,13 +652,13 @@ Segue o pedido em PDF.
             />
 
             <PageHeader>
-                <div>
+                <PageHeading>
                     <PageTitle>Ordens de Compra</PageTitle>
 
                     <PageSubtitle>
                         Gerencie e acompanhe suas ordens de reposição
                     </PageSubtitle>
-                </div>
+                </PageHeading>
 
                 <Button
                     variant="primary"
@@ -715,39 +669,14 @@ Segue o pedido em PDF.
                     Nova Ordem
                 </Button>
             </PageHeader>
-            <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-
-                <Button
-                    onClick={() => setTab("PENDING")}
-                    style={{
-                        padding: "8px 16px",
-                        borderRadius: 8,
-                        border: "1px solid #e5e7eb",
-                        background: tab === "PENDING" ? "#111827" : "#fff",
-                        color: tab === "PENDING" ? "#fff" : "#111827",
-                        cursor: "pointer",
-                        fontWeight: 500
-                    }}
-                >
+            <Tabs>
+                <Tab active={tab === "PENDING"} onClick={() => setTab("PENDING")}>
                     Pendentes
-                </Button>
-
-                <Button
-                    onClick={() => setTab("COMPLETED")}
-                    style={{
-                        padding: "8px 16px",
-                        borderRadius: 8,
-                        border: "1px solid #e5e7eb",
-                        background: tab === "COMPLETED" ? "#111827" : "#fff",
-                        color: tab === "COMPLETED" ? "#fff" : "#111827",
-                        cursor: "pointer",
-                        fontWeight: 500
-                    }}
-                >
+                </Tab>
+                <Tab active={tab === "COMPLETED"} onClick={() => setTab("COMPLETED")}>
                     Finalizadas
-                </Button>
-
-            </div>
+                </Tab>
+            </Tabs>
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'end' }}>
                 <div style={{ minWidth: 190 }}>
                     <Select
@@ -779,10 +708,9 @@ Segue o pedido em PDF.
 
                 <>
 
-                    <SectionTitle>Ordens Pendentes</SectionTitle>
+                    <SectionTitle>{tab === "PENDING" ? "Ordens Pendentes" : "Ordens Finalizadas"}</SectionTitle>
 
-                    <Card padding="0">
-                        <TableWrapper>
+                    <TableSurface>
                             <Table>
 
                                 <thead>
@@ -793,7 +721,9 @@ Segue o pedido em PDF.
                                         <Th>Data</Th>
                                         <Th>Fornecedor</Th>
                                         <Th>Itens</Th>
-                                        <Th>Total</Th>
+                                        <Th>{tab === "COMPLETED" ? "Valor da nota" : "Total estimado"}</Th>
+                                        {tab === "COMPLETED" && <Th>Nota / Série</Th>}
+                                        {tab === "COMPLETED" && <Th>Data da nota</Th>}
                                         <Th>Status</Th>
                                         <Th>Ações</Th>
 
@@ -832,35 +762,58 @@ Segue o pedido em PDF.
 
                                                 <Td>{order.items.length}</Td>
 
-                                                <Td>{formatCurrency(total)}</Td>
+                                                <Td>{formatCurrency(order.invoice?.netPaidAmount ?? total)}</Td>
+
+                                                {tab === "COMPLETED" && (
+                                                    <Td>
+                                                        {order.invoice?.invoiceNumber || "—"}
+                                                        {order.invoice?.invoiceSeries ? ` / ${order.invoice.invoiceSeries}` : ""}
+                                                    </Td>
+                                                )}
+
+                                                {tab === "COMPLETED" && (
+                                                    <Td>{formatInvoiceDate(order.invoice?.issuedAt)}</Td>
+                                                )}
 
                                                 <Td>
 
                                                     <StatusBadge>
-                                                        Pendente
+                                                        {order.status === "completed" ? "Finalizada" : "Pendente"}
                                                     </StatusBadge>
 
                                                 </Td>
 
                                                 <Td>
 
-                                                    <Button
-                                                        size="sm"
-                                                        variant="success"
-                                                        onClick={() => { setReceivedQty({}); setReceivedPrice({}); setSelectedOrder(order); }}
-                                                    >
-                                                        <MdCheckCircle />
-                                                    </Button>
+                                                    {order.status === "pending" && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="success"
+                                                            iconOnly
+                                                            title="Receber ordem"
+                                                            aria-label="Receber ordem"
+                                                            onClick={() => { setReceivedQty({}); setReceivedPrice({}); setSelectedOrder(order); }}
+                                                        >
+                                                            <MdCheckCircle />
+                                                        </Button>
+                                                    )}
 
                                                     <Button
                                                         size="sm"
                                                         variant="danger"
+                                                        iconOnly
+                                                        title="Excluir ordem"
+                                                        aria-label="Excluir ordem"
                                                         onClick={() => handleDeleteOrder(order)}
                                                     >
                                                         <MdDelete />
                                                     </Button>
                                                     <Button
                                                         size="sm"
+                                                        variant="secondary"
+                                                        iconOnly
+                                                        title="Enviar pelo WhatsApp"
+                                                        aria-label="Enviar pelo WhatsApp"
                                                         onClick={() => handleSendWhatsApp(order)}
                                                     >
                                                         📲
@@ -877,8 +830,7 @@ Segue o pedido em PDF.
                                 </tbody>
 
                             </Table>
-                        </TableWrapper>
-                    </Card>
+                    </TableSurface>
 
                 </>
 
@@ -925,9 +877,9 @@ Segue o pedido em PDF.
                                             gap: "10px"
                                         }}
                                     >
-                                        <div style={{ color: "#64748B", fontSize: "14px" }}>
+                                        <div style={{ color: "var(--color-text-secondary)", fontSize: "14px" }}>
                                             Fornecedor:{" "}
-                                            <strong style={{ color: "#111827" }}>
+                                            <strong style={{ color: "var(--color-text)" }}>
                                                 {supplier?.name || "Fornecedor não encontrado"}
                                             </strong>
                                         </div>
@@ -974,7 +926,7 @@ Segue o pedido em PDF.
                                     {/* 🔥 LISTA DE ITENS AJUSTADA COM LABELS */}
                                     <label style={{ display: 'block', marginBottom: 16 }}>
                                         Adicionar item extra recebido
-                                        <select
+                                        <SelectControl
                                             aria-label="Adicionar item extra recebido"
                                             value=""
                                             style={{ display: 'block', width: '100%', padding: 12, marginTop: 8 }}
@@ -991,7 +943,7 @@ Segue o pedido em PDF.
                                             <option value="">Selecione um produto</option>
                                             {state.products.filter(product => !selectedOrder.items.some(item => item.productId === product.id))
                                                 .map(product => <option key={product.id} value={product.id}>{product.name}</option>)}
-                                        </select>
+                                        </SelectControl>
                                     </label>
                                     {selectedOrder.items.map((item) => {
                                         const qty = receivedQty[item.id] ?? item.adjustedQuantity;
@@ -1004,12 +956,12 @@ Segue o pedido em PDF.
                                                 style={{
                                                     marginBottom: 16,
                                                     padding: "16px 12px",
-                                                    border: "1px solid #e5e7eb",
+                                                    border: "1px solid var(--color-border)",
                                                     borderRadius: 12,
-                                                    background: "#F9FAFB",
+                                                    background: "var(--color-background)",
                                                 }}
                                             >
-                                                <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 15, color: "#111827" }}>
+                                                <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 15, color: "var(--color-text)" }}>
                                                     {item.productName}
                                                     {item.notReceived && <span> — Não recebido</span>}
                                                 </div>
@@ -1071,7 +1023,7 @@ Segue o pedido em PDF.
                                                 </div>
 
                                                 <div style={{ marginTop: 10, fontSize: 13, color: "#4B5563", textAlign: "right", fontWeight: 500 }}>
-                                                    Subtotal: <strong style={{ color: "#111827" }}>{formatCurrency(total)}</strong>
+                                                    Subtotal: <strong style={{ color: "var(--color-text)" }}>{formatCurrency(total)}</strong>
                                                 </div>
                                             </div>
                                         );
@@ -1082,12 +1034,12 @@ Segue o pedido em PDF.
                                         style={{
                                             marginTop: 20,
                                             padding: "16px 0",
-                                            borderTop: "2px solid #e5e7eb",
+                                            borderTop: "2px solid var(--color-border)",
                                             fontWeight: 700,
                                             display: "flex",
                                             justifyContent: "space-between",
                                             fontSize: "18px",
-                                            color: "#111827"
+                                            color: "var(--color-text)"
                                         }}
                                     >
                                         <span>Total do Pedido</span>
@@ -1120,7 +1072,7 @@ Segue o pedido em PDF.
                 )}
             </Modal>
 
-        </>
+        </Page>
     );
 
 };

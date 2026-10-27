@@ -1,3 +1,7 @@
+import { CheckboxControl } from '../components/FormFields';
+import DSButton from '../components/Button';
+import { InputControl } from '../components/FormFields';
+import { TextareaControl } from '../components/FormFields';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
@@ -52,12 +56,12 @@ const Meta = styled.div`display:flex;gap:8px;flex-wrap:wrap;color:${({theme})=>t
 const Links = styled.div`border-top:1px solid ${({theme})=>theme.colors.border};padding-top:12px;display:flex;flex-direction:column;gap:8px;`;
 const LinksHeader = styled.div`display:flex;justify-content:space-between;color:${({theme})=>theme.colors.textSecondary};font-size:13px;font-weight:700;`;
 const LinkRow = styled.div`display:flex;align-items:center;justify-content:space-between;gap:8px;background:${({theme})=>theme.colors.bgInput};padding:8px 10px;border-radius:${({theme})=>theme.radii.sm};font-size:13px;color:${({theme})=>theme.colors.textPrimary};small{display:block;color:${({theme})=>theme.colors.textMuted};}`;
-const IconButton = styled.button`display:inline-flex;align-items:center;justify-content:center;padding:6px;border-radius:6px;color:${({theme})=>theme.colors.textMuted};&:hover{background:${({theme})=>theme.colors.dangerLight};color:${({theme})=>theme.colors.danger};}`;
+const IconButton = (props) => <DSButton size="sm" iconOnly variant="danger" aria-label="Desvincular produto" {...props} />;
 const Actions = styled.div`display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;`;
 const FormGrid = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:16px;@media(max-width:560px){grid-template-columns:1fr;}`;
 const Field = styled.label`display:flex;flex-direction:column;gap:6px;color:${({theme})=>theme.colors.textSecondary};font-size:13px;font-weight:600;${({$wide})=>$wide?'grid-column:1/-1;':''}`;
-const Input = styled.input`padding:10px 12px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};outline:none;&:focus{border-color:${({theme})=>theme.colors.borderFocus};}`;
-const Textarea = styled.textarea`min-height:90px;resize:vertical;padding:10px 12px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};outline:none;`;
+const Input = styled(InputControl)`padding:10px 12px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};outline:none;&:focus{border-color:${({theme})=>theme.colors.borderFocus};}`;
+const Textarea = styled(TextareaControl)`min-height:90px;resize:vertical;padding:10px 12px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};outline:none;`;
 const EstablishmentGroup = styled.section`border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};overflow:hidden;margin-bottom:12px;`;
 const GroupTitle = styled.h3`padding:10px 12px;background:${({theme})=>theme.colors.bgHover};font-size:14px;color:${({theme})=>theme.colors.textPrimary};display:flex;justify-content:space-between;`;
 const Candidate = styled.label`display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-top:1px solid ${({theme})=>theme.colors.border};cursor:pointer;background:${({$selected,theme})=>$selected?theme.colors.infoLight:'transparent'};input{margin-top:3px;}strong{display:block;color:${({theme})=>theme.colors.textPrimary};font-size:14px;}small{color:${({theme})=>theme.colors.textMuted};}`;
@@ -256,8 +260,8 @@ const OrganizationProducts = () => {
     </Stats>
 
     <Toolbar>
-      <SearchBox><MdSearch/><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Buscar por código, nome, marca ou EAN"/></SearchBox>
-      <Toggle><input type="checkbox" checked={showInactive} onChange={event=>setShowInactive(event.target.checked)}/>Mostrar inativos</Toggle>
+      <SearchBox><MdSearch/><InputControl value={search} onChange={event=>setSearch(event.target.value)} placeholder="Buscar por código, nome, marca ou EAN"/></SearchBox>
+      <Toggle><CheckboxControl checked={showInactive} onChange={event=>setShowInactive(event.target.checked)}/>Mostrar inativos</Toggle>
     </Toolbar>
 
     {!filtered.length ? <EmptyState icon={<MdAccountTree/>} title="Nenhum produto central encontrado" subtitle={isAdmin?'Crie a primeira identidade central e depois vincule os produtos locais revisados.':'A organização ainda não possui produtos centrais.'}/> : <Grid>
@@ -279,21 +283,21 @@ const OrganizationProducts = () => {
         <Field>Unidade-base<Input required maxLength="30" value={form.baseUnit} onChange={e=>setForm({...form,baseUnit:e.target.value})} placeholder="un, ml, g, kg"/></Field>
         <Field $wide>EAN / código de barras<Input inputMode="numeric" maxLength="32" value={form.barcode} onChange={e=>setForm({...form,barcode:e.target.value})}/></Field>
         <Field $wide>Descrição<Textarea maxLength="1000" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></Field>
-        {editing&&<Toggle><input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})}/>Produto central ativo</Toggle>}
+        {editing&&<Toggle><CheckboxControl checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})}/>Produto central ativo</Toggle>}
       </FormGrid></form>
     </Modal>
 
     <Modal isOpen={linkModal} onClose={()=>setLinkModal(false)} title={linking?`Vincular a ${linking.internalCode}`:'Vincular produtos'} maxWidth="820px" footer={<><Button variant="secondary" onClick={()=>setLinkModal(false)}>Cancelar</Button><Button disabled={saving||!selectedIds.length} onClick={submitLinks}>{saving?'Vinculando...':`Vincular ${selectedIds.length||''}`}</Button></>}>
       <Notice>Selecione no máximo um produto por estabelecimento. O vínculo não altera estoque, custo, preço ou histórico.</Notice>
-      <SearchBox><MdSearch/><input value={linkSearch} onChange={event=>setLinkSearch(event.target.value)} placeholder="Procurar produto por nome" autoFocus/></SearchBox>
-      {Object.values(groupedUnlinked).map(group=><EstablishmentGroup key={group.establishment.id}><GroupTitle><span>{group.establishment.name}</span><span>{group.products.length} disponíveis</span></GroupTitle>{group.products.map(candidate=><Candidate key={candidate.id} $selected={selectedIds.includes(candidate.id)}><input type="checkbox" checked={selectedIds.includes(candidate.id)} onChange={()=>toggleCandidate(candidate)}/><div><strong>{candidate.name}</strong><small>{candidate.unit} · {candidate.purchaseUnit||'sem unidade de compra'} · pacote {candidate.packQuantity||1}</small></div></Candidate>)}</EstablishmentGroup>)}
+      <SearchBox><MdSearch/><InputControl value={linkSearch} onChange={event=>setLinkSearch(event.target.value)} placeholder="Procurar produto por nome" autoFocus/></SearchBox>
+      {Object.values(groupedUnlinked).map(group=><EstablishmentGroup key={group.establishment.id}><GroupTitle><span>{group.establishment.name}</span><span>{group.products.length} disponíveis</span></GroupTitle>{group.products.map(candidate=><Candidate key={candidate.id} $selected={selectedIds.includes(candidate.id)}><CheckboxControl checked={selectedIds.includes(candidate.id)} onChange={()=>toggleCandidate(candidate)}/><div><strong>{candidate.name}</strong><small>{candidate.unit} · {candidate.purchaseUnit||'sem unidade de compra'} · pacote {candidate.packQuantity||1}</small></div></Candidate>)}</EstablishmentGroup>)}
       {!!unlinked.length&&!Object.keys(groupedUnlinked).length&&<EmptyState title="Nenhum produto encontrado" subtitle={`Não há produtos disponíveis com o nome “${linkSearch}”.`}/>}
       {!unlinked.length&&<EmptyState title="Nenhum produto elegível sem vínculo" subtitle="Todos os produtos locais elegíveis já foram revisados."/>}
     </Modal>
 
     <Modal isOpen={reviewModal} onClose={()=>setReviewModal(false)} title="Revisão de consolidação" maxWidth="940px">
       <Notice>As sugestões usam nome, unidade, unidade de compra e embalagem normalizados. Aprovar cria uma identidade central e aplica somente os vínculos selecionados.</Notice>
-      <Toolbar><Toggle><input type="checkbox" checked={showRejected} onChange={event=>setShowRejected(event.target.checked)}/>Mostrar sugestões rejeitadas</Toggle></Toolbar>
+      <Toolbar><Toggle><CheckboxControl checked={showRejected} onChange={event=>setShowRejected(event.target.checked)}/>Mostrar sugestões rejeitadas</Toggle></Toolbar>
       <ReviewList>
         {visibleCandidates.map(candidate=><ReviewCard key={candidate.candidateKey}>
           <ReviewTop><div><strong>{candidate.suggestedName}</strong><small>Correspondência normalizada exata · {candidate.products.length} estabelecimentos</small></div>{candidate.review?.status==='REJECTED'&&<Status>Rejeitada</Status>}</ReviewTop>
@@ -313,7 +317,7 @@ const OrganizationProducts = () => {
         <Field $wide>EAN / código de barras<Input inputMode="numeric" value={approvalForm.barcode} onChange={event=>setApprovalForm({...approvalForm,barcode:event.target.value})}/></Field>
         <Field $wide>Descrição<Textarea value={approvalForm.description} onChange={event=>setApprovalForm({...approvalForm,description:event.target.value})}/></Field>
       </FormGrid>
-      <ReviewProducts>{(approvalCandidate?.products||[]).map(product=><Candidate key={product.id} $selected={approvalIds.includes(product.id)}><input type="checkbox" checked={approvalIds.includes(product.id)} onChange={()=>toggleApprovalProduct(product.id)}/><div><strong>{product.name}</strong><small>{product.establishment.name} · {product.unit} · pacote {product.packQuantity||1}</small></div></Candidate>)}</ReviewProducts>
+      <ReviewProducts>{(approvalCandidate?.products||[]).map(product=><Candidate key={product.id} $selected={approvalIds.includes(product.id)}><CheckboxControl checked={approvalIds.includes(product.id)} onChange={()=>toggleApprovalProduct(product.id)}/><div><strong>{product.name}</strong><small>{product.establishment.name} · {product.unit} · pacote {product.packQuantity||1}</small></div></Candidate>)}</ReviewProducts>
     </Modal>
   </Page>;
 };

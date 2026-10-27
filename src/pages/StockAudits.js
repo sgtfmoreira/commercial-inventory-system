@@ -1,3 +1,4 @@
+import DataTable from '../components/Table';
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { MdAdd, MdSearch, MdChevronRight, MdPictureAsPdf } from "react-icons/md";
@@ -40,7 +41,7 @@ const TableWrapper = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 

@@ -3,30 +3,44 @@ import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useApp } from "../context/AppContext";
-import logo from "../assets/logobds.png"
+import Button from "../components/Button";
+import { Input } from "../components/FormFields";
+
+const logo = `${process.env.PUBLIC_URL}/BASTIDOR_LOGO02.jpg`;
 
 const Wrapper = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  padding: ${({ theme }) => theme.spacing.md};
+  background: ${({ theme }) => theme.colors.bg};
 `;
 
 const Card = styled.div`
   background: ${({ theme }) => theme.colors.bgCard};
-  border-radius: ${({ theme }) => theme.radii.lg};
-  box-shadow: ${({ theme }) => theme.shadows.card};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.radii.xl};
+  box-shadow: ${({ theme }) => theme.shadows.raised};
   padding: ${({ theme }) => theme.spacing.xl};
-  width: 420px;
+  width: min(100%, 420px);
 `;
 const Logo = styled.img`
-  width: 120px;
+  width: min(280px, 100%);
+  height: auto;
   margin: 0 auto ${({ theme }) => theme.spacing.lg};
   display: block;
 `;
 const Title = styled.h2`
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
+  margin-bottom: ${({ theme }) => theme.spacing.xs};
   font-size: ${({ theme }) => theme.fontSizes["2xl"]};
+  text-align: center;
+`;
+
+const Subtitle = styled.p`
+  margin-bottom: ${({ theme }) => theme.spacing.lg};
+  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
   text-align: center;
 `;
 
@@ -36,35 +50,9 @@ const Form = styled.form`
   gap: ${({ theme }) => theme.spacing.md};
 `;
 
-const Input = styled.input`
-  padding: 12px;
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  background: ${({ theme }) => theme.colors.bgInput};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.colors.borderFocus};
-  }
-`;
-
-const Button = styled.button`
-  margin-top: ${({ theme }) => theme.spacing.sm};
-  padding: 12px;
-  border-radius: ${({ theme }) => theme.radii.md};
-  background: ${({ theme }) => theme.colors.primary};
-  color: white;
-  font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  transition: ${({ theme }) => theme.transition};
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.primaryHover};
-  }
-`;
-
 const RegisterLink = styled.span`
-  color: ${({ theme }) => theme.colors.info};
+  color: ${({ theme }) => theme.colors.primary};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
   cursor: pointer;
 `;
 
@@ -133,14 +121,16 @@ export default function Login() {
 
       <Card>
 
-        <Logo src={logo} alt="BDS Logo" />
+        <Logo src={logo} alt="Bastidor OS" />
 
         <Title>Entrar</Title>
+        <Subtitle>Acesse o ambiente operacional do Bastidor OS</Subtitle>
 
         <Form onSubmit={handleLogin}>
 
           <Input
-            placeholder="Email"
+            label="E-mail"
+            placeholder="voce@empresa.com.br"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -148,15 +138,16 @@ export default function Login() {
           />
 
           <Input
-            placeholder="Senha"
+            label="Senha"
+            placeholder="Digite sua senha"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
 
-          <Button type="submit" disabled={loading}>
-            {loading ? "Entrando..." : "Entrar"}
+          <Button type="submit" fullWidth loading={loading} loadingLabel="Entrando">
+            Entrar
           </Button>
 
         </Form>

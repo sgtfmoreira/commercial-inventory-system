@@ -1,3 +1,7 @@
+import { CheckboxControl } from '../components/FormFields';
+import DSButton from '../components/Button';
+import { InputControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { MdAdd, MdEdit, MdDelete, MdSearch, MdEdit as MdQty, MdStore, MdWarning, MdPictureAsPdf, MdTimeline } from 'react-icons/md';
@@ -119,7 +123,7 @@ const SearchBox = styled.div`
   }
 `;
 
-const SearchInput = styled.input`
+const SearchInput = styled(InputControl)`
   background: none;
   border: none;
   outline: none;
@@ -135,7 +139,7 @@ const FilterGroup = styled.div`
   align-items: center;
   flex-wrap: wrap;
 `;
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 
@@ -225,30 +229,9 @@ const ActionRow = styled.div`
   white-space: nowrap;
 `;
 
-const IconBtn = styled.button`
-  background: ${({ theme }) => theme.colors.bgCard};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.radii.md};
-  color: ${({ theme, color }) => theme.colors[color] || theme.colors.textSecondary};
-
-  width: 34px;
-  height: 34px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  cursor: pointer;
-  font-size: 1rem;
-
-  transition: ${({ theme }) => theme.transition};
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.bgHover};
-    border-color: ${({ theme }) => theme.colors.textMuted};
-    color: ${({ theme, color }) => theme.colors[color] || theme.colors.textPrimary};
-  }
-`;
+const IconBtn = ({ color, ...props }) => (
+  <DSButton size="sm" iconOnly variant={color === 'danger' ? 'danger' : 'outlined'} {...props} />
+);
 
 const FormGrid = styled.div`
   display: grid;
@@ -1194,8 +1177,7 @@ const Products = () => {
 
                             <FormFull>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
+                                    <CheckboxControl
                                         checked={form.trackInventory}
                                         onChange={(e) => setForm((f) => ({ ...f, trackInventory: e.target.checked }))}
                                     />
@@ -1238,8 +1220,7 @@ const Products = () => {
                     {editTarget && (
                         <FormFull>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '8px' }}>
-                                <input 
-                                    type="checkbox" 
+                                <CheckboxControl
                                     checked={form.isActive} 
                                     onChange={(e) => setForm(f => ({ ...f, isActive: e.target.checked }))} 
                                     style={{ width: '16px', height: '16px', accentColor: form.isActive ? '#10b981' : '#ef4444' }}
@@ -1393,8 +1374,7 @@ const Products = () => {
                 />
 
                 <div style={{ marginTop: 15, display: "flex", alignItems: "center", gap: 8 }}>
-                    <input 
-                        type="checkbox" 
+                    <CheckboxControl
                         checked={syncNetwork}
                         onChange={(e) => setSyncNetwork(e.target.checked)}
                         style={{ cursor: "pointer", width: 16, height: 16, accentColor: '#10b981' }}

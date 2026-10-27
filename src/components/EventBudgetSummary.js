@@ -1,3 +1,4 @@
+import DSButton from './Button';
 import React,{useState} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -9,7 +10,7 @@ const Grid=styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(
 const Card=styled.div`padding:14px;border-radius:10px;background:${({theme})=>theme.colors.bgInput};span{display:block;color:${({theme})=>theme.colors.textMuted};font-size:.75rem}`;
 const Check=styled.li`margin:7px 0;color:${({$passed,theme})=>$passed?theme.colors.textPrimary:'#b45309'};`;
 const Actions=styled.div`display:flex;gap:8px;flex-wrap:wrap;align-items:center;`;
-const Button=styled.button`border:0;border-radius:8px;padding:10px 14px;background:${({theme,$secondary})=>$secondary?theme.colors.bgHover:theme.colors.primary};color:${({theme,$secondary})=>$secondary?theme.colors.textPrimary:'white'};font-weight:700;cursor:pointer;&:disabled{opacity:.55;cursor:not-allowed;}`;
+const Button=DSButton;
 const money=value=>value==null?'—':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const percent=value=>value==null?'—':`${Number(value).toLocaleString('pt-BR',{maximumFractionDigits:2})}%`;
 const date=value=>value?new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC'}).format(new Date(value.length===10?`${value}T00:00:00Z`:value)):'—';

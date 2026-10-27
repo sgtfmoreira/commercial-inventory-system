@@ -1,3 +1,4 @@
+import DataTable from '../components/Table';
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import api from "../services/api";
@@ -9,7 +10,7 @@ const Header = styled.div`
   margin-bottom: 20px;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 `;
@@ -85,7 +86,7 @@ export default function StockAuditHistory() {
                                 <Td
                                     style={{
                                         fontWeight: "bold",
-                                        color: audit.financialImpact >= 0 ? "#16a34a" : "#dc2626"
+                                        color: audit.financialImpact >= 0 ? "#16a34a" : "var(--color-danger)"
                                     }}
                                 >
                                     {audit.financialImpact.toLocaleString("pt-BR", {

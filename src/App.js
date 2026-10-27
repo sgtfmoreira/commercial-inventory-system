@@ -73,7 +73,20 @@ function App() {
         <GlobalStyles />
         <AppProvider>
           <BrowserRouter>
-            <Toaster position="top-right" />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '10px',
+                  boxShadow: '0 10px 28px rgba(31, 25, 58, 0.12)',
+                  fontSize: '0.875rem',
+                },
+              }}
+            />
 
           <Routes>
 

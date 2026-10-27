@@ -1,3 +1,4 @@
+import { InputControl } from '../components/FormFields';
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { MdAdd, MdEdit, MdDelete, MdSearch, MdBusiness } from 'react-icons/md';
@@ -60,7 +61,7 @@ const SearchBox = styled.div`
   }
 `;
 
-const SearchInput = styled.input`
+const SearchInput = styled(InputControl)`
   background: none;
   border: none;
   outline: none;
@@ -387,7 +388,7 @@ const Suppliers = () => {
             >
                 <p style={{ color: '#4B5563', lineHeight: 1.7 }}>
                     Tem certeza que deseja excluir o fornecedor{' '}
-                    <strong style={{ color: '#111827' }}>{deleteModal?.name}</strong>?
+                    <strong style={{ color: 'var(--color-text)' }}>{deleteModal?.name}</strong>?
                 </p>
             </Modal>
         </>

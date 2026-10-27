@@ -1,3 +1,4 @@
+import DSButton from '../components/Button';
 import React, { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import {
@@ -60,17 +61,7 @@ const FilterGroup = styled.label`
 
 
 
-const ClearBtn = styled.button`
-  font-size: ${({ theme }) => theme.fontSizes.xs};
-  color: ${({ theme }) => theme.colors.danger};
-  background: ${({ theme }) => theme.colors.dangerLight};
-  border: none;
-  border-radius: ${({ theme }) => theme.radii.sm};
-  padding: 5px 10px;
-  cursor: pointer;
-  transition: ${({ theme }) => theme.transition};
-  &:hover { background: ${({ theme }) => theme.colors.danger}; color: #fff; }
-`;
+const ClearBtn = (props) => <DSButton size="sm" variant="danger" {...props} />;
 
 const Timeline = styled.div`
   display: flex;
@@ -129,10 +120,10 @@ const LogTime = styled.span`
 
 // ─── Action / Entity config ───────────────────────────────────────────────────
 const ACTION_CONFIG = {
-    CREATE: { icon: <MdAddCircle />, bg: 'rgba(5,150,105,0.12)', color: '#059669', badgeVariant: 'success', label: 'Criação' },
-    UPDATE: { icon: <MdEdit />, bg: 'rgba(37,99,235,0.12)', color: '#2563EB', badgeVariant: 'info', label: 'Edição' },
-    DELETE: { icon: <MdDelete />, bg: 'rgba(220,38,38,0.12)', color: '#DC2626', badgeVariant: 'danger', label: 'Exclusão' },
-    COMPLETE: { icon: <MdCheckCircle />, bg: 'rgba(5,150,105,0.12)', color: '#059669', badgeVariant: 'success', label: 'Conclusão' },
+    CREATE: { icon: <MdAddCircle />, bg: 'rgba(5,150,105,0.12)', color: 'var(--color-success)', badgeVariant: 'success', label: 'Criação' },
+    UPDATE: { icon: <MdEdit />, bg: 'rgba(37,99,235,0.12)', color: 'var(--color-info)', badgeVariant: 'info', label: 'Edição' },
+    DELETE: { icon: <MdDelete />, bg: 'rgba(220,38,38,0.12)', color: 'var(--color-danger)', badgeVariant: 'danger', label: 'Exclusão' },
+    COMPLETE: { icon: <MdCheckCircle />, bg: 'rgba(5,150,105,0.12)', color: 'var(--color-success)', badgeVariant: 'success', label: 'Conclusão' },
 };
 
 const ENTITY_LABELS = {
@@ -171,7 +162,7 @@ const ActivityLog = () => {
 
             {/* Filters */}
             <FiltersBar>
-                <MdFilterList style={{ color: '#0066CC', flexShrink: 0 }} />
+                <MdFilterList style={{ color: '#6D5EF4', flexShrink: 0 }} />
 
                 <FilterGroup>
                     Entidade:
@@ -204,7 +195,7 @@ const ActivityLog = () => {
                     </ClearBtn>
                 )}
 
-                <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#9CA3AF' }}>
+                <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                     {filtered.length} resultado(s)
                 </span>
             </FiltersBar>

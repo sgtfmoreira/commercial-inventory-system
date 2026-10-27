@@ -1,3 +1,6 @@
+import DSButton from './Button';
+import { InputControl } from './FormFields';
+import { TextareaControl } from './FormFields';
 import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
@@ -6,12 +9,12 @@ import eventService from '../services/eventService';
 const Panel=styled.section`background:${({theme})=>theme.colors.bgCard};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.lg};padding:20px;display:grid;gap:18px;`;
 const Grid=styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;`;
 const Field=styled.label`display:grid;gap:5px;font-size:.82rem;font-weight:700;`;
-const Input=styled.input`padding:10px;border:1px solid ${({theme})=>theme.colors.border};border-radius:8px;background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
-const Textarea=styled.textarea`padding:10px;border:1px solid ${({theme})=>theme.colors.border};border-radius:8px;background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};min-height:90px;`;
+const Input=styled(InputControl)`padding:10px;border:1px solid ${({theme})=>theme.colors.border};border-radius:8px;background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
+const Textarea=styled(TextareaControl)`padding:10px;border:1px solid ${({theme})=>theme.colors.border};border-radius:8px;background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};min-height:90px;`;
 const Card=styled.div`padding:14px;border-radius:10px;background:${({theme})=>theme.colors.bgInput};span{display:block;color:${({theme})=>theme.colors.textMuted};font-size:.75rem}strong{font-size:1.1rem}`;
-const Button=styled.button`border:0;border-radius:8px;padding:10px 14px;background:${({theme})=>theme.colors.primary};color:white;font-weight:700;cursor:pointer;justify-self:start;`;
+const Button=DSButton;
 const Stepper=styled.div`display:grid;grid-template-columns:38px 1fr 38px;button{border:1px solid ${({theme})=>theme.colors.border};background:${({theme})=>theme.colors.bgHover};color:${({theme})=>theme.colors.textPrimary};font-size:1.1rem;cursor:pointer;}input{border-radius:0;}`;
-const Notice=styled.div`padding:11px 13px;border-radius:8px;background:${({theme})=>theme.colors.bgInput};border-left:4px solid #d97706;`;
+const Notice=styled.div`padding:11px 13px;border-radius:8px;background:${({theme})=>theme.colors.bgInput};border-left:4px solid var(--color-warning);`;
 
 const money=value=>value==null?'—':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const percent=value=>value==null?'—':`${Number(value).toLocaleString('pt-BR',{maximumFractionDigits:2})}%`;
@@ -29,7 +32,7 @@ export default function EventPricingPanel({budget,onUpdate}){
   return <Panel><div><h2>Precificação</h2><p>Os encargos incidem sobre a receita. Os indicadores exibidos abaixo são os valores persistidos pelo servidor.</p></div>
     <Grid><Card><span>Cardápio</span><strong>{money(budget.costMenu)}</strong></Card><Card><span>Equipe</span><strong>{money(budget.costStaff)}</strong></Card><Card><span>Serviços</span><strong>{money(budget.costService)}</strong></Card><Card><span>Equipamentos</span><strong>{money(budget.costEquipment)}</strong></Card><Card><span>Transporte</span><strong>{money(budget.costTransport)}</strong></Card><Card><span>Taxas fixas</span><strong>{money(budget.costFees)}</strong></Card><Card><span>Outros</span><strong>{money(budget.costOther)}</strong></Card><Card><span>Custo total</span><strong>{money(budget.totalCost)}</strong></Card></Grid>
     <form onSubmit={save}><Grid>
-      <Field>Margem desejada (%)<Stepper><button type="button" onClick={()=>step(-1)} aria-label="Diminuir margem">−</button><Input required type="number" min="0" max="100" step="0.01" name="desiredMarginPercent" value={form.desiredMarginPercent} onChange={change}/><button type="button" onClick={()=>step(1)} aria-label="Aumentar margem">+</button></Stepper></Field>
+      <Field>Margem desejada (%)<Stepper><DSButton type="button" onClick={()=>step(-1)} aria-label="Diminuir margem">−</DSButton><Input required type="number" min="0" max="100" step="0.01" name="desiredMarginPercent" value={form.desiredMarginPercent} onChange={change}/><DSButton type="button" onClick={()=>step(1)} aria-label="Aumentar margem">+</DSButton></Stepper></Field>
       <Field>Impostos (%)<Input required type="number" min="0" max="100" step="0.01" name="taxPercent" value={form.taxPercent} onChange={change}/></Field>
       <Field>Comissão (%)<Input required type="number" min="0" max="100" step="0.01" name="commissionPercent" value={form.commissionPercent} onChange={change}/></Field>
       <Field>Taxa de cartão (%)<Input required type="number" min="0" max="100" step="0.01" name="cardFeePercent" value={form.cardFeePercent} onChange={change}/></Field>

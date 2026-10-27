@@ -1,3 +1,6 @@
+import DSButton from '../components/Button';
+import { InputControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import {
@@ -62,7 +65,7 @@ const FilterGroup = styled.label`
 
 
 
-const DateInput = styled.input`
+const DateInput = styled(InputControl)`
   background: ${({ theme }) => theme.colors.bgInput};
   border: 1.5px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.md};
@@ -75,17 +78,7 @@ const DateInput = styled.input`
   &::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
 `;
 
-const ClearBtn = styled.button`
-  font-size: ${({ theme }) => theme.fontSizes.xs};
-  color: ${({ theme }) => theme.colors.danger};
-  background: ${({ theme }) => theme.colors.dangerLight};
-  border: none;
-  border-radius: ${({ theme }) => theme.radii.sm};
-  padding: 5px 10px;
-  cursor: pointer;
-  transition: ${({ theme }) => theme.transition};
-  &:hover { background: ${({ theme }) => theme.colors.danger}; color: #fff; }
-`;
+const ClearBtn = (props) => <DSButton size="sm" variant="danger" {...props} />;
 
 const SummaryRow = styled.div`
   display: grid;
@@ -122,7 +115,7 @@ const SummaryValue = styled.span`
 
 const TableWrap = styled.div`overflow-x: auto;`;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%; 
   border-collapse: collapse;
 
@@ -230,9 +223,9 @@ const PaginationActions = styled.div`
 
 // ─── Type config ──────────────────────────────────────────────────────────────
 const TYPE_CONFIG = {
-    entry: { label: 'Entrada', variant: 'success', icon: <MdArrowUpward />, color: '#059669', positive: true },
-    exit: { label: 'Saída', variant: 'danger', icon: <MdArrowDownward />, color: '#DC2626', positive: false },
-    adjustment: { label: 'Ajuste', variant: 'info', icon: <MdSwapHoriz />, color: '#2563EB', positive: null },
+    entry: { label: 'Entrada', variant: 'success', icon: <MdArrowUpward />, color: 'var(--color-success)', positive: true },
+    exit: { label: 'Saída', variant: 'danger', icon: <MdArrowDownward />, color: 'var(--color-danger)', positive: false },
+    adjustment: { label: 'Ajuste', variant: 'info', icon: <MdSwapHoriz />, color: 'var(--color-info)', positive: null },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -337,7 +330,7 @@ const StockHistory = () => {
 
             {/* Filters */}
             <FiltersBar>
-                <MdFilterList style={{ color: '#0066CC', flexShrink: 0 }} />
+                <MdFilterList style={{ color: '#6D5EF4', flexShrink: 0 }} />
 
                 <FilterGroup>
                     Produto:
@@ -376,24 +369,24 @@ const StockHistory = () => {
 
             {/* Summary */}
             <SummaryRow>
-                <SummaryCard accent="#0066CC">
+                <SummaryCard accent="#6D5EF4">
                     <SummaryLabel>Total filtrado</SummaryLabel>
-                    <SummaryValue color="#111827">{summary.total}</SummaryValue>
+                    <SummaryValue color="var(--color-text)">{summary.total}</SummaryValue>
                 </SummaryCard>
-                <SummaryCard accent="#059669">
+                <SummaryCard accent="var(--color-success)">
                     <SummaryLabel>Entradas</SummaryLabel>
-                    <SummaryValue color="#059669">{summary.entry}</SummaryValue>
+                    <SummaryValue color="var(--color-success)">{summary.entry}</SummaryValue>
                 </SummaryCard>
-                <SummaryCard accent="#DC2626">
+                <SummaryCard accent="var(--color-danger)">
                     <SummaryLabel>Saídas</SummaryLabel>
-                    <SummaryValue color="#DC2626">{summary.exit}</SummaryValue>
+                    <SummaryValue color="var(--color-danger)">{summary.exit}</SummaryValue>
                 </SummaryCard>
-                <SummaryCard accent="#7C3AED">
+                <SummaryCard accent="#5B4BD8">
                     <SummaryLabel>Bonificação</SummaryLabel>
                     <SummaryValue>{summary.bonus}</SummaryValue>
                 </SummaryCard>
 
-                <SummaryCard accent="#DC2626">
+                <SummaryCard accent="var(--color-danger)">
                     <SummaryLabel>Consumo Interno</SummaryLabel>
                     <SummaryValue>{summary.consumption}</SummaryValue>
                 </SummaryCard>
@@ -440,7 +433,7 @@ const StockHistory = () => {
 
                                     return (
                                         <Tr key={m.id}>
-                                            <Td data-label="Data / Hora" style={{ whiteSpace: 'nowrap', color: '#6B7280', fontSize: '0.8rem' }}>
+                                            <Td data-label="Data / Hora" style={{ whiteSpace: 'nowrap', color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>
                                                 {new Date(m.createdAt).toLocaleDateString('pt-BR')}{' '}
                                                 {new Date(m.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                             </Td>
@@ -455,7 +448,7 @@ const StockHistory = () => {
                                                 <QtyDelta $positive={isPositive}>
                                                     {isPositive ? '+' : ''}{deltaConv.toFixed(2)} {pUnit}
                                                 </QtyDelta>
-                                                <span style={{ marginLeft: '8px', fontSize: '11px', color: '#6B7280' }}>
+                                                <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
                                                     ({isPositive ? '+' : ''}{deltaRaw.toFixed(0)} {bUnit})
                                                 </span>
                                             </Td>
@@ -463,15 +456,15 @@ const StockHistory = () => {
                                                 <span style={{ color: '#4B5563', fontWeight: 500 }}>
                                                     {prevConv.toFixed(2)} {pUnit}
                                                 </span>
-                                                <span style={{ marginLeft: '8px', fontSize: '11px', color: '#94A3B8' }}>
+                                                <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--color-text-muted)' }}>
                                                     ({Number(m.previousQuantity).toFixed(0)} {bUnit})
                                                 </span>
                                             </Td>
                                             <Td data-label="Estoque Novo">
-                                                <span style={{ color: '#111827', fontWeight: 600 }}>
+                                                <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
                                                     {newConv.toFixed(2)} {pUnit}
                                                 </span>
-                                                <span style={{ marginLeft: '8px', fontSize: '11px', color: '#94A3B8' }}>
+                                                <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--color-text-muted)' }}>
                                                     ({Number(m.newQuantity).toFixed(0)} {bUnit})
                                                 </span>
                                             </Td>

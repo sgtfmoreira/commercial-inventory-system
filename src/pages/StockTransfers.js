@@ -1,3 +1,6 @@
+import { SelectControl } from '../components/FormFields';
+import { InputControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import styled from "styled-components";
@@ -6,38 +9,10 @@ import Badge from "../components/Badge";
 import Select from "../components/Select";
 import toast from "react-hot-toast"
 import Button from "../components/Button";
+import Card, { CardGrid, StatCard } from '../components/Card';
+import { Page, PageHeader, PageHeading, PageTitle, PageSubtitle } from '../components/PageLayout';
+import { Tabs, Tab } from '../components/Tabs';
 import { MdRemoveCircleOutline, MdAdd } from "react-icons/md";
-
-const Container = styled.div`
-  padding: ${({ theme }) => theme.spacing.lg};
-`;
-
-const Header = styled.div`
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
-`;
-
-const Title = styled.h1`
-  font-size: ${({ theme }) => theme.fontSizes["3xl"]};
-  font-weight: ${({ theme }) => theme.fontWeights.bold};
-`;
-
-const KpiGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: ${({ theme }) => theme.spacing.md};
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
-`;
-
-const KpiCard = styled.div`
-  background: ${({ theme }) => theme.colors.bgCard};
-  border-radius: ${({ theme }) => theme.radii.lg};
-  padding: ${({ theme }) => theme.spacing.lg};
-  box-shadow: ${({ theme }) => theme.shadows.card};
-
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
 
 const KpiTitle = styled.span`
   font-size: ${({ theme }) => theme.fontSizes.sm};
@@ -49,45 +24,11 @@ const KpiValue = styled.span`
   font-weight: ${({ theme }) => theme.fontWeights.bold};
 `;
 
-const Tabs = styled.div`
-  display: flex;
-  gap: ${({ theme }) => theme.spacing.sm};
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
-`;
-
-const Tab = styled.button`
-  padding: 10px 16px;
-  border-radius: ${({ theme }) => theme.radii.md};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  font-weight: ${({ theme }) => theme.fontWeights.semibold};
-
-  background: ${({ $active, theme }) =>
-        $active ? theme.colors.primary : theme.colors.bgCard};
-
-  color: ${({ $active, theme }) =>
-        $active ? "#fff" : theme.colors.textPrimary};
-
-  border: 1px solid ${({ theme }) => theme.colors.border};
-
-  transition: ${({ theme }) => theme.transition};
-
-  &:hover {
-    background: ${({ $active, theme }) =>
-        $active ? theme.colors.primaryHover : theme.colors.bgHover};
-  }
-`;
-
-const Card = styled.div`
-  background: ${({ theme }) => theme.colors.bgCard};
-  border-radius: ${({ theme }) => theme.radii.lg};
-  padding: ${({ theme }) => theme.spacing.lg};
-  box-shadow: ${({ theme }) => theme.shadows.card};
-`;
 const TableOverflow = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 `;
@@ -132,7 +73,7 @@ const Label = styled.label`
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
 `;
 
-const Input = styled.input`
+const Input = styled(InputControl)`
   padding: 10px;
   border-radius: ${({ theme }) => theme.radii.md};
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -166,7 +107,7 @@ const FilterLabel = styled.label`
   letter-spacing: 0.04em;
 `;
 
-const FilterInput = styled.input`
+const FilterInput = styled(InputControl)`
   padding: 8px 12px;
   border-radius: ${({ theme }) => theme.radii.md};
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -316,7 +257,7 @@ const getTransferPreview = (source, destination, quantity) => {
     }
 
     const converted = Number(((sourceQuantity / sourcePack) * destinationPack).toFixed(6));
-    if (normalizeTransferUnit(destination.unit) === 'unidade' && !Number.isInteger(converted)) {
+    if (['un', 'und', 'unid', 'unidade', 'unidades'].includes(normalizeTransferUnit(destination.unit)) && !Number.isInteger(converted)) {
         return { error: `A conversão resulta em ${converted} ${destination.unit}; informe uma quantidade que complete unidades inteiras.` };
     }
 
@@ -670,23 +611,26 @@ export default function StockTransfers() {
 
     return (
 
-        <Container>
+        <Page>
 
-            <Header>
-                <Title>Transferências de Estoque</Title>
-            </Header>
+            <PageHeader>
+                <PageHeading>
+                    <PageTitle>Transferências de estoque</PageTitle>
+                    <PageSubtitle>Envie, receba e acompanhe movimentações entre unidades.</PageSubtitle>
+                </PageHeading>
+            </PageHeader>
 
             <Tabs>
 
                 <Tab
-                    $active={tab === "create"}
+                    active={tab === "create"}
                     onClick={() => setTab("create")}
                 >
                     Nova Transferência
                 </Tab>
 
                 <Tab
-                    $active={tab === "sent"}
+                    active={tab === "sent"}
                     onClick={() => {
                         setTab("sent");
                         loadSentTransfers();
@@ -696,7 +640,7 @@ export default function StockTransfers() {
                 </Tab>
 
                 <Tab
-                    $active={tab === "received"}
+                    active={tab === "received"}
                     onClick={() => {
                         setTab("received");
                         loadReceivedTransfers();
@@ -706,7 +650,7 @@ export default function StockTransfers() {
                 </Tab>
 
                 <Tab
-                    $active={tab === "summary"}
+                    active={tab === "summary"}
                     onClick={() => {
                         setTab("summary");
                     }}
@@ -720,9 +664,9 @@ export default function StockTransfers() {
 
                 {tab === "sent" && topProduct && (
 
-                    <KpiGrid>
+                    <CardGrid>
 
-                        <KpiCard>
+                        <StatCard>
 
                             <KpiTitle>Produto mais transferido</KpiTitle>
 
@@ -734,9 +678,9 @@ export default function StockTransfers() {
                                 {topProduct.quantity} transferências
                             </span>
 
-                        </KpiCard>
+                        </StatCard>
 
-                    </KpiGrid>
+                    </CardGrid>
 
                 )}
 
@@ -758,7 +702,7 @@ export default function StockTransfers() {
                                 />
                             </Field>
                             {destinationId && loadingDestProducts && (
-                                <div style={{ marginTop: 8, fontSize: 14, color: '#64748b' }}>🔄 Buscando produtos do destino...</div>
+                                <div style={{ marginTop: 8, fontSize: 14, color: 'var(--color-text-secondary)' }}>🔄 Buscando produtos do destino...</div>
                             )}
                         </Card>
 
@@ -811,7 +755,7 @@ export default function StockTransfers() {
                                                 onChange={(e) => updateItem(item._key, "quantity", e.target.value)}
                                             />
                                             {selectedProduct && q > 0 && (
-                                                <div style={{ fontSize: '0.8rem', color: isExceeded ? '#ef4444' : '#64748b', marginTop: '4px', fontWeight: isExceeded ? 600 : 400 }}>
+                                                <div style={{ fontSize: '0.8rem', color: isExceeded ? 'var(--color-danger)' : 'var(--color-text-secondary)', marginTop: '4px', fontWeight: isExceeded ? 600 : 400 }}>
                                                     {isExceeded ? `⚠️ Estoque insuficiente! Máximo: ${selectedProduct.quantity} ${selectedProduct.unit}` : `Equivale a ${(q / (selectedProduct.packQuantity || 1)).toFixed(2)} ${selectedProduct.purchaseUnit || 'un'}(s)`}
                                                 </div>
                                             )}
@@ -821,13 +765,13 @@ export default function StockTransfers() {
                                             <div style={{ gridColumn: '1 / -1' }}>
                                                 <Label style={{ display: 'block', marginBottom: 4 }}>Produto correspondente no destino</Label>
                                                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                                                    <select
+                                                    <SelectControl
                                                         value={item.destinationProductId}
                                                         onChange={(e) => updateItem(item._key, "destinationProductId", e.target.value)}
                                                         style={{
                                                             padding: '10px',
                                                             borderRadius: '8px',
-                                                            border: '1px solid #e2e8f0',
+                                                            border: '1px solid var(--color-border)',
                                                             background: '#fff',
                                                             fontSize: '0.875rem',
                                                             flex: 1,
@@ -841,7 +785,7 @@ export default function StockTransfers() {
                                                                 {p.name} ({Number(p.quantity).toFixed(1)} {p.unit})
                                                             </option>
                                                         ))}
-                                                    </select>
+                                                    </SelectControl>
                                                     {item.destinationProductId ? (
                                                         <Badge variant="success">✅ Incrementar estoque existente</Badge>
                                                     ) : (
@@ -852,7 +796,7 @@ export default function StockTransfers() {
                                                     <div style={{
                                                         marginTop: 8,
                                                         fontSize: '0.85rem',
-                                                        color: transferPreview.error ? '#ef4444' : '#166534',
+                                                        color: transferPreview.error ? 'var(--color-danger)' : '#166534',
                                                         fontWeight: 600
                                                     }}>
                                                         {transferPreview.error || `Entrada prevista: ${transferPreview.quantity} ${transferPreview.unit}`}
@@ -891,7 +835,7 @@ export default function StockTransfers() {
 
                 {tab === "sent" && (
 
-                    <table style={{ width: "100%" }}>
+                    <DataTable style={{ width: "100%" }}>
                         <thead>
                             <tr>
                                 <th>Produto</th>
@@ -923,7 +867,7 @@ export default function StockTransfers() {
                                     <Td>
                                         {transfer.quantity} {transfer.sourceUnit || transfer.product?.unit}
                                         {transfer.destinationQuantity != null && transfer.destinationProduct && (
-                                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                                                 Entrada: {transfer.destinationQuantity} {transfer.destinationUnit || transfer.destinationProduct.unit}
                                             </div>
                                         )}
@@ -957,7 +901,7 @@ export default function StockTransfers() {
 
                         </tbody>
 
-                    </table>
+                    </DataTable>
 
                 )}
 
@@ -989,7 +933,7 @@ export default function StockTransfers() {
                                             {transfer.destinationQuantity ?? transfer.quantity}{' '}
                                             {transfer.destinationUnit || transfer.destinationProduct?.unit || transfer.product?.unit}
                                             {transfer.destinationQuantity != null && (
-                                                <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                                                     Origem: {transfer.quantity} {transfer.sourceUnit || transfer.product?.unit}
                                                 </div>
                                             )}
@@ -1093,39 +1037,39 @@ export default function StockTransfers() {
 
                         {!summaryLoading && summaryData && (
                             <>
-                                <KpiGrid>
-                                    <KpiCard>
+                                <CardGrid>
+                                    <StatCard>
                                         <KpiTitle>Total Enviado (Qtd)</KpiTitle>
                                         <KpiValue>{summaryData.sent?.totalQuantity?.toFixed(1) || 0}</KpiValue>
-                                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                                             {summaryData.sent?.transferCount || 0} transferência(s)
                                         </span>
-                                    </KpiCard>
+                                    </StatCard>
 
-                                    <KpiCard>
+                                    <StatCard>
                                         <KpiTitle>Total Enviado (Valor)</KpiTitle>
-                                        <KpiValue style={{ color: '#ef4444' }}>
+                                        <KpiValue style={{ color: 'var(--color-danger)' }}>
                                             {formatCurrency(summaryData.sent?.totalValue)}
                                         </KpiValue>
-                                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Saída de valor</span>
-                                    </KpiCard>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Saída de valor</span>
+                                    </StatCard>
 
-                                    <KpiCard>
+                                    <StatCard>
                                         <KpiTitle>Total Recebido (Qtd)</KpiTitle>
                                         <KpiValue>{summaryData.received?.totalQuantity?.toFixed(1) || 0}</KpiValue>
-                                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                                             {summaryData.received?.transferCount || 0} transferência(s)
                                         </span>
-                                    </KpiCard>
+                                    </StatCard>
 
-                                    <KpiCard>
+                                    <StatCard>
                                         <KpiTitle>Total Recebido (Valor)</KpiTitle>
                                         <KpiValue style={{ color: '#22c55e' }}>
                                             {formatCurrency(summaryData.received?.totalValue)}
                                         </KpiValue>
-                                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Entrada de valor</span>
-                                    </KpiCard>
-                                </KpiGrid>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Entrada de valor</span>
+                                    </StatCard>
+                                </CardGrid>
 
                                 {/* ENVIADAS POR ESTABELECIMENTO */}
                                 <SummarySection>
@@ -1254,7 +1198,7 @@ export default function StockTransfers() {
             </Card>
 
 
-        </Container>
+        </Page>
 
     );
 

@@ -1,3 +1,5 @@
+import { InputControl } from '../components/FormFields';
+import DSButton from '../components/Button';
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { MdTrendingUp, MdTrendingDown, MdInfoOutline } from 'react-icons/md';
@@ -278,7 +280,7 @@ const FinancialReport = () => {
             value: summary.netRevenue,
             detail: `Bruta ${formatCurrency(summary.grossRevenue)} · Descontos ${formatCurrency(summary.discounts)}`,
             icon: <MdTrendingUp />,
-            color: "#2563EB",
+            color: "var(--color-info)",
             bg: "rgba(37, 99, 235, 0.12)"
         },
         {
@@ -286,7 +288,7 @@ const FinancialReport = () => {
             value: summary.salesCogs,
             detail: "Custo congelado das vendas",
             icon: <MdTrendingDown />,
-            color: "#7C3AED",
+            color: "#5B4BD8",
             bg: "rgba(124, 58, 237, 0.12)"
         },
         {
@@ -295,7 +297,7 @@ const FinancialReport = () => {
             formatter: formatPercentage,
             detail: summary.revenueAvailable ? "Sobre a receita líquida" : "Aguardando dados de receita",
             icon: <MdTrendingDown />,
-            color: "#7C3AED",
+            color: "#5B4BD8",
             bg: "rgba(124, 58, 237, 0.12)"
         },
         {
@@ -335,20 +337,20 @@ const FinancialReport = () => {
             <Header>
                 <Title>Relatório Financeiro</Title>
                 <FilterGroup>
-                    <input 
+                    <InputControl
                         type="date" 
                         value={dateFrom} 
                         onChange={(e) => setDateFrom(e.target.value)} 
                         max={dateTo}
                     />
-                    <span style={{ color: '#9CA3AF' }}>até</span>
-                    <input 
+                    <span style={{ color: 'var(--color-text-muted)' }}>até</span>
+                    <InputControl
                         type="date" 
                         value={dateTo} 
                         onChange={(e) => setDateTo(e.target.value)} 
                         min={dateFrom}
                     />
-                    <button onClick={loadData}>Filtrar</button>
+                    <DSButton onClick={loadData}>Filtrar</DSButton>
                 </FilterGroup>
             </Header>
 
@@ -391,12 +393,12 @@ const FinancialReport = () => {
                 <ChartTitle>Receita e CMV por dia</ChartTitle>
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
                         <XAxis 
                             dataKey="date" 
                             axisLine={false} 
                             tickLine={false} 
-                            tick={{ fill: '#6B7280', fontSize: 12 }} 
+                            tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }}
                             tickFormatter={(val) => {
                                 const parts = val.split('-');
                                 return `${parts[2]}/${parts[1]}`;
@@ -405,7 +407,7 @@ const FinancialReport = () => {
                         <YAxis 
                             axisLine={false} 
                             tickLine={false} 
-                            tick={{ fill: '#6B7280', fontSize: 12 }}
+                            tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }}
                             tickFormatter={(val) => `R$ ${val}`} 
                         />
                         <RechartsTooltip 
@@ -418,8 +420,8 @@ const FinancialReport = () => {
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                         />
                         <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                        <Bar name="CMV de bebidas" dataKey="salesCogs" fill="#7C3AED" radius={[4, 4, 0, 0]} />
-                        <Bar name="Receita líquida" dataKey="netRevenue" fill="#2563EB" radius={[4, 4, 0, 0]} />
+                        <Bar name="CMV de bebidas" dataKey="salesCogs" fill="#5B4BD8" radius={[4, 4, 0, 0]} />
+                        <Bar name="Receita líquida" dataKey="netRevenue" fill="var(--color-info)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </ChartContainer>
@@ -437,7 +439,7 @@ const FinancialReport = () => {
                     ))}
                     <DetailRow>
                         <span>Impacto líquido das auditorias</span>
-                        <strong style={{ color: Number(summary.auditNetImpact) < 0 ? '#DC2626' : '#059669' }}>
+                        <strong style={{ color: Number(summary.auditNetImpact) < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
                             {formatSignedCurrency(summary.auditNetImpact)}
                         </strong>
                     </DetailRow>

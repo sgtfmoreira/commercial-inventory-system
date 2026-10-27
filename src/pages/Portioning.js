@@ -1,3 +1,5 @@
+import { InputControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import styled, { keyframes } from "styled-components";
 import { useApp } from "../context/AppContext";
@@ -16,14 +18,15 @@ import { Input } from '../components/FormFields';
 import Select from '../components/Select';
 import EmptyState from '../components/EmptyState';
 import { getPortioningSourceProducts, getPortioningTargetProducts } from '../utils/portioningProducts';
+import { Tabs, Tab } from '../components/Tabs';
 
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`;
 
-const Container = styled.div`padding: ${({ theme }) => theme.spacing.lg}; animation: ${fadeIn} 0.3s ease;`;
+const Container = styled.div`animation: ${fadeIn} 0.3s ease;`;
 const PageHeader = styled.div`display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 12px; flex-wrap: wrap;`;
 const TitleBlock = styled.div`display: flex; align-items: center; gap: 12px;`;
 const TitleIcon = styled.div`
-  width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #ea580c);
+  width: 44px; height: 44px; border-radius: 12px; background: ${({ theme }) => theme.colors.warning};
   display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.4rem;
 `;
 const PageTitle = styled.h1`font-size: 24px; font-weight: 700; color: ${({ theme }) => theme.colors.textPrimary};`;
@@ -32,18 +35,10 @@ const PageSubtitle = styled.p`font-size: 14px; color: ${({ theme }) => theme.col
 const KpiGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;`;
 const KpiCard = styled.div`
   background: ${({ theme }) => theme.colors.bgCard}; border-radius: 12px; padding: 20px; box-shadow: ${({ theme }) => theme.shadows.card};
-  border-left: 4px solid ${({ $color }) => $color || '#f59e0b'}; display: flex; flex-direction: column; gap: 4px;
+  border-left: 4px solid ${({ $color }) => $color || 'var(--color-warning)'}; display: flex; flex-direction: column; gap: 4px;
 `;
 const KpiLabel = styled.span`font-size: 12px; color: ${({ theme }) => theme.colors.textMuted}; text-transform: uppercase; font-weight: 600;`;
 const KpiValue = styled.span`font-size: 24px; font-weight: 700; color: ${({ $color, theme }) => $color || theme.colors.textPrimary};`;
-
-const Tabs = styled.div`display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid ${({ theme }) => theme.colors.border}; padding-bottom: 10px; overflow-x: auto;`;
-const Tab = styled.button`
-  background: ${({ $active, theme }) => $active ? theme.colors.primaryLight : 'transparent'};
-  color: ${({ $active, theme }) => $active ? theme.colors.primary : theme.colors.textSecondary};
-  font-weight: 600; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; transition: 0.2s; white-space: nowrap;
-  &:hover { background: ${({ theme }) => theme.colors.primaryLight}; color: ${({ theme }) => theme.colors.primary}; }
-`;
 
 const TableHeader = styled.div`display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid ${({ theme }) => theme.colors.border}; gap: 12px;`;
 const SearchBox = styled.div`
@@ -53,7 +48,7 @@ const SearchBox = styled.div`
 `;
 
 const TableOverflow = styled.div`overflow-x: auto;`;
-const Table = styled.table`width: 100%; border-collapse: collapse; min-width: 700px;`;
+const Table = styled(DataTable)`width: 100%; border-collapse: collapse; min-width: 700px;`;
 const Th = styled.th`text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 700; color: ${({ theme }) => theme.colors.textMuted}; text-transform: uppercase; background: ${({ theme }) => theme.colors.bgHover}; border-bottom: 1px solid ${({ theme }) => theme.colors.border};`;
 const Td = styled.td`padding: 14px 16px; font-size: 14px; color: ${({ theme }) => theme.colors.textPrimary}; border-bottom: 1px solid ${({ theme }) => theme.colors.border}; vertical-align: middle;`;
 const Tr = styled.tr`&:hover { background: ${({ theme }) => theme.colors.bgHover}; } &:last-child td { border-bottom: none; }`;
@@ -400,14 +395,14 @@ export default function Portioning() {
             </PageHeader>
 
             <KpiGrid>
-                <KpiCard $color="#f59e0b"><KpiLabel>Total de Ordens</KpiLabel><KpiValue>{kpiTotal}</KpiValue></KpiCard>
-                <KpiCard $color="#f59e0b"><KpiLabel>Pendentes</KpiLabel><KpiValue $color="#f59e0b">{kpiPending}</KpiValue></KpiCard>
-                <KpiCard $color="#10b981"><KpiLabel>Concluídas</KpiLabel><KpiValue $color="#10b981">{kpiCompleted}</KpiValue></KpiCard>
+                <KpiCard $color="var(--color-warning)"><KpiLabel>Total de Ordens</KpiLabel><KpiValue>{kpiTotal}</KpiValue></KpiCard>
+                <KpiCard $color="var(--color-warning)"><KpiLabel>Pendentes</KpiLabel><KpiValue $color="var(--color-warning)">{kpiPending}</KpiValue></KpiCard>
+                <KpiCard $color="var(--color-success)"><KpiLabel>Concluídas</KpiLabel><KpiValue $color="var(--color-success)">{kpiCompleted}</KpiValue></KpiCard>
             </KpiGrid>
 
             <Tabs>
                 {[{ key: 'orders', label: 'Todas as Ordens' }, { key: 'PENDING', label: 'Pendentes' }, { key: 'COMPLETED', label: 'Concluídas' }, { key: 'CANCELLED', label: 'Canceladas' }, { key: 'recipes', label: '📋 Fichas Técnicas' }].map(t => (
-                    <Tab key={t.key} $active={tab === t.key} onClick={() => setTab(t.key)}>{t.label}</Tab>
+                    <Tab key={t.key} active={tab === t.key} onClick={() => setTab(t.key)}>{t.label}</Tab>
                 ))}
             </Tabs>
 
@@ -416,7 +411,7 @@ export default function Portioning() {
                     <TableHeader>
                         <SearchBox>
                             <MdSearch />
-                            <input placeholder="Buscar ordem..." value={search} onChange={e => setSearch(e.target.value)} />
+                            <InputControl placeholder="Buscar ordem..." value={search} onChange={e => setSearch(e.target.value)} />
                         </SearchBox>
                         <Button variant="secondary" onClick={loadOrders}><MdRefresh /></Button>
                     </TableHeader>
@@ -506,7 +501,7 @@ export default function Portioning() {
                     ) : (
                         <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {recipes.map(({ product, recipe }) => (
-                                <div key={product.id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
+                                <div key={product.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                                         <div style={{ fontWeight: 700, fontSize: 14 }}>{product.name} ({product.unit})</div>
                                         <ActionRow>
@@ -516,9 +511,9 @@ export default function Portioning() {
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
                                         {recipe?.items?.map(i => (
-                                            <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, background: '#f8fafc', padding: '6px 12px', borderRadius: 6 }}>
+                                            <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, background: 'var(--color-background)', padding: '6px 12px', borderRadius: 6 }}>
                                                 <span>↳ {i.targetProduct?.name}</span>
-                                                <span style={{ fontWeight: 600, color: '#f59e0b' }}>{i.costAllocationPercentage}% custo</span>
+                                                <span style={{ fontWeight: 600, color: 'var(--color-warning)' }}>{i.costAllocationPercentage}% custo</span>
                                             </div>
                                         ))}
                                     </div>
@@ -562,7 +557,7 @@ export default function Portioning() {
                             </div>
                         </div>
                     ) : modalProductId ? (
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: '#ef4444', background: '#fee2e2', padding: '8px 12px', borderRadius: 8 }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: 'var(--color-danger)', background: '#fee2e2', padding: '8px 12px', borderRadius: 8 }}>
                             <MdInfo /> Este produto não possui uma ficha de desossa configurada.
                         </div>
                     ) : null}
@@ -595,7 +590,7 @@ export default function Portioning() {
                     <div style={{ fontSize: 48 }}>✂️</div>
                     <div>
                         <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Confirmar conclusão da desossa?</p>
-                        <p style={{ color: '#64748b', fontSize: 14 }}>Será dada baixa de <strong>{formatQty(completeTarget?.sourceQuantity, completeTarget?.sourceProduct?.unit)}</strong> de <strong>{completeTarget?.sourceProduct?.name}</strong> e as entradas dos cortes gerados no estoque. Esta ação não pode ser desfeita.</p>
+                        <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Será dada baixa de <strong>{formatQty(completeTarget?.sourceQuantity, completeTarget?.sourceProduct?.unit)}</strong> de <strong>{completeTarget?.sourceProduct?.name}</strong> e as entradas dos cortes gerados no estoque. Esta ação não pode ser desfeita.</p>
                     </div>
                 </div>
             </Modal>
@@ -605,7 +600,7 @@ export default function Portioning() {
                     <div style={{ fontSize: 48 }}>🗑</div>
                     <div>
                         <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Cancelar esta ordem de desossa?</p>
-                        <p style={{ color: '#64748b', fontSize: 14 }}>A ordem <strong>#{cancelTarget?.id?.slice(0, 8).toUpperCase()}</strong> será cancelada e não afetará o estoque.</p>
+                        <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>A ordem <strong>#{cancelTarget?.id?.slice(0, 8).toUpperCase()}</strong> será cancelada e não afetará o estoque.</p>
                     </div>
                 </div>
             </Modal>

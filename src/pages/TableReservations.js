@@ -8,7 +8,7 @@ import {
 } from 'react-icons/md';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
-import { Input, Textarea } from '../components/FormFields';
+import { Input, InputControl, Textarea } from '../components/FormFields';
 import tableReservationService from '../services/tableReservationService';
 import tableOccupancyService from '../services/tableOccupancyService';
 import { useApp } from '../context/AppContext';
@@ -36,8 +36,8 @@ const Header = styled.div`display:flex;justify-content:space-between;gap:16px;al
 const Title = styled.h1`font-size:${({theme})=>theme.fontSizes['3xl']};color:${({theme})=>theme.colors.textPrimary};`;
 const Subtitle = styled.p`color:${({theme})=>theme.colors.textSecondary};margin-top:4px;`;
 const Toolbar = styled.div`display:flex;align-items:center;gap:8px;flex-wrap:wrap;`;
-const DateInput = styled.input`background:${({theme})=>theme.colors.bgCard};color:${({theme})=>theme.colors.textPrimary};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};padding:9px 12px;font:inherit;`;
-const Stats = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;`;
+const DateInput = styled(InputControl)`background:${({theme})=>theme.colors.bgCard};color:${({theme})=>theme.colors.textPrimary};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};padding:9px 12px;font:inherit;`;
+const Stats = styled.div`display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;@media(max-width:850px){grid-template-columns:repeat(2,1fr);}@media(max-width:520px){grid-template-columns:1fr;}`;
 const Stat = styled.div`background:${({theme})=>theme.colors.bgCard};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.lg};padding:16px;display:flex;gap:12px;align-items:center;box-shadow:${({theme})=>theme.shadows.card};svg{font-size:1.65rem;color:${({theme})=>theme.colors.primary};}strong{display:block;font-size:1.5rem;}span{color:${({theme})=>theme.colors.textSecondary};font-size:.875rem;}`;
 const Grid = styled.div`display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.8fr);gap:20px;align-items:start;@media(max-width:1050px){grid-template-columns:1fr;}`;
 const Card = styled.section`background:${({theme})=>theme.colors.bgCard};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.lg};padding:16px;box-shadow:${({theme})=>theme.shadows.card};`;
@@ -45,7 +45,7 @@ const CardHeader = styled.div`display:flex;justify-content:space-between;align-i
 const MapViewport = styled.div`overflow:auto;max-height:74vh;border-radius:10px;background:#062d55;overscroll-behavior:contain;`;
 const MapCanvas = styled.div`position:relative;width:${({$zoom})=>$zoom*100}%;min-width:${({$zoom})=>Math.round(690*$zoom)}px;line-height:0;transition:width .2s ease;`;
 const MapImage = styled.img`width:100%;height:auto;user-select:none;`;
-const TableHit = styled.button.attrs(({ $table }) => ({ style: { left:`${$table.x-$table.w/2}%`,top:`${$table.y-$table.h/2}%`,width:`${$table.w}%`,height:`${$table.h}%` } }))`
+const TableHit = styled(Button).attrs(({ $table }) => ({ style: { left:`${$table.x-$table.w/2}%`,top:`${$table.y-$table.h/2}%`,width:`${$table.w}%`,height:`${$table.h}%` } }))`
   position:absolute;border:2px solid ${({$occupied,$reserved,$selected})=>$occupied?'#60a5fa':$reserved?'#ef4444':$selected?'#facc15':'#22c55e'};border-radius:10px;background:${({$occupied,$reserved,$selected})=>$occupied?'rgba(59,130,246,.35)':$reserved?'rgba(239,68,68,.20)':$selected?'rgba(250,204,21,.35)':'rgba(34,197,94,.12)'};color:white;line-height:1;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px;box-shadow:${({$selected})=>$selected?'0 0 0 3px rgba(250,204,21,.75), inset 0 0 0 1px #fff':'inset 0 0 0 1px rgba(255,255,255,.55)'};transition:.15s;cursor:pointer;
   &:hover,&:focus-visible{z-index:4;outline:3px solid #fff;transform:scale(1.06);}
 `;
@@ -54,7 +54,7 @@ const Legend = styled.div`display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;c
 const SelectionBar = styled.div`display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:12px 14px;border:1px solid #eab308;border-radius:${({theme})=>theme.radii.md};background:rgba(250,204,21,.12);color:${({theme})=>theme.colors.textPrimary};strong{color:#a16207;}`;
 const SearchBox = styled.div`position:relative;flex:1;min-width:220px;svg{position:absolute;left:11px;top:11px;color:${({theme})=>theme.colors.textMuted};}input{width:100%;padding:9px 12px 9px 36px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};}`;
 const ReservationList = styled.div`display:flex;flex-direction:column;gap:8px;max-height:68vh;overflow:auto;`;
-const ReservationRow = styled.button`text-align:left;width:100%;padding:12px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};&:hover{border-color:${({theme})=>theme.colors.primary};}.top{display:flex;justify-content:space-between;gap:10px;font-weight:700}.meta{color:${({theme})=>theme.colors.textSecondary};font-size:.86rem;margin-top:5px;}`;
+const ReservationRow = styled(Button)`text-align:left;width:100%;padding:12px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};&:hover{border-color:${({theme})=>theme.colors.primary};}.top{display:flex;justify-content:space-between;gap:10px;font-weight:700}.meta{color:${({theme})=>theme.colors.textSecondary};font-size:.86rem;margin-top:5px;}`;
 const Empty = styled.div`padding:36px 12px;text-align:center;color:${({theme})=>theme.colors.textMuted};`;
 const StatusLine = styled.div`display:flex;align-items:center;gap:8px;color:${({theme,$error})=>$error?theme.colors.danger:theme.colors.textMuted};font-size:.82rem;`;
 const FormGrid = styled.form`display:grid;grid-template-columns:1fr 1fr;gap:14px;@media(max-width:520px){grid-template-columns:1fr;}.wide{grid-column:1/-1;}`;
@@ -403,8 +403,8 @@ export default function TableReservations() {
       </Card>
 
       <Card>
-        <CardHeader><h2>Reservas da data</h2><Button variant="secondary" size="sm" onClick={()=>fileInput.current?.click()} disabled={importing}><MdFileUpload/> Importar JSON</Button><input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={handleFile}/></CardHeader>
-        <SearchBox><MdSearch/><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Buscar cliente ou mesa" aria-label="Buscar reservas"/></SearchBox>
+        <CardHeader><h2>Reservas da data</h2><Button variant="secondary" size="sm" onClick={()=>fileInput.current?.click()} disabled={importing}><MdFileUpload/> Importar JSON</Button><InputControl ref={fileInput} type="file" accept="application/json,.json" hidden onChange={handleFile}/></CardHeader>
+        <SearchBox><MdSearch/><InputControl value={search} onChange={event=>setSearch(event.target.value)} placeholder="Buscar cliente ou mesa" aria-label="Buscar reservas"/></SearchBox>
         {importPreview && <ImportBox><h3>Prévia da importação</h3><p>{importPreview.available.length} pronta(s) para importar; {importPreview.conflicts.length} conflito(s).</p>{importPreview.conflicts.length>0&&<div className="conflicts">{importPreview.conflicts.map((item,index)=><div key={index}>Mesa {item.reservation.tableNumber}, {item.reservation.reservationDate}: {item.reason}</div>)}</div>}<Toolbar style={{marginTop:10}}><Button size="sm" onClick={confirmImport} disabled={!importPreview.available.length||importing}>Importar sem conflitos</Button><Button variant="ghost" size="sm" onClick={()=>setImportPreview(null)}>Fechar</Button></Toolbar></ImportBox>}
         {selectedDate===localToday()&&occupancyData.occupancies.length>0&&<OccupancySection><h3>Ocupações sem reserva agora</h3>{occupancyData.occupancies.map(item=><ReservationRow key={item.id} onClick={()=>openOccupancy(item)}><div className="top"><span>Mesa {item.tableNumber} · {item.customerName || 'Cliente não identificado'}</span><span>Ocupada</span></div><div className="meta">{item.partySize} pessoa(s) · chegada {new Date(item.seatedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><div className="meta">Registrada por: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>)}</OccupancySection>}
         <ReservationList style={{marginTop:12}}>

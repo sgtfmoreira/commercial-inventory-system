@@ -1,3 +1,5 @@
+import { InputControl } from '../components/FormFields';
+import { SelectControl } from '../components/FormFields';
 import React,{useCallback,useEffect,useState} from 'react';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
@@ -20,8 +22,8 @@ const Actions=styled.div`display:flex;gap:8px;flex-wrap:wrap;`;
 const Badge=styled.span`display:inline-flex;padding:4px 8px;border-radius:999px;background:${({theme})=>theme.colors.infoLight};color:${({theme})=>theme.colors.info};font-size:12px;font-weight:700;`;
 const Grid=styled.div`display:grid;grid-template-columns:1fr 1fr;gap:14px;@media(max-width:600px){grid-template-columns:1fr;}`;
 const Field=styled.label`display:flex;flex-direction:column;gap:6px;color:${({theme})=>theme.colors.textSecondary};font-size:13px;font-weight:600;${({$wide})=>$wide?'grid-column:1/-1;':''}`;
-const Input=styled.input`padding:10px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
-const Select=styled.select`padding:10px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
+const Input=styled(InputControl)`padding:10px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
+const Select=styled(SelectControl)`padding:10px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
 const Notice=styled.div`padding:12px;border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.warningLight};color:${({theme})=>theme.colors.warning};font-size:13px;margin-bottom:14px;`;
 const ScopeNotice=styled.div`padding:14px;border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.infoLight};color:${({theme})=>theme.colors.info};font-size:14px;strong{display:block;margin-bottom:4px;}`;
 const Filters=styled.div`display:grid;grid-template-columns:minmax(220px,1fr) 180px 160px 160px;gap:10px;align-items:end;@media(max-width:900px){grid-template-columns:1fr 1fr;}@media(max-width:520px){grid-template-columns:1fr;}`;

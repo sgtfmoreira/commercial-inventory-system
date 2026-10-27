@@ -1,3 +1,4 @@
+import DataTable from '../components/Table';
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { MdAdd, MdEdit } from 'react-icons/md';
@@ -37,7 +38,7 @@ const TableWrapper = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 
@@ -88,7 +89,7 @@ const Td = styled.td`
     justify-content: space-between;
     align-items: center;
     padding: 8px 0;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--color-primary-surface);
     width: 100%;
 
     &:before {
@@ -157,7 +158,7 @@ export default function Users() {
             <PageHeader>
                 <div>
                     <Title>Usuários</Title>
-                    <p style={{ color: "#64748B", fontSize: "14px", marginTop: "4px" }}>
+                    <p style={{ color: "var(--color-text-secondary)", fontSize: "14px", marginTop: "4px" }}>
                         Gerencie os acessos da sua equipe
                     </p>
                 </div>
@@ -185,7 +186,7 @@ export default function Users() {
                         <tbody>
                             {users.length === 0 ? (
                                 <tr>
-                                    <Td colSpan="4" style={{ textAlign: "center", padding: "40px", color: "#64748B" }}>
+                                    <Td colSpan="4" style={{ textAlign: "center", padding: "40px", color: "var(--color-text-secondary)" }}>
                                         Nenhum usuário encontrado.
                                     </Td>
                                 </tr>

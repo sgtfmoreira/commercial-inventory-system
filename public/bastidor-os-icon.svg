@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Bastidor OS</title>
+  <rect width="512" height="512" rx="104" fill="#6A58F5"/>
+  <rect x="120" y="98" width="99" height="316" rx="49.5" fill="#FFFFFF"/>
+  <rect x="238" y="98" width="158" height="99" rx="49.5" fill="#FFFFFF"/>
+  <rect x="238" y="207" width="189" height="99" rx="49.5" fill="#D8D2FF"/>
+  <rect x="238" y="317" width="158" height="99" rx="49.5" fill="#FFFFFF"/>
+</svg>

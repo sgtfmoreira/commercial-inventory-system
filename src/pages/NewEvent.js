@@ -1,3 +1,7 @@
+import DSButton from '../components/Button';
+import { InputControl } from '../components/FormFields';
+import { SelectControl } from '../components/FormFields';
+import { TextareaControl } from '../components/FormFields';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
@@ -6,20 +10,20 @@ import Modal from '../components/Modal';
 import eventService from '../services/eventService';
 import { useApp } from '../context/AppContext';
 
-const Page = styled.div`display:grid;gap:20px;max-width:1000px;`;
+const Page = styled.div`width:100%;display:grid;gap:20px;`;
 const Header = styled.div`h1{margin:0;color:${({theme})=>theme.colors.textPrimary};}p{color:${({theme})=>theme.colors.textMuted};}`;
 const Panel = styled.form`background:${({theme})=>theme.colors.bgCard};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.lg};padding:22px;box-shadow:${({theme})=>theme.shadows.card};`;
 const Grid = styled.div`display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;@media(max-width:680px){grid-template-columns:1fr;}`;
 const Field = styled.label`display:grid;gap:6px;color:${({theme})=>theme.colors.textSecondary};font-size:.86rem;font-weight:700;${({$wide})=>$wide?'grid-column:1/-1;':''}`;
 const control = `width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;font:inherit;`;
-const Input = styled.input`${control}border:1px solid ${({theme})=>theme.colors.border};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
-const Select = styled.select`${control}border:1px solid ${({theme})=>theme.colors.border};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
-const Textarea = styled.textarea`${control}min-height:90px;resize:vertical;border:1px solid ${({theme})=>theme.colors.border};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
+const Input = styled(InputControl)`${control}border:1px solid ${({theme})=>theme.colors.border};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
+const Select = styled(SelectControl)`${control}border:1px solid ${({theme})=>theme.colors.border};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
+const Textarea = styled(TextareaControl)`${control}min-height:90px;resize:vertical;border:1px solid ${({theme})=>theme.colors.border};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};`;
 const Actions = styled.div`display:flex;justify-content:flex-end;gap:10px;margin-top:22px;flex-wrap:wrap;`;
-const Button = styled.button`border:0;border-radius:9px;padding:11px 16px;background:${({theme,$secondary})=>$secondary?theme.colors.bgHover:theme.colors.primary};color:${({theme,$secondary})=>$secondary?theme.colors.textPrimary:'white'};font-weight:700;cursor:pointer;disabled{opacity:.55;cursor:not-allowed;}`;
+const Button = DSButton;
 const CustomerRow = styled.div`display:grid;grid-template-columns:1fr auto auto;gap:8px;@media(max-width:680px){grid-template-columns:1fr;}`;
 const ModalGrid = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:14px;@media(max-width:560px){grid-template-columns:1fr;}`;
-const ErrorNotice = styled.div`margin-top:8px;padding:11px 13px;border-radius:8px;background:${({theme})=>theme.colors.bgInput};border-left:4px solid ${({theme})=>theme.colors.warning||'#d97706'};display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;`;
+const ErrorNotice = styled.div`margin-top:8px;padding:11px 13px;border-radius:8px;background:${({theme})=>theme.colors.bgInput};border-left:4px solid ${({theme})=>theme.colors.warning||'var(--color-warning)'};display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;`;
 
 const types = [['CORPORATE','Corporativo'],['WEDDING','Casamento'],['BIRTHDAY','Aniversário'],['GRADUATION','Formatura'],['GET_TOGETHER','Confraternização'],['CATERING','Catering'],['INTERNAL','Evento interno'],['OTHER','Outro']];
 const initial = { name:'', customerId:'', type:'CORPORATE', eventDate:'', startTime:'', endTime:'', guestCount:'', location:'', responsibleUserId:'', internalNotes:'' };

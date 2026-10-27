@@ -1,3 +1,4 @@
+import DataTable from '../components/Table';
 import React, { useState, useMemo, useEffect } from "react";
 import { MdRefresh, MdWarning, MdPrint } from "react-icons/md";
 import Card from "../components/Card";
@@ -10,6 +11,7 @@ import styled, { useTheme } from "styled-components";
 import toast from "react-hot-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { Tabs, Tab } from '../components/Tabs';
 
 const PURCHASE_CLASSIFICATIONS = [
     { value: 'CMV_BEVERAGES', label: 'Bebidas / CMV' },
@@ -25,34 +27,6 @@ const PageHeader = styled.div`
   flex-direction: column;
   gap: 4px;
   margin-bottom: 32px;
-`;
-
-const Tabs = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-`;
-
-const Tab = styled.button`
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-
-  background: ${({ active, theme }) =>
-        active ? theme.colors.primary : theme.colors.bgCard};
-
-  color: ${({ active, theme }) =>
-        active ? "#fff" : theme.colors.textPrimary};
-
-  border: 1px solid ${({ theme }) => theme.colors.border};
-
-  transition: 0.2s;
-
-  &:hover {
-    background: ${({ active, theme }) =>
-        active ? theme.colors.primaryDark : theme.colors.bgHover};
-  }
 `;
 
 const PageTitle = styled.h1`
@@ -105,7 +79,7 @@ const TableWrapper = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
   @media (max-width: 768px) {
@@ -446,7 +420,7 @@ const PurchaseSuggestions = () => {
         // Cabeçalho
         doc.setFontSize(16);
         doc.setTextColor(30, 41, 59); // Slate-800
-        doc.text('Ordem de Compra - Controle de Compras BDS', 14, 20);
+        doc.text('Ordem de Compra - Bastidor OS', 14, 20);
         
         doc.setFontSize(10);
         doc.setTextColor(100, 116, 139); // Slate-500

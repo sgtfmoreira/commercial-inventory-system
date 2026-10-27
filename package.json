@@ -1,10 +1,7 @@
 {
-  "name": "controle-de-compras-bds-frontend",
+  "name": "bastidor-os-frontend",
   "version": "1.0.0",
   "private": true,
-  "engines": {
-    "node": "24.x"
-  },
   "dependencies": {
     "axios": "^1.6.7",
     "bcryptjs": "^3.0.3",
@@ -24,7 +21,8 @@
   "scripts": {
     "start": "react-scripts start",
     "check:encoding": "node scripts/check-text-encoding.js",
-    "prebuild": "npm run check:encoding",
+    "check:ui": "node scripts/check-ui-components.js",
+    "prebuild": "npm run check:encoding && npm run check:ui",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "test:stock-movement": "jest --config scripts/stock-movement-jest.config.js --runInBand",
@@ -37,6 +35,13 @@
       "react-app",
       "react-app/jest"
     ]
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^react-router-dom$": "<rootDir>/node_modules/react-router-dom/dist/index.js",
+      "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/development/dom-export.js",
+      "^react-router$": "<rootDir>/node_modules/react-router/dist/development/index.js"
+    }
   },
   "browserslist": {
     "production": [

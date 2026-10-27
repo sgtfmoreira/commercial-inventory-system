@@ -1,3 +1,5 @@
+import Button from '../components/Button';
+import { InputControl } from '../components/FormFields';
 import React, { useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
@@ -10,13 +12,15 @@ const Wrapper = styled.div`
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: ${({ theme }) => theme.colors.bgPage};
+  padding: ${({ theme }) => theme.spacing.md};
+  background: ${({ theme }) => theme.colors.bg};
 `;
 
 const Card = styled.div`
   background: ${({ theme }) => theme.colors.bgCard};
-  border-radius: ${({ theme }) => theme.radii.lg};
-  box-shadow: ${({ theme }) => theme.shadows.card};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.radii.xl};
+  box-shadow: ${({ theme }) => theme.shadows.raised};
   padding: ${({ theme }) => theme.spacing.xl};
   width: 100%;
   max-width: 480px;
@@ -41,32 +45,27 @@ const Item = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: ${({ theme }) => theme.spacing.md};
   transition: all 0.2s;
   &:hover { border-color: ${({ theme }) => theme.colors.primary}; }
+
+  > button { flex-shrink: 0; }
+
+  @media (max-width: 480px) {
+    align-items: stretch;
+    flex-direction: column;
+    > button { width: 100%; }
+  }
 `;
 
 const Name = styled.div`
+  min-width: 0;
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
   color: ${({ theme }) => theme.colors.textPrimary};
   display: flex;
   align-items: center;
   gap: 8px;
-`;
-
-const Button = styled.button`
-  padding: 8px 16px;
-  border-radius: ${({ theme }) => theme.radii.md};
-  background: ${({ theme }) => theme.colors.primary};
-  color: white;
-  font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  transition: ${({ theme }) => theme.transition};
-  border: none;
-  cursor: pointer;
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.primaryHover};
-  }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  overflow-wrap: anywhere;
 `;
 
 const CreateSection = styled.div`
@@ -75,21 +74,7 @@ const CreateSection = styled.div`
   padding-top: 20px;
 `;
 
-const GhostButton = styled.button`
-  width: 100%;
-  padding: 12px;
-  background: transparent;
-  border: 2px dashed ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.radii.md};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-weight: 600;
-  &:hover { background: ${({ theme }) => theme.colors.bgHover}; border-color: ${({ theme }) => theme.colors.primary}; }
-`;
+const GhostButton = (props) => <Button fullWidth variant="outlined" {...props} />;
 
 const InputGroup = styled.div`
   display: flex;
@@ -97,7 +82,7 @@ const InputGroup = styled.div`
   margin-top: 8px;
 `;
 
-const Input = styled.input`
+const Input = styled(InputControl)`
   flex: 1;
   padding: 10px;
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -157,12 +142,14 @@ export default function SelectEstablishment() {
                 <List>
                     {establishments.map((est) => (
                         <Item key={est.id}>
-                            <Name><MdStore size={20} color="#64748B" /> {est.name}</Name>
+                            <Name><MdStore size={20} color="var(--color-text-secondary)" /> {est.name}</Name>
                             <Button
+                                size="sm"
                                 onClick={() => handleSelect(est.id)}
-                                disabled={loadingId === est.id}
+                                loading={loadingId === est.id}
+                                loadingLabel="Entrando"
                             >
-                                {loadingId === est.id ? "Entrando..." : "Entrar"}
+                                Entrar
                             </Button>
                         </Item>
                     ))}
@@ -183,13 +170,12 @@ export default function SelectEstablishment() {
                                 autoFocus
                             />
                             <InputGroup>
-                                <Button onClick={handleCreate} disabled={creating} style={{ flex: 1 }}>
-                                    {creating ? "Criando..." : "Confirmar"}
+                                <Button onClick={handleCreate} loading={creating} loadingLabel="Criando" style={{ flex: 1 }}>
+                                    Confirmar
                                 </Button>
-                                <Button 
+                                <Button
                                     onClick={() => setShowCreate(false)} 
-                                    variant="secondary" 
-                                    style={{ background: '#CBD5E1', color: '#334155' }}
+                                    variant="outlined"
                                 >
                                     Cancelar
                                 </Button>

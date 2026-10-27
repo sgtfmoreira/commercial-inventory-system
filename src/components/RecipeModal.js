@@ -1,3 +1,4 @@
+import DataTable from './Table';
 import React, { useEffect, useState } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
@@ -15,7 +16,6 @@ const RecipeModal = ({ product, isOpen, onClose, products }) => {
     const [cost, setCost] = useState(0);
     const [unitCost, setUnitCost] = useState(0);
     const [yieldQuantity, setYieldQuantity] = useState(1);
-    const [useFractional, setUseFractional] = useState('base');
     const [selectedIngUnit, setSelectedIngUnit] = useState('');
 
     useEffect(() => {
@@ -164,8 +164,8 @@ const RecipeModal = ({ product, isOpen, onClose, products }) => {
             footer={<Button onClick={onClose}>Fechar</Button>}
         >
 
-            <div style={{ marginBottom: 20, padding: 15, backgroundColor: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#374151', fontSize: 14 }}>Configuração de Rendimento</h4>
+            <div style={{ marginBottom: 20, padding: 15, backgroundColor: 'var(--color-background)', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: 'var(--color-text)', fontSize: 14 }}>Configuração de Rendimento</h4>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                         <Input
@@ -183,7 +183,7 @@ const RecipeModal = ({ product, isOpen, onClose, products }) => {
                         />
                     </div>
                 </div>
-                <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#6b7280' }}>
+                <p style={{ margin: '8px 0 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                     Defina quanto a receita abaixo rende. Ex: Se a receita inteira rende 1 litro, coloque 1000 se a unidade do produto for ml.
                 </p>
             </div>
@@ -223,7 +223,7 @@ const RecipeModal = ({ product, isOpen, onClose, products }) => {
                                     bottom: 12,
                                     fontSize: 14,
                                     fontWeight: 600,
-                                    color: '#6b7280'
+                                    color: 'var(--color-text-secondary)'
                                 }}>
                                     {getBaseUnit(selectedIngUnit)}
                                 </span>
@@ -242,7 +242,7 @@ const RecipeModal = ({ product, isOpen, onClose, products }) => {
 
             </div>
 
-            <table style={{ width: "100%" }}>
+            <DataTable style={{ width: "100%" }}>
                 <thead>
                     <tr>
                         <th>Ingrediente</th>
@@ -274,13 +274,13 @@ const RecipeModal = ({ product, isOpen, onClose, products }) => {
 
                 </tbody>
 
-            </table>
+            </DataTable>
 
             <div
                 style={{
                     marginTop: 20,
                     padding: 15,
-                    backgroundColor: '#f3f4f6',
+                    backgroundColor: 'var(--color-primary-surface)',
                     borderRadius: 8,
                     display: 'flex',
                     flexDirection: 'column',
@@ -291,7 +291,7 @@ const RecipeModal = ({ product, isOpen, onClose, products }) => {
                     <span>Custo total da panela (receita completa):</span>
                     <span>{formatCurrency(cost)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: 18, color: '#111827' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: 18, color: 'var(--color-text)' }}>
                     <span>Custo por 1 {getBaseUnit(product?.unit)}:</span>
                     <span>{formatCurrency(unitCost)}</span>
                 </div>

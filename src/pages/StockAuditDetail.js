@@ -1,3 +1,5 @@
+import { InputControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
@@ -42,7 +44,7 @@ const TableWrapper = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 
@@ -92,7 +94,7 @@ const Td = styled.td`
     justify-content: space-between;
     align-items: center;
     padding: 8px 0;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--color-primary-surface);
     width: 100%;
 
     &:before {
@@ -107,7 +109,7 @@ const Td = styled.td`
   }
 `;
 
-const Input = styled.input`
+const Input = styled(InputControl)`
   width: 100px;
   padding: 10px;
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -160,7 +162,7 @@ const DoubleInputContainer = styled.div`
 
 const TotalPreview = styled.div`
   font-size: 11px;
-  color: #64748B;
+  color: var(--color-text-secondary);
   margin-top: 4px;
   font-weight: 500;
 `;
@@ -292,7 +294,7 @@ export default function StockAuditDetail() {
                         <StatusBadge isOpen={isOpen}>
                             {isOpen ? "Em Andamento" : "Finalizada"}
                         </StatusBadge>
-                        <span style={{ fontSize: 13, color: "#64748B" }}>
+                        <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>
                             Iniciada em: {new Date(audit.createdAt).toLocaleDateString()}
                         </span>
                     </div>
@@ -323,7 +325,7 @@ export default function StockAuditDetail() {
                                     <Tr key={item.id}>
                                         <Td data-label="Produto">
                                             <div style={{ fontWeight: 600 }}>{item.product.name}</div>
-                                            <div style={{ fontSize: '11px', color: '#64748B' }}>
+                                            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
                                                 {hasConversion ? `1 ${item.product.purchaseUnit} = ${packQty} ${item.product.unit}` : item.product.unit}
                                             </div>
                                         </Td>
@@ -331,7 +333,7 @@ export default function StockAuditDetail() {
                                         <Td data-label="Sistema">
                                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                 <span style={{ fontWeight: 600 }}>{item.systemQuantity}</span>
-                                                <span style={{ fontSize: '11px', color: '#64748B' }}>{item.product?.unit}</span>
+                                                <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>{item.product?.unit}</span>
                                             </div>
                                         </Td>
 
@@ -349,7 +351,7 @@ export default function StockAuditDetail() {
                                                                 onChange={(e) => handleDoubleChange(item.id, 'whole', e.target.value, packQty)}
                                                             />
                                                         </InputGroup>
-                                                        <span style={{ marginTop: 16, fontWeight: 700, color: '#94A3B8' }}>+</span>
+                                                        <span style={{ marginTop: 16, fontWeight: 700, color: 'var(--color-text-muted)' }}>+</span>
                                                         <InputGroup>
                                                             <InputLabel>{item.product.unit}</InputLabel>
                                                             <Input
@@ -372,7 +374,7 @@ export default function StockAuditDetail() {
                                                         disabled={!isOpen}
                                                         onChange={(e) => handleDoubleChange(item.id, 'total', e.target.value, 1)}
                                                     />
-                                                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#64748B' }}>
+                                                    <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
                                                         {item.product?.unit}
                                                     </span>
                                                 </div>
@@ -382,7 +384,7 @@ export default function StockAuditDetail() {
                                         <Td data-label="Diferença">
                                             <div style={{
                                                 fontWeight: "800",
-                                                color: item.difference < 0 ? "#dc2626" : "#16a34a",
+                                                color: item.difference < 0 ? "var(--color-danger)" : "#16a34a",
                                                 background: item.difference < 0 ? "#fef2f2" : "#f0fdf4",
                                                 padding: "4px 8px",
                                                 borderRadius: "4px",
@@ -418,7 +420,7 @@ export default function StockAuditDetail() {
                         {(!hasSaved || hasChanges) && (
                             <span style={{
                                 fontSize: '11px',
-                                color: '#DC2626',
+                                color: 'var(--color-danger)',
                                 fontWeight: 600,
                                 textAlign: 'center'
                             }}>

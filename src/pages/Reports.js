@@ -1,3 +1,6 @@
+import DataTable from '../components/Table';
+import DSButton from '../components/Button';
+import { SelectControl } from '../components/FormFields';
 import React, { useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
 import jsPDF from 'jspdf';
@@ -21,7 +24,7 @@ const PageHeader = styled.div`
   margin-bottom: ${({ theme }) => theme.spacing.xl};
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 
@@ -242,23 +245,23 @@ function generateConsumptionPDF({ consumptionData, kpiData, products, dateFrom, 
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Segoe UI',Arial,sans-serif; color:#1e293b; background:#fff; padding:32px; font-size:14px; }
   @media print { body { padding:16px; } @page { margin: 1cm; } }
-  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:28px; padding-bottom:18px; border-bottom:3px solid #6366f1; }
-  .brand { font-size:26px; font-weight:900; color:#6366f1; }
-  .brand span { color:#8b5cf6; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:28px; padding-bottom:18px; border-bottom:3px solid #6D5EF4; }
+  .brand { font-size:26px; font-weight:900; color:#6D5EF4; }
+  .brand span { color:#A89EFF; }
   .doc-title { font-size:20px; font-weight:800; color:#1e293b; margin-bottom:4px; }
   .doc-meta { font-size:12px; color:#64748b; }
   .kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:24px; }
-  .kpi-card { border-radius:10px; padding:14px 16px; border-left:4px solid #6366f1; background:#f8fafc; }
+  .kpi-card { border-radius:10px; padding:14px 16px; border-left:4px solid #6D5EF4; background:#f8fafc; }
   .kpi-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:#94a3b8; font-weight:700; margin-bottom:4px; }
   .kpi-value { font-size:22px; font-weight:900; color:#1e293b; }
   .kpi-sub { font-size:11px; color:#94a3b8; margin-top:2px; }
-  .section-title { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:#6366f1; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .section-title { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:#6D5EF4; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
   table { width:100%; border-collapse:collapse; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-  thead { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; }
+  thead { background:#6D5EF4; color:#fff; }
   thead th { padding:12px 14px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
   thead th:not(:first-child) { text-align:right; }
   thead th:last-child { text-align:center; }
-  .total-row { display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.08)); border-radius:10px; padding:14px 18px; margin-top:18px; }
+  .total-row { display:flex; justify-content:space-between; align-items:center; background:#F3F0FF; border-radius:10px; padding:14px 18px; margin-top:18px; }
   .footer { margin-top:32px; padding-top:14px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; font-size:11px; color:#94a3b8; }
 </style>
 </head>
@@ -266,7 +269,7 @@ function generateConsumptionPDF({ consumptionData, kpiData, products, dateFrom, 
 
 <div class="header">
   <div>
-    <div class="brand">BDS<span>·</span>Controle</div>
+    <div class="brand">Bastidor<span>·</span>OS</div>
     <div style="font-size:12px;color:#94a3b8;margin-top:2px">${establishment || 'Relatório de Consumo'}</div>
   </div>
   <div style="text-align:right">
@@ -277,14 +280,14 @@ function generateConsumptionPDF({ consumptionData, kpiData, products, dateFrom, 
 </div>
 
 <div class="kpi-grid">
-  <div class="kpi-card" style="border-left-color:#6366f1">
+  <div class="kpi-card" style="border-left-color:#6D5EF4">
     <div class="kpi-label">🧾 Consumo Total</div>
-    <div class="kpi-value" style="color:#6366f1">R$ ${kpiData.totalConsumptionCost.toFixed(2)}</div>
+    <div class="kpi-value" style="color:#6D5EF4">R$ ${kpiData.totalConsumptionCost.toFixed(2)}</div>
     <div class="kpi-sub">${consumptionData.length} produto(s) consumido(s)</div>
   </div>
-  <div class="kpi-card" style="border-left-color:#8b5cf6">
+  <div class="kpi-card" style="border-left-color:#A89EFF">
     <div class="kpi-label">🍹 Drink em Dobro</div>
-    <div class="kpi-value" style="color:#8b5cf6">${kpiData.doubleDrinkCount}</div>
+    <div class="kpi-value" style="color:#A89EFF">${kpiData.doubleDrinkCount}</div>
     <div class="kpi-sub">custo: R$ ${kpiData.doubleDrinkCost.toFixed(2)}</div>
   </div>
   <div class="kpi-card" style="border-left-color:#ec4899">
@@ -312,12 +315,12 @@ function generateConsumptionPDF({ consumptionData, kpiData, products, dateFrom, 
 </table>
 
 <div class="total-row">
-  <span style="font-size:14px;font-weight:700;color:#6366f1">💰 Custo Total do Período</span>
-  <span style="font-size:22px;font-weight:900;color:#6366f1">R$ ${kpiData.totalConsumptionCost.toFixed(2)}</span>
+  <span style="font-size:14px;font-weight:700;color:#6D5EF4">💰 Custo Total do Período</span>
+  <span style="font-size:22px;font-weight:900;color:#6D5EF4">R$ ${kpiData.totalConsumptionCost.toFixed(2)}</span>
 </div>
 
 <div class="footer">
-  <span>Sistema BDS · Relatório de Consumo</span>
+  <span>Bastidor OS · Relatório de Consumo</span>
   <span>Documento gerado em ${now}</span>
 </div>
 
@@ -1169,7 +1172,7 @@ const Reports = () => {
 
             {/* 📊 KPI Cards — Compras */}
             <KpiGrid>
-                <Card padding="20px" style={{ borderLeft: '3px solid #3B82F6' }}>
+                <Card padding="20px" style={{ borderLeft: '3px solid #6D5EF4' }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Compras líquidas</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#1E293B' }}>{formatCurrency(kpiData.totalSpent)}</div>
                     <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>Brutas: {formatCurrency(kpiData.grossPurchases)} · Devoluções: {formatCurrency(kpiData.purchaseReturns)}</div>
@@ -1189,7 +1192,7 @@ const Reports = () => {
                     <div style={{ fontSize: 22, fontWeight: 700, color: kpiData.lowStockCount > 0 ? '#DC2626' : '#10B981' }}>{kpiData.lowStockCount}</div>
                     <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>{kpiData.lowStockCount === 0 ? 'Estoque saudável ✅' : 'produtos precisam de reposição'}</div>
                 </Card>
-                <Card padding="20px" style={{ borderLeft: '3px solid #DC2626', background: 'linear-gradient(135deg, rgba(220,38,38,0.04), transparent)' }}>
+                <Card padding="20px" style={{ borderLeft: '3px solid var(--color-danger)', background: 'var(--color-surface)' }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>🔴 Total de Perdas</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#DC2626' }}>{formatCurrency(kpiData.totalLossCost)}</div>
                     <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>auditoria + operacional no período</div>
@@ -1198,17 +1201,17 @@ const Reports = () => {
 
             {/* 📊 KPI Cards — Consumo Operacional */}
             <KpiGrid style={{ marginBottom: 16 }}>
-                <Card padding="20px" style={{ borderLeft: '3px solid #6366F1', background: 'linear-gradient(135deg, rgba(99,102,241,0.04), transparent)' }}>
+                <Card padding="20px" style={{ borderLeft: '3px solid var(--color-primary)', background: 'var(--color-surface)' }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>🧾 Consumo Total no Período</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: '#6366F1' }}>{formatCurrency(kpiData.totalConsumptionCost)}</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#6D5EF4' }}>{formatCurrency(kpiData.totalConsumptionCost)}</div>
                     <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>custo de tudo que saiu do estoque</div>
                 </Card>
-                <Card padding="20px" style={{ borderLeft: '3px solid #8B5CF6', background: 'linear-gradient(135deg, rgba(139,92,246,0.04), transparent)' }}>
+                <Card padding="20px" style={{ borderLeft: '3px solid var(--color-primary)', background: 'var(--color-surface)' }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>🍹 Drink em Dobro</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: '#8B5CF6' }}>{kpiData.doubleDrinkCount} drinks</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#A89EFF' }}>{kpiData.doubleDrinkCount} drinks</div>
                     <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>custo: {formatCurrency(kpiData.doubleDrinkCost)}</div>
                 </Card>
-                <Card padding="20px" style={{ borderLeft: '3px solid #EC4899', background: 'linear-gradient(135deg, rgba(236,72,153,0.04), transparent)' }}>
+                <Card padding="20px" style={{ borderLeft: '3px solid var(--color-info)', background: 'var(--color-surface)' }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>🎁 Cortesia</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: '#EC4899' }}>{Number(kpiData.courtesyCount).toFixed(1)} un</div>
                     <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>custo: {formatCurrency(kpiData.courtesyCost)}</div>
@@ -1222,11 +1225,11 @@ const Reports = () => {
                     {/* Drink em Dobro */}
                     {kpiData.doubleDrinkTable?.length > 0 && (
                         <Card padding="0">
-                            <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(135deg, rgba(139,92,246,0.06), transparent)' }}>
-                                <div style={{ fontWeight: 700, fontSize: 14, color: '#8B5CF6' }}>🍹 Drink em Dobro — Detalhamento</div>
+                            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-primary-surface)' }}>
+                                <div style={{ fontWeight: 700, fontSize: 14, color: '#A89EFF' }}>🍹 Drink em Dobro — Detalhamento</div>
                                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Ingredientes consumidos no período</div>
                             </div>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <DataTable style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
                                     <tr style={{ background: '#f8fafc' }}>
                                         <th style={{ textAlign: 'left', padding: '8px 14px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Produto</th>
@@ -1238,7 +1241,7 @@ const Reports = () => {
                                     {kpiData.doubleDrinkTable.map((row, i) => (
                                         <tr key={i} style={{ borderTop: '1px solid #f1f5f9' }}>
                                             <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{row.name}</td>
-                                            <td style={{ padding: '10px 14px', fontSize: 13, textAlign: 'right', color: '#8B5CF6', fontWeight: 700 }}>
+                                            <td style={{ padding: '10px 14px', fontSize: 13, textAlign: 'right', color: '#A89EFF', fontWeight: 700 }}>
                                                 {row.units % 1 === 0 ? row.units : row.units.toFixed(2)} <span style={{ fontSize: 11, color: '#94a3b8' }}>{row.purchaseUnit}</span>
                                             </td>
                                             <td style={{ padding: '10px 14px', fontSize: 13, textAlign: 'right', color: '#059669', fontWeight: 600 }}>{formatCurrency(row.cost)}</td>
@@ -1246,24 +1249,24 @@ const Reports = () => {
                                     ))}
                                 </tbody>
                                 <tfoot>
-                                    <tr style={{ borderTop: '2px solid #e2e8f0', background: 'rgba(139,92,246,0.05)' }}>
-                                        <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 700, color: '#8B5CF6' }}>Total</td>
-                                        <td style={{ padding: '10px 14px', fontSize: 13, textAlign: 'right', fontWeight: 700, color: '#8B5CF6' }}>{kpiData.doubleDrinkCount} drinks</td>
+                                    <tr style={{ borderTop: '2px solid #e2e8f0', background: 'rgba(168, 158, 255,0.05)' }}>
+                                        <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 700, color: '#A89EFF' }}>Total</td>
+                                        <td style={{ padding: '10px 14px', fontSize: 13, textAlign: 'right', fontWeight: 700, color: '#A89EFF' }}>{kpiData.doubleDrinkCount} drinks</td>
                                         <td style={{ padding: '10px 14px', fontSize: 13, textAlign: 'right', fontWeight: 700, color: '#059669' }}>{formatCurrency(kpiData.doubleDrinkCost)}</td>
                                     </tr>
                                 </tfoot>
-                            </table>
+                            </DataTable>
                         </Card>
                     )}
 
                     {/* Cortesia */}
                     {kpiData.courtesyTable?.length > 0 && (
                         <Card padding="0">
-                            <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(135deg, rgba(236,72,153,0.06), transparent)' }}>
+                            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-primary-surface)' }}>
                                 <div style={{ fontWeight: 700, fontSize: 14, color: '#EC4899' }}>🎁 Cortesia — Detalhamento</div>
                                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Itens dados como cortesia no período</div>
                             </div>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <DataTable style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
                                     <tr style={{ background: '#f8fafc' }}>
                                         <th style={{ textAlign: 'left', padding: '8px 14px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Produto</th>
@@ -1289,7 +1292,7 @@ const Reports = () => {
                                         <td style={{ padding: '10px 14px', fontSize: 13, textAlign: 'right', fontWeight: 700, color: '#059669' }}>{formatCurrency(kpiData.courtesyCost)}</td>
                                     </tr>
                                 </tfoot>
-                            </table>
+                            </DataTable>
                         </Card>
                     )}
                 </div>
@@ -1396,7 +1399,7 @@ const Reports = () => {
                                 <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{consumptionData.length} produto(s) no período selecionado</div>
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
+                                <DSButton
                                     onClick={() => generateConsumptionPDF({
                                         consumptionData,
                                         kpiData,
@@ -1416,8 +1419,8 @@ const Reports = () => {
                                     }}
                                 >
                                     <span style={{ fontSize: 16 }}>🖨️</span> Imprimir
-                                </button>
-                                <button
+                                </DSButton>
+                                <DSButton
                                     id="btn-exportar-pdf-consumo"
                                     onClick={() => downloadConsumptionPDF({
                                         consumptionData,
@@ -1431,14 +1434,14 @@ const Reports = () => {
                                         display: 'inline-flex', alignItems: 'center', gap: 8,
                                         padding: '9px 18px',
                                         borderRadius: 8,
-                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                        background: 'var(--color-primary)',
                                         color: '#fff', border: 'none', fontSize: 13, fontWeight: 700,
-                                        cursor: 'pointer', boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
+                                        cursor: 'pointer', boxShadow: '0 4px 12px rgba(109, 94, 244,0.3)',
                                         transition: 'all 0.2s'
                                     }}
                                 >
                                     <span style={{ fontSize: 16 }}>📄</span> Baixar PDF
-                                </button>
+                                </DSButton>
                             </div>
                         </div>
                         <Table>
@@ -1754,7 +1757,7 @@ const Reports = () => {
                     <>
                     {/* KPI resumo de perdas */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
-                        <Card padding="16px" style={{ borderLeft: '3px solid #DC2626', background: 'linear-gradient(135deg, rgba(220,38,38,0.04), transparent)' }}>
+                        <Card padding="16px" style={{ borderLeft: '3px solid var(--color-danger)', background: 'var(--color-surface)' }}>
                             <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Custo Total em Perdas</div>
                             <div style={{ fontSize: 20, fontWeight: 700, color: '#DC2626' }}>{formatCurrency(lossData.reduce((s, i) => s + i.value, 0))}</div>
                             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{lossData.length} produto(s) com perda</div>
@@ -1764,9 +1767,9 @@ const Reports = () => {
                             <div style={{ fontSize: 20, fontWeight: 700, color: '#F59E0B' }}>{lossData.filter(i => i.origin === 'Operacional' || i.origin === 'Ambos').length} produto(s)</div>
                             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>derramou, quebrou, descartou</div>
                         </Card>
-                        <Card padding="16px" style={{ borderLeft: '3px solid #8B5CF6' }}>
+                        <Card padding="16px" style={{ borderLeft: '3px solid #A89EFF' }}>
                             <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Perdas de Auditoria</div>
-                            <div style={{ fontSize: 20, fontWeight: 700, color: '#8B5CF6' }}>{lossData.filter(i => i.origin === 'Auditoria' || i.origin === 'Ambos').length} produto(s)</div>
+                            <div style={{ fontSize: 20, fontWeight: 700, color: '#A89EFF' }}>{lossData.filter(i => i.origin === 'Auditoria' || i.origin === 'Ambos').length} produto(s)</div>
                             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>diferença na contagem de estoque</div>
                         </Card>
                     </div>
@@ -1795,11 +1798,11 @@ const Reports = () => {
                                                 fontSize: 11,
                                                 fontWeight: 700,
                                                 background: item.origin === 'Operacional' ? 'rgba(245,158,11,0.12)'
-                                                    : item.origin === 'Ambos' ? 'rgba(99,102,241,0.12)'
-                                                    : 'rgba(139,92,246,0.12)',
+                                                    : item.origin === 'Ambos' ? 'rgba(109, 94, 244,0.12)'
+                                                    : 'rgba(168, 158, 255,0.12)',
                                                 color: item.origin === 'Operacional' ? '#D97706'
                                                     : item.origin === 'Ambos' ? '#4F46E5'
-                                                    : '#7C3AED'
+                                                    : '#5B4BD8'
                                             }}>
                                                 {item.origin}
                                             </span>
@@ -1852,7 +1855,7 @@ const Reports = () => {
                                                 formatter={(value) => [formatCurrency(value), 'Compras líquidas']}
                                                 labelStyle={{ fontWeight: 600, color: '#1E293B', marginBottom: 4 }}
                                             />
-                                            <Bar dataKey="total" fill="#3B82F6" radius={[6, 6, 0, 0]} barSize={32} />
+                                            <Bar dataKey="total" fill="#6D5EF4" radius={[6, 6, 0, 0]} barSize={32} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 )}
@@ -1961,7 +1964,7 @@ const Reports = () => {
                         <div style={{ marginBottom: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                             <div style={{ flex: 1, minWidth: 200 }}>
                                 <label style={{ fontSize: 13, fontWeight: 600, color: '#64748b', marginBottom: 4, display: 'block' }}>Filtrar por Produto</label>
-                                <select 
+                                <SelectControl
                                     value={purchaseFilterProduct}
                                     onChange={(e) => setPurchaseFilterProduct(e.target.value)}
                                     style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1' }}
@@ -1970,12 +1973,12 @@ const Reports = () => {
                                     {state.products?.map(p => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
-                                </select>
+                                </SelectControl>
                             </div>
                         </div>
 
                         <KpiGrid>
-                            <Card padding="20px" style={{ borderLeft: '3px solid #3B82F6' }}>
+                            <Card padding="20px" style={{ borderLeft: '3px solid #6D5EF4' }}>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Compras brutas</div>
                                 <div style={{ fontSize: 22, fontWeight: 700, color: '#1E293B' }}>
                                     {formatCurrency(purchasesData.filter(item => item.rowType !== 'RETURN').reduce((sum, item) => sum + Number(item.totalAmount ?? Number(item.adjustedQuantity) * Number(item.unitPrice)), 0))}
@@ -1987,9 +1990,9 @@ const Reports = () => {
                                     {formatCurrency(purchasesData.reduce((acc, item) => acc + (Number(item.totalAmount ?? (Number(item.adjustedQuantity || 0) * Number(item.unitPrice || 0)))), 0))}
                                 </div>
                             </Card>
-                            <Card padding="20px" style={{ borderLeft: '3px solid #8B5CF6' }}>
+                            <Card padding="20px" style={{ borderLeft: '3px solid #A89EFF' }}>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Devoluções no período</div>
-                                <div style={{ fontSize: 22, fontWeight: 700, color: '#8B5CF6' }}>
+                                <div style={{ fontSize: 22, fontWeight: 700, color: '#A89EFF' }}>
                                     {formatCurrency(purchasesData.filter(item => item.rowType === 'RETURN').reduce((sum, item) => sum - Number(item.totalAmount || 0), 0))}
                                 </div>
                             </Card>

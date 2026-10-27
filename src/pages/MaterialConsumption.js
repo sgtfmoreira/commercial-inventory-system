@@ -1,3 +1,4 @@
+import DataTable from '../components/Table';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
@@ -16,7 +17,7 @@ const Grid = styled.div`
   gap: 14px;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
   th, td { padding: 11px; border-bottom: 1px solid ${({ theme }) => theme.colors.border}; text-align: left; }

@@ -24,15 +24,28 @@ const Ring = styled.div`
   animation: ${spin} 0.8s linear infinite;
 `;
 
+const ScreenReaderText = styled.span`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+`;
+
 const Label = styled.p`
   font-size: ${({ theme }) => theme.fontSizes.sm};
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
 const Loading = ({ message = 'Carregando...', size }) => (
-    <Overlay>
-        <Ring size={size} />
+    <Overlay role="status" aria-live="polite">
+        <Ring size={size} aria-hidden="true" />
         {message && <Label>{message}</Label>}
+        <ScreenReaderText>Conteúdo sendo carregado</ScreenReaderText>
     </Overlay>
 );
 

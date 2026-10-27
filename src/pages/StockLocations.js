@@ -1,3 +1,6 @@
+import DSButton from '../components/Button';
+import { InputControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { getStockLocations, createStockLocation, updateStockLocation, deleteStockLocation, internalTransfer } from "../services/stockLocationService";
@@ -23,16 +26,16 @@ const Header = styled.div`
 
   h1 {
     font-size: 24px;
-    color: var(--text-color);
+    color: var(--color-text);
   }
 `;
 
 
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
-  background: var(--bg-surface);
+  background: var(--color-surface);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.05);
@@ -40,13 +43,13 @@ const Table = styled.table`
   th, td {
     padding: 15px 20px;
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
   }
 
   th {
-    background: var(--bg-surface-hover);
+    background: var(--color-primary-surface);
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--color-text-muted);
   }
 
   tr:last-child td {
@@ -54,21 +57,12 @@ const Table = styled.table`
   }
 `;
 
-const ActionBtn = styled.button`
-  background: none;
-  border: none;
-  color: ${props => props.danger ? '#ef4444' : 'var(--primary-color)'};
-  cursor: pointer;
-  font-size: 16px;
-  margin-right: 15px;
-
-  &:hover {
-    opacity: 0.8;
-  }
-`;
+const ActionBtn = ({ danger, ...props }) => (
+  <DSButton size="sm" variant={danger ? 'danger' : 'text'} {...props} />
+);
 
 const Badge = styled.span`
-  background: var(--primary-color);
+  background: var(--color-primary);
   color: white;
   padding: 4px 8px;
   border-radius: 12px;
@@ -76,12 +70,12 @@ const Badge = styled.span`
   font-weight: bold;
 `;
 
-const Input = styled.input`
+const Input = styled(InputControl)`
   padding: 8px 12px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: var(--bg-element);
-  color: var(--text-color);
+  background: var(--color-surface);
+  color: var(--color-text);
   width: 100%;
 `;
 
@@ -212,10 +206,10 @@ export default function StockLocations() {
       <Header>
         <div>
           <h1>Locais de Estoque</h1>
-          <p style={{ color: "var(--text-muted)", marginTop: "5px" }}>Gerencie os sub-estoques do seu estabelecimento (ex: Bar 1, Cozinha, etc).</p>
+          <p style={{ color: "var(--color-text-muted)", marginTop: "5px" }}>Gerencie os sub-estoques do seu estabelecimento (ex: Bar 1, Cozinha, etc).</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <Button onClick={() => setShowTransfer(true)} style={{ background: "var(--bg-element)", color: "var(--text-color)", border: "1px solid var(--border-color)" }}>
+          <Button onClick={() => setShowTransfer(true)} style={{ background: "var(--color-surface)", color: "var(--color-text)", border: "1px solid var(--color-border)" }}>
             Transferência Interna
           </Button>
           <Button onClick={() => setShowAdd(!showAdd)}>
@@ -234,7 +228,7 @@ export default function StockLocations() {
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
           />
           <Button onClick={handleAdd}>Salvar</Button>
-          <Button onClick={() => setShowAdd(false)} style={{ background: "var(--bg-element)", color: "var(--text-color)" }}>Cancelar</Button>
+          <Button onClick={() => setShowAdd(false)} style={{ background: "var(--color-surface)", color: "var(--color-text)" }}>Cancelar</Button>
         </div>
       )}
 
@@ -263,7 +257,7 @@ export default function StockLocations() {
                 )}
               </td>
               <td>
-                <strong style={{ color: "var(--primary-color)" }}>
+                <strong style={{ color: "var(--color-primary)" }}>
                   {formatCurrency(loc.totalValue || 0)}
                 </strong>
               </td>
@@ -289,7 +283,7 @@ export default function StockLocations() {
           ))}
           {locationsWithValues.length === 0 && !showAdd && (
             <tr>
-              <td colSpan="4" style={{ textAlign: "center", color: "var(--text-muted)" }}>
+              <td colSpan="4" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
                 Nenhum local cadastrado.
               </td>
             </tr>
@@ -349,16 +343,16 @@ export default function StockLocations() {
             const inUnits = (stockQty / pack).toFixed(2);
             
             return (
-              <div style={{ padding: '10px', background: 'var(--bg-hover)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              <div style={{ padding: '10px', background: 'var(--color-primary-surface)', borderRadius: '8px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Saldo neste local: <strong style={{ color: 'var(--primary-color)' }}>{inUnits} {pUnit}</strong> ({stockQty.toFixed(2)} {bUnit})</span>
-                  <button 
+                  <span>Saldo neste local: <strong style={{ color: 'var(--color-primary)' }}>{inUnits} {pUnit}</strong> ({stockQty.toFixed(2)} {bUnit})</span>
+                  <DSButton
                     type="button" 
                     onClick={() => setTransferForm({ ...transferForm, quantity: stockQty, unitType: 'base' })}
-                    style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
                   >
                     Mover tudo
-                  </button>
+                  </DSButton>
                 </div>
               </div>
             );
@@ -413,7 +407,7 @@ export default function StockLocations() {
                }
 
                return (
-                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                 <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                    Equivale a: <strong>{totalPurchase.toFixed(2)} {pUnit}</strong> ({totalBase.toFixed(2)} {bUnit})
                  </span>
                );

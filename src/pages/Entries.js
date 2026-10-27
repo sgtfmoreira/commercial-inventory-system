@@ -1,3 +1,7 @@
+import DSButton from '../components/Button';
+import { InputControl } from '../components/FormFields';
+import { TextareaControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import {
@@ -31,8 +35,8 @@ const ENTRY_TYPES = {
     DOUBLE_DRINK: {
         label: 'Drink em Dobro',
         icon: <MdLocalBar />,
-        color: '#8B5CF6',
-        bgColor: 'rgba(139, 92, 246, 0.1)',
+        color: '#A89EFF',
+        bgColor: 'rgba(168, 158, 255, 0.1)',
         description: 'Promoção onde o cliente paga 1 e leva 2'
     },
     COURTESY: {
@@ -165,7 +169,7 @@ const FilterGroup = styled.label`
   font-weight: ${({ theme }) => theme.fontWeights.medium};
 `;
 
-const DateInput = styled.input`
+const DateInput = styled(InputControl)`
   background: ${({ theme }) => theme.colors.bgInput};
   border: 1.5px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.md};
@@ -178,21 +182,11 @@ const DateInput = styled.input`
   &::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
 `;
 
-const ClearBtn = styled.button`
-  font-size: ${({ theme }) => theme.fontSizes.xs};
-  color: ${({ theme }) => theme.colors.danger};
-  background: ${({ theme }) => theme.colors.dangerLight};
-  border: none;
-  border-radius: ${({ theme }) => theme.radii.sm};
-  padding: 5px 10px;
-  cursor: pointer;
-  transition: ${({ theme }) => theme.transition};
-  &:hover { background: ${({ theme }) => theme.colors.danger}; color: #fff; }
-`;
+const ClearBtn = (props) => <DSButton size="sm" variant="danger" {...props} />;
 
 const TableWrap = styled.div`overflow-x: auto;`;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 
@@ -293,34 +287,11 @@ const TypeSelector = styled.div`
   gap: 10px;
 `;
 
-const TypeOption = styled.button`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 10px;
-  border-radius: ${({ theme }) => theme.radii.lg};
-  border: 2px solid ${({ $active, $color, theme }) =>
-        $active ? $color : theme.colors.border};
-  background: ${({ $active, $bg, theme }) =>
-        $active ? $bg : theme.colors.bgCard};
-  color: ${({ $active, $color, theme }) =>
-        $active ? $color : theme.colors.textSecondary};
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 600;
-  font-size: 0.8rem;
+const TypeOption = ({ $active, $color, $bg, ...props }) => (
+  <DSButton fullWidth variant={$active ? 'primary' : 'outlined'} {...props} />
+);
 
-  svg { font-size: 1.4rem; }
-
-  &:hover {
-    border-color: ${({ $color }) => $color};
-    background: ${({ $bg }) => $bg};
-    transform: translateY(-1px);
-  }
-`;
-
-const NoteInput = styled.textarea`
+const NoteInput = styled(TextareaControl)`
   width: 100%;
   min-height: 60px;
   padding: 10px 12px;
@@ -707,7 +678,7 @@ export default function Entries() {
 
             {/* ─── Filters ───────────────────────────────────────────────────────── */}
             <FiltersBar>
-                <MdFilterList style={{ color: '#0066CC', flexShrink: 0 }} />
+                <MdFilterList style={{ color: '#6D5EF4', flexShrink: 0 }} />
 
                 <FilterGroup>
                     Tipo:
@@ -865,7 +836,7 @@ export default function Entries() {
                                     <ManualItemHeader>
                                         <ManualItemNumber>Item {idx + 1}</ManualItemNumber>
                                         {items.length > 1 && (
-                                            <button
+                                            <DSButton
                                                 type="button"
                                                 onClick={() => removeItem(item._key)}
                                                 style={{ 
@@ -874,7 +845,7 @@ export default function Entries() {
                                                 }}
                                             >
                                                 <MdRemoveCircleOutline size={20} />
-                                            </button>
+                                            </DSButton>
                                         )}
                                     </ManualItemHeader>
 
@@ -959,7 +930,7 @@ export default function Entries() {
                             );
                         })}
 
-                        <button
+                        <DSButton
                             type="button"
                             onClick={addItem}
                             style={{ 
@@ -971,7 +942,7 @@ export default function Entries() {
                         >
                             <MdAdd size={18} />
                             Adicionar outro produto
-                        </button>
+                        </DSButton>
 
                         {/* Observação */}
                         <div>

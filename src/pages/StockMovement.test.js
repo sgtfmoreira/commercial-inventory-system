@@ -6,17 +6,18 @@ import { theme } from '../styles/theme';
 import StockMovement from './StockMovement';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useApp } from '../context/AppContext';
 
 jest.mock('../services/api', () => ({ get: jest.fn(), post: jest.fn() }));
 jest.mock('react-hot-toast', () => ({ success: jest.fn(), error: jest.fn() }));
 jest.mock('../context/AppContext', () => ({
-    useApp: () => ({
+    useApp: jest.fn(() => ({
         state: { products: [
             { id: 'drink', name: 'Bebida da equipe', type: 'INVENTORY', purchaseClassification: 'CMV_BEVERAGES', quantity: 20, packQuantity: 6, defaultLocationId: 'loc' },
             { id: 'soap', name: 'Detergente', type: 'INVENTORY', purchaseClassification: 'CLEANING', quantity: 20 }
         ] },
         fetchAllData: jest.fn()
-    })
+    }))
 }));
 jest.mock('../components/Select', () => ({ label, value, onChange, options }) => (
     <select aria-label={label} value={value} onChange={event => onChange(event.target.value)}>
@@ -24,6 +25,55 @@ jest.mock('../components/Select', () => ({ label, value, onChange, options }) =>
         {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
     </select>
 ));
+
+const defaultAppContext = () => ({
+    state: { products: [
+        { id: 'drink', name: 'Bebida da equipe', type: 'INVENTORY', purchaseClassification: 'CMV_BEVERAGES', quantity: 20, packQuantity: 6, defaultLocationId: 'loc' },
+        { id: 'soap', name: 'Detergente', type: 'INVENTORY', purchaseClassification: 'CLEANING', quantity: 20 }
+    ] },
+    fetchAllData: jest.fn()
+});
+
+beforeEach(() => {
+    useApp.mockReturnValue(defaultAppContext());
+});
+
+test('trocar estabelecimento limpa o local anterior e descarta respostas atrasadas', async () => {
+    global.IS_REACT_ACT_ENVIRONMENT = true;
+    const original = useApp.getMockImplementation();
+    const context = id => ({ state: { products: [], establishment: { id } }, fetchAllData: jest.fn() });
+    let resolveOld;
+    api.get.mockReset();
+    api.get.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve; }))
+        .mockResolvedValueOnce([{ id: 'park-location', name: 'Park' }]);
+    useApp.mockReturnValue(context('lights'));
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    try {
+        const render = () => root.render(<ThemeProvider theme={theme}><StockMovement /></ThemeProvider>);
+        await act(async () => render());
+        useApp.mockReturnValue(context('park'));
+        await act(async () => render());
+        await act(async () => resolveOld([{ id: 'lights-location', name: 'Lights' }]));
+        expect(api.get).toHaveBeenCalledTimes(2);
+        expect(container.querySelector('option[value="park-location"]')).not.toBeNull();
+        expect(container.querySelector('option[value="lights-location"]')).toBeNull();
+        const select = container.querySelector('option[value="park-location"]').parentElement;
+        await act(async () => Simulate.change(select, { target: { value: 'park-location' } }));
+        expect(select.value).toBe('park-location');
+        api.get.mockResolvedValue([{ id: 'lights-location', name: 'Lights' }]);
+        useApp.mockReturnValue(context('lights'));
+        await act(async () => render());
+        expect(select.value).toBe('');
+        expect(container.querySelector('option[value="park-location"]')).toBeNull();
+    } finally {
+        await act(async () => root.unmount());
+        container.remove();
+        useApp.mockImplementation(original);
+        api.get.mockReset();
+    }
+});
 
 test('consumo operacional permanece na movimentação e baixa produtos em unidades de estoque', async () => {
     global.IS_REACT_ACT_ENVIRONMENT = true;

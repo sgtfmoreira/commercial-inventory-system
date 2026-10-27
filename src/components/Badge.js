@@ -4,11 +4,15 @@ import styled from 'styled-components';
 const Wrapper = styled.span`
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  gap: 4px;
+  min-height: 24px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
   border-radius: ${({ theme }) => theme.radii.pill};
   font-size: ${({ theme }) => theme.fontSizes.xs};
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
   white-space: nowrap;
+  line-height: 1;
 
   background: ${({ variant, theme }) => {
         switch (variant) {
@@ -32,7 +36,7 @@ const Wrapper = styled.span`
 `;
 
 const Badge = ({ children, variant = 'primary' }) => (
-    <Wrapper variant={variant}>{children}</Wrapper>
+    <Wrapper variant={variant} role="status">{children}</Wrapper>
 );
 
 export default Badge;

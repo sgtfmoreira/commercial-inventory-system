@@ -1,3 +1,8 @@
+import { CheckboxControl } from '../components/FormFields';
+import DSButton from '../components/Button';
+import { InputControl } from '../components/FormFields';
+import { SelectControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styled from 'styled-components';
@@ -6,21 +11,20 @@ import eventService from '../services/eventService';
 import EventPricingPanel from '../components/EventPricingPanel';
 import EventBudgetSummary from '../components/EventBudgetSummary';
 import { useApp } from '../context/AppContext';
+import { Tabs, Tab } from '../components/Tabs';
 
 const Page = styled.div`display:grid;gap:18px;color:${({ theme }) => theme.colors.textPrimary};`;
 const Header = styled.div`display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;h1{margin:4px 0;}p{margin:0;color:${({ theme }) => theme.colors.textMuted};}`;
 const Panel = styled.section`background:${({ theme }) => theme.colors.bgCard};border:1px solid ${({ theme }) => theme.colors.border};border-radius:${({ theme }) => theme.radii.lg};padding:20px;`;
-const Tabs = styled.div`display:flex;gap:8px;`;
-const Tab = styled.button`padding:10px 14px;border-radius:9px;border:1px solid ${({ theme }) => theme.colors.border};background:${({ $active, theme }) => $active ? theme.colors.primary : theme.colors.bgCard};color:${({ $active, theme }) => $active ? 'white' : theme.colors.textPrimary};font-weight:700;cursor:pointer;`;
 const Grid = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;`;
 const Field = styled.label`display:grid;gap:5px;font-size:.82rem;font-weight:700;`;
-const Input = styled.input`padding:10px;border:1px solid ${({ theme }) => theme.colors.border};border-radius:8px;background:${({ theme }) => theme.colors.bgInput};color:${({ theme }) => theme.colors.textPrimary};`;
-const Select = styled.select`padding:10px;border:1px solid ${({ theme }) => theme.colors.border};border-radius:8px;background:${({ theme }) => theme.colors.bgInput};color:${({ theme }) => theme.colors.textPrimary};`;
-const Button = styled.button`border:0;border-radius:8px;padding:10px 14px;background:${({ theme, $secondary }) => $secondary ? theme.colors.bgHover : theme.colors.primary};color:${({ theme, $secondary }) => $secondary ? theme.colors.textPrimary : 'white'};font-weight:700;cursor:pointer;`;
+const Input = styled(InputControl)`padding:10px;border:1px solid ${({ theme }) => theme.colors.border};border-radius:8px;background:${({ theme }) => theme.colors.bgInput};color:${({ theme }) => theme.colors.textPrimary};`;
+const Select = styled(SelectControl)`padding:10px;border:1px solid ${({ theme }) => theme.colors.border};border-radius:8px;background:${({ theme }) => theme.colors.bgInput};color:${({ theme }) => theme.colors.textPrimary};`;
+const Button = DSButton;
 const Cards = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;`;
 const Card = styled.div`padding:14px;border-radius:10px;background:${({ theme }) => theme.colors.bgInput};span{display:block;color:${({ theme }) => theme.colors.textMuted};font-size:.75rem}strong{font-size:1.15rem}`;
-const Notice = styled.div`margin:12px 0;padding:11px 13px;border-radius:8px;background:${({ theme }) => theme.colors.bgInput};border-left:4px solid ${({ $warning, theme }) => $warning ? (theme.colors.warning || '#d97706') : theme.colors.primary};font-size:.86rem;`;
-const Table = styled.table`width:100%;border-collapse:collapse;margin-top:16px;th,td{text-align:left;padding:10px;border-bottom:1px solid ${({ theme }) => theme.colors.border};vertical-align:top;}th{font-size:.72rem;text-transform:uppercase;color:${({ theme }) => theme.colors.textMuted};}`;
+const Notice = styled.div`margin:12px 0;padding:11px 13px;border-radius:8px;background:${({ theme }) => theme.colors.bgInput};border-left:4px solid ${({ $warning, theme }) => $warning ? (theme.colors.warning || 'var(--color-warning)') : theme.colors.primary};font-size:.86rem;`;
+const Table = styled(DataTable)`width:100%;border-collapse:collapse;margin-top:16px;th,td{text-align:left;padding:10px;border-bottom:1px solid ${({ theme }) => theme.colors.border};vertical-align:top;}th{font-size:.72rem;text-transform:uppercase;color:${({ theme }) => theme.colors.textMuted};}`;
 const Actions = styled.div`display:flex;gap:7px;margin-top:14px;`;
 
 const money = value => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -120,7 +124,7 @@ export default function EventBudgetEditor() {
   if (!budget) return <Page>Carregando orçamento...</Page>;
   return <Page>
     <Link to={`/events/${eventId}`}>← Voltar ao evento</Link>
-    <Header><div><h1>Orçamento · revisão {budget.revision}</h1><p>{budget.event?.name} · {budget.event?.guestCount} convidados · {budget.status}</p></div><Tabs><Tab $active={tab === 'menu'} onClick={() => { setTab('menu'); setForm({ ...empty, costGroup: 'MENU' }); setEditing(''); }}>Cardápio</Tab><Tab $active={tab === 'costs'} onClick={() => { setTab('costs'); setForm({ ...empty, costGroup: 'STAFF' }); setEditing(''); }}>Custos</Tab><Tab $active={tab === 'pricing'} onClick={() => { setTab('pricing'); setEditing(''); }}>Precificação</Tab><Tab $active={tab === 'summary'} onClick={() => { setTab('summary'); setEditing(''); }}>Resumo</Tab></Tabs></Header>
+    <Header><div><h1>Orçamento · revisão {budget.revision}</h1><p>{budget.event?.name} · {budget.event?.guestCount} convidados · {budget.status}</p></div><Tabs><Tab active={tab === 'menu'} onClick={() => { setTab('menu'); setForm({ ...empty, costGroup: 'MENU' }); setEditing(''); }}>Cardápio</Tab><Tab active={tab === 'costs'} onClick={() => { setTab('costs'); setForm({ ...empty, costGroup: 'STAFF' }); setEditing(''); }}>Custos</Tab><Tab active={tab === 'pricing'} onClick={() => { setTab('pricing'); setEditing(''); }}>Precificação</Tab><Tab active={tab === 'summary'} onClick={() => { setTab('summary'); setEditing(''); }}>Resumo</Tab></Tabs></Header>
     <Cards><Card><span>Cardápio</span><strong>{money(budget.costMenu)}</strong></Card><Card><span>Equipe</span><strong>{money(budget.costStaff)}</strong></Card><Card><span>Demais custos</span><strong>{money(Number(budget.costService || 0) + Number(budget.costEquipment || 0) + Number(budget.costTransport || 0) + Number(budget.costFees || 0) + Number(budget.costOther || 0))}</strong></Card><Card><span>Custo total</span><strong>{money(budget.totalCost)}</strong></Card></Cards>
     {budget.qualityWarnings?.length > 0 && <Notice $warning>Revise os itens sem custo antes de enviar ou aprovar este orçamento.</Notice>}
     {tab === 'pricing' && editable && <EventPricingPanel budget={budget} onUpdate={setBudget}/>}
@@ -140,7 +144,7 @@ export default function EventBudgetEditor() {
           <Field>Unidade<Input required name="unitSnapshot" value={form.unitSnapshot} onChange={change} disabled={isSourced} /></Field>
           <Field>Custo unitário<Input required type="number" min="0" step="0.0001" name="unitCostSnapshot" value={form.unitCostSnapshot} onChange={change} disabled={isSourced} /></Field>
           {tab === 'menu' && <Field>Margem de segurança (%)<Input type="number" min="0" max="100" step="0.01" name="safetyPercent" value={form.safetyPercent} onChange={change} /></Field>}
-          <Field>Proposta<span><input type="checkbox" name="visibleInProposal" checked={form.visibleInProposal} onChange={change} /> Visível para o cliente</span></Field>
+          <Field>Proposta<span><CheckboxControl name="visibleInProposal" checked={form.visibleInProposal} onChange={change} /> Visível para o cliente</span></Field>
         </Grid>
         <Actions><Button disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alteração' : 'Adicionar item'}</Button>{editing && <Button type="button" $secondary onClick={reset}>Cancelar edição</Button>}</Actions>
       </form>}

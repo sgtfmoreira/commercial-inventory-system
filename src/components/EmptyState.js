@@ -8,6 +8,7 @@ const Wrapper = styled.div`
   align-items: center;
   justify-content: center;
   gap: ${({ theme }) => theme.spacing.md};
+  min-height: 220px;
   padding: ${({ theme }) => theme.spacing['2xl']};
   color: ${({ theme }) => theme.colors.textMuted};
   text-align: center;
@@ -15,7 +16,8 @@ const Wrapper = styled.div`
 
 const IconBox = styled.div`
   font-size: 3.5rem;
-  opacity: 0.4;
+  color: ${({ theme }) => theme.colors.primary};
+  opacity: 0.72;
   line-height: 1;
 `;
 
@@ -35,11 +37,13 @@ const EmptyState = ({
     title = 'Nenhum item encontrado',
     subtitle = 'Comece adicionando um novo item.',
     icon,
+    action,
 }) => (
     <Wrapper>
         <IconBox>{icon || <MdInbox />}</IconBox>
         <Title>{title}</Title>
         {subtitle && <Subtitle>{subtitle}</Subtitle>}
+        {action}
     </Wrapper>
 );
 

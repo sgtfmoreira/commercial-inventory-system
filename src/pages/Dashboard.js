@@ -1,3 +1,6 @@
+import DSButton from '../components/Button';
+import { InputControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
 import { MdCalendarToday } from 'react-icons/md';
@@ -12,7 +15,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Legend,
   CartesianGrid,
   LineChart,
   Line,
@@ -57,7 +59,7 @@ const FilterLabel = styled.label`
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
-const DateInput = styled.input`
+const DateInput = styled(InputControl)`
   background: ${({ theme }) => theme.colors.bgInput};
   border: 1.5px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.md};
@@ -122,7 +124,7 @@ const LowStockTable = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 
@@ -644,7 +646,7 @@ const Dashboard = () => {
 
       {/* Date Range Filter */}
       <FiltersRow>
-        <MdCalendarToday color="#6B7280" />
+        <MdCalendarToday color="var(--color-text-secondary)" />
         <FilterLabel>
           De:
           <DateInput type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
@@ -668,18 +670,18 @@ const Dashboard = () => {
           </div>
         </FilterLabel>
         {(dateFrom || dateTo || filterCategory) && (
-          <button
+          <DSButton
             onClick={() => { setDateFrom(''); setDateTo(''); setFilterCategory(''); }}
-            style={{ fontSize: '0.75rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '16px' }}
+            style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '16px' }}
           >
             Limpar filtro
-          </button>
+          </DSButton>
         )}
       </FiltersRow>
 
       {/* Stat Cards */}
       <StatsGrid>
-        <StatCard accent="#0066CC">
+        <StatCard accent="#6D5EF4">
 
           <StatInfo>
             <StatLabel>Total de Produtos</StatLabel>
@@ -687,7 +689,7 @@ const Dashboard = () => {
             <StatSub>no período selecionado</StatSub>
           </StatInfo>
         </StatCard>
-        <StatCard accent="#f59e0b">
+        <StatCard accent="var(--color-warning)">
 
 
           <StatInfo>
@@ -735,7 +737,7 @@ const Dashboard = () => {
           </StatInfo>
         </StatCard>
 
-        <StatCard accent="#6366f1">
+        <StatCard accent="#6D5EF4">
 
           <StatInfo>
             <StatLabel>Consumo Total</StatLabel>
@@ -750,10 +752,10 @@ const Dashboard = () => {
           </StatInfo>
         </StatCard>
 
-        <StatCard accent="#10b981">
+        <StatCard accent="var(--color-success)">
           <StatInfo>
             <StatLabel>Bonificação Recebida</StatLabel>
-            <StatValue style={{ fontSize: '1.3rem', color: '#10b981' }}>
+            <StatValue style={{ fontSize: '1.3rem', color: 'var(--color-success)' }}>
               {formatCurrency(totalBonus)}
             </StatValue>
             <StatSub>
@@ -774,10 +776,10 @@ const Dashboard = () => {
           </StatInfo>
         </StatCard>
 
-        <StatCard accent="#8B5CF6">
+        <StatCard accent="#A89EFF">
           <StatInfo>
             <StatLabel>Drink em Dobro</StatLabel>
-            <StatValue style={{ fontSize: '1.3rem', color: '#8B5CF6' }}>
+            <StatValue style={{ fontSize: '1.3rem', color: '#A89EFF' }}>
               {formatCurrency(doubleDrinkValue)}
             </StatValue>
             <StatSub>
@@ -798,10 +800,10 @@ const Dashboard = () => {
           </StatInfo>
         </StatCard>
 
-        <StatCard accent="#F59E0B">
+        <StatCard accent="var(--color-warning)">
           <StatInfo>
             <StatLabel>Promoções</StatLabel>
-            <StatValue style={{ fontSize: '1.3rem', color: '#F59E0B' }}>
+            <StatValue style={{ fontSize: '1.3rem', color: 'var(--color-warning)' }}>
               {formatCurrency(promoValue)}
             </StatValue>
             <StatSub>
@@ -810,7 +812,7 @@ const Dashboard = () => {
           </StatInfo>
         </StatCard>
 
-        <StatCard accent="#7c3aed">
+        <StatCard accent="#5B4BD8">
 
           <StatInfo>
             <StatLabel>Produto Mais Consumido</StatLabel>
@@ -837,11 +839,11 @@ const Dashboard = () => {
             )}
           </StatInfo>
         </StatCard>
-        <StatCard accent="#dc2626">
+        <StatCard accent="var(--color-danger)">
 
           <StatInfo>
             <StatLabel>Perda no Período</StatLabel>
-            <StatValue style={{ fontSize: '1.3rem', color: '#dc2626' }}>
+            <StatValue style={{ fontSize: '1.3rem', color: 'var(--color-danger)' }}>
               {lossValue.value > 0 ? formatCurrency(lossValue.value) : `${lossValue.count} ocorrência(s)`}
             </StatValue>
             <StatSub>
@@ -851,7 +853,7 @@ const Dashboard = () => {
             </StatSub>
           </StatInfo>
         </StatCard>
-        <StatCard accent="#ef4444">
+        <StatCard accent="var(--color-danger)">
 
           <StatInfo>
             <StatLabel>Abaixo do Mínimo</StatLabel>
@@ -891,7 +893,7 @@ const Dashboard = () => {
           </StatInfo>
         </StatCard>
 
-        <StatCard accent="#ef4444">
+        <StatCard accent="var(--color-danger)">
 
           <StatInfo>
             <StatLabel>Produtos Críticos</StatLabel>
@@ -908,7 +910,7 @@ const Dashboard = () => {
           </StatInfo>
         </StatCard>
 
-        <StatCard accent="#f59e0b">
+        <StatCard accent="var(--color-warning)">
 
           <StatInfo>
             <StatLabel>% Consumo Interno</StatLabel>
@@ -937,7 +939,7 @@ const Dashboard = () => {
           </StatInfo>
         </StatCard>
 
-        <StatCard accent="#f59e0b">
+        <StatCard accent="var(--color-warning)">
 
           <StatInfo>
             <StatLabel>Ordens Pendentes</StatLabel>
@@ -948,10 +950,10 @@ const Dashboard = () => {
 
         {productionStats !== null && (
           <>
-            <StatCard accent="#6366f1">
+            <StatCard accent="#6D5EF4">
               <StatInfo>
                 <StatLabel>🏭 Produções Pendentes</StatLabel>
-                <StatValue style={{ color: productionStats.pending > 0 ? '#f59e0b' : '#10b981' }}>
+                <StatValue style={{ color: productionStats.pending > 0 ? 'var(--color-warning)' : 'var(--color-success)' }}>
                   {productionStats.pending}
                 </StatValue>
                 <StatSub>
@@ -962,10 +964,10 @@ const Dashboard = () => {
               </StatInfo>
             </StatCard>
 
-            <StatCard accent="#10b981">
+            <StatCard accent="var(--color-success)">
               <StatInfo>
                 <StatLabel>✅ Produções Concluídas</StatLabel>
-                <StatValue style={{ color: '#10b981' }}>
+                <StatValue style={{ color: 'var(--color-success)' }}>
                   {productionStats.completed}
                 </StatValue>
                 <StatSub>
@@ -976,10 +978,10 @@ const Dashboard = () => {
               </StatInfo>
             </StatCard>
 
-            <StatCard accent="#8b5cf6">
+            <StatCard accent="#A89EFF">
               <StatInfo>
                 <StatLabel>💰 Custo de Produção</StatLabel>
-                <StatValue style={{ fontSize: '1.2rem', color: '#8b5cf6' }}>
+                <StatValue style={{ fontSize: '1.2rem', color: '#A89EFF' }}>
                   {formatCurrency(productionStats.productionCost)}
                 </StatValue>
                 <StatSub>insumos consumidos em produções</StatSub>
@@ -1027,12 +1029,12 @@ const Dashboard = () => {
                     <Tr key={p.id}>
                       <Td data-label="Produto" style={{ fontWeight: 600 }}>{p.name}</Td>
                       <Td data-label="Categoria">{p.category?.name || 'N/A'}</Td>
-                      <Td data-label="Qtd. Atual" style={{ color: '#ef4444', fontWeight: 600 }}>
+                      <Td data-label="Qtd. Atual" style={{ color: 'var(--color-danger)', fontWeight: 600 }}>
                         {p.quantity} {p.unit}
                       </Td>
                       <Td data-label="Estoque Mínimo">{p.minQuantity} {p.unit}</Td>
                       <Td data-label="Progresso" style={{ minWidth: 120 }}>
-                        <span style={{ fontSize: '0.7rem', color: '#f59e0b' }}>{Math.round(pct)}%</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)' }}>{Math.round(pct)}%</span>
                         <StockBar><StockFill pct={pct} /></StockBar>
                       </Td>
                       <Td data-label="Estimativa Reposição">
@@ -1052,16 +1054,16 @@ const Dashboard = () => {
         <div style={{ width: "100%", height: 300 }}>
           <ResponsiveContainer>
             <BarChart data={topConsumedProducts} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
               <XAxis 
                 dataKey="name" 
-                tick={{ fontSize: 11, fill: '#64748B' }} 
+                tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
                 axisLine={false} 
                 tickLine={false} 
                 interval={0}
               />
               <YAxis 
-                tick={{ fontSize: 11, fill: '#64748B' }} 
+                tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
                 axisLine={false} 
                 tickLine={false} 
               />
@@ -1085,10 +1087,10 @@ const Dashboard = () => {
                         borderRadius: '12px', 
                         boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' 
                       }}>
-                        <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px', color: '#1E293B' }}>{data.name}</p>
+                        <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px', color: 'var(--color-text)' }}>{data.name}</p>
                         <p style={{ color: '#F97316', fontWeight: 500, fontSize: '14px' }}>
                           {inUnits} {unit}
-                          <span style={{ fontSize: '11px', color: '#64748B', marginLeft: '6px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginLeft: '6px' }}>
                             ({qty} {baseUnit})
                           </span>
                         </p>
@@ -1110,16 +1112,16 @@ const Dashboard = () => {
         <div style={{ width: "100%", height: 300 }}>
           <ResponsiveContainer>
             <BarChart data={topInternalUseProducts} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
               <XAxis 
                 dataKey="name" 
-                tick={{ fontSize: 11, fill: '#64748B' }} 
+                tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
                 axisLine={false} 
                 tickLine={false} 
                 interval={0}
               />
               <YAxis 
-                tick={{ fontSize: 11, fill: '#64748B' }} 
+                tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
                 axisLine={false} 
                 tickLine={false} 
               />
@@ -1143,10 +1145,10 @@ const Dashboard = () => {
                         borderRadius: '12px', 
                         boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' 
                       }}>
-                        <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px', color: '#1E293B' }}>{data.name}</p>
+                        <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px', color: 'var(--color-text)' }}>{data.name}</p>
                         <p style={{ color: '#F97316', fontWeight: 500, fontSize: '14px' }}>
                           {inUnits} {unit}
-                          <span style={{ fontSize: '11px', color: '#64748B', marginLeft: '6px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginLeft: '6px' }}>
                             ({qty} {baseUnit})
                           </span>
                         </p>
@@ -1168,15 +1170,15 @@ const Dashboard = () => {
         <div style={{ width: "100%", height: 300 }}>
           <ResponsiveContainer>
             <LineChart data={internalUseTrend} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
               <XAxis 
                 dataKey="date" 
-                tick={{ fontSize: 11, fill: '#64748B' }} 
+                tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
                 axisLine={false} 
                 tickLine={false} 
               />
               <YAxis 
-                tick={{ fontSize: 11, fill: '#64748B' }} 
+                tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
                 axisLine={false} 
                 tickLine={false} 
               />
@@ -1188,9 +1190,9 @@ const Dashboard = () => {
                 type="monotone" 
                 dataKey="value" 
                 name="Valor Consumido" 
-                stroke="#3B82F6" 
+                stroke="#6D5EF4"
                 strokeWidth={3}
-                dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4, stroke: '#fff' }}
+                dot={{ fill: '#6D5EF4', strokeWidth: 2, r: 4, stroke: '#fff' }}
                 activeDot={{ r: 6, strokeWidth: 0 }}
               />
             </LineChart>

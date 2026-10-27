@@ -1,3 +1,5 @@
+import { InputControl } from '../components/FormFields';
+import DataTable from '../components/Table';
 import React, { useState } from "react";
 import styled from "styled-components";
 import { useApp } from "../context/AppContext";
@@ -10,7 +12,7 @@ import Select from "../components/Select";
 import SupplierReturnForm from "../components/SupplierReturnForm";
 import { MdAddCircle, MdRemoveCircle, MdUploadFile, MdShoppingCart, MdLocalBar } from "react-icons/md";
 
-const SearchInput = styled.input`
+const SearchInput = styled(InputControl)`
   width: 100%;
   padding: 12px;
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -19,7 +21,7 @@ const SearchInput = styled.input`
   font-size: 14px;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 20px;
@@ -37,7 +39,7 @@ const Table = styled.table`
   }
 `;
 
-const SmallInput = styled.input`
+const SmallInput = styled(InputControl)`
   width: 80px;
   padding: 6px;
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -74,8 +76,9 @@ const PageSubtitle = styled.p`
 `;
 
 const FormContainer = styled.div`
-  max-width: ${({ $mode }) => $mode === 'MANUAL_SALE' ? '800px' : '600px'};
+  max-width: ${({ $mode }) => $mode === 'SUPPLIER_RETURN' ? 'none' : $mode === 'MANUAL_SALE' ? '800px' : '600px'};
   width: 100%;
+  min-width: 0;
 `;
 
 const ButtonGroup = styled.div`
@@ -124,16 +127,27 @@ export default function StockMovement() {
     });
 
     React.useEffect(() => {
+        let cancelled = false;
+        setLocations([]);
+        setLocationId('');
+        setProductId('');
+        setQuantity('');
+        setManualSales({});
+        setManualPrices({});
+        setManualDiscounts({});
+        setFile(null);
+        manualRequestIdRef.current = null;
         const loadLocations = async () => {
             try {
                 const data = await api.get('/stock-locations');
-                setLocations(data);
+                if (!cancelled) setLocations(data);
             } catch (err) {
                 console.error(err);
             }
         };
         loadLocations();
-    }, []);
+        return () => { cancelled = true; };
+    }, [state.establishment?.id]);
 
     const selectedProduct = state.products.find((p) => p.id === productId);
 
@@ -478,7 +492,7 @@ export default function StockMovement() {
                                 onChange={(e) => setQuantity(e.target.value)}
                             />
                             {selectedProduct && quantity !== "" && (
-                                <span style={{ fontSize: '12px', color: '#64748B', marginLeft: '4px' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginLeft: '4px' }}>
                                     Total a sugerir: <strong>{(Number(quantity) * (selectedProduct.packQuantity || 1)).toFixed(0)} {selectedProduct.unit || 'ml'}</strong>
                                 </span>
                             )}
@@ -505,7 +519,7 @@ export default function StockMovement() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span>Após movimentação:</span>
                                         <strong style={{
-                                            color: newQty < 0 ? "#DC2626" : "#059669",
+                                            color: newQty < 0 ? "var(--color-danger)" : "var(--color-success)",
                                             fontSize: '16px'
                                         }}>
                                             {inUnits} {selectedProduct.purchaseUnit}
@@ -550,14 +564,14 @@ export default function StockMovement() {
                             onChange={(e) => setFile(e.target.files[0])}
                         />
 
-                        <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
+                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: 0 }}>
                             Para calcular o CMV em porcentagem, o CSV pode conter as colunas Produto, Quantidade,
                             Preço Unitário, Desconto e Valor Líquido. Importações apenas com produto e quantidade
                             continuam aceitas, mas não geram percentual financeiro.
                         </p>
 
                         {file && (
-                            <p style={{ fontSize: '13px', color: '#64748B' }}>
+                            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                                 📄 Selecionado: <strong>{file.name}</strong>
                             </p>
                         )}

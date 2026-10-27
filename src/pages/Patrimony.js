@@ -1,3 +1,5 @@
+import DSButton from '../components/Button';
+import DataTable from '../components/Table';
 import React, { useState, useMemo, useEffect } from "react";
 import styled, { useTheme } from "styled-components";
 import { MdAdd, MdEdit, MdDelete, MdPictureAsPdf, MdInventory } from "react-icons/md";
@@ -57,7 +59,7 @@ const TableWrapper = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
+const Table = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
 
@@ -134,27 +136,9 @@ const ActionButtons = styled.div`
   gap: 8px;
 `;
 
-const IconButton = styled.button`
-  background: none;
-  border: none;
-  color: #64748b;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #e2e8f0;
-    color: #0f172a;
-  }
-
-  &.danger:hover {
-    background: #fee2e2;
-    color: #ef4444;
-  }
-`;
+const IconButton = ({ className, ...props }) => (
+  <DSButton size="sm" iconOnly variant={className === 'danger' ? 'danger' : 'ghost'} {...props} />
+);
 
 const FormGrid = styled.div`
   display: grid;

@@ -1,3 +1,6 @@
+import { InputControl } from '../components/FormFields';
+import DSButton from '../components/Button';
+import DataTable from '../components/Table';
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { 
@@ -8,7 +11,6 @@ import {
   MdHelpOutline,
   MdArrowForward,
   MdInput,
-  MdClose,
   MdPrint
 } from 'react-icons/md';
 import jsPDF from 'jspdf';
@@ -16,6 +18,7 @@ import autoTable from 'jspdf-autotable';
 import { useApp } from '../context/AppContext';
 import { formatCurrency } from '../utils/formatCurrency';
 import Card from '../components/Card';
+import Modal from '../components/Modal';
 import Select from '../components/Select';
 import toast from 'react-hot-toast';
 
@@ -40,25 +43,7 @@ const TitleBlock = styled.div`
   }
 `;
 
-const ActionButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: ${({ theme, $variant }) => $variant === 'secondary' ? theme.colors.bgCard : theme.colors.primary};
-  color: ${({ theme, $variant }) => $variant === 'secondary' ? theme.colors.text : '#fff'};
-  border: 1px solid ${({ theme, $variant }) => $variant === 'secondary' ? theme.colors.border : 'transparent'};
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: ${({ theme }) => theme.shadows.md};
-    background: ${({ theme, $variant }) => $variant === 'secondary' ? theme.colors.bgHover : theme.colors.primaryDark};
-  }
-`;
+const ActionButton = DSButton;
 
 const Grid = styled.div`
   display: grid;
@@ -69,7 +54,7 @@ const Grid = styled.div`
   }
 `;
 
-const EventTable = styled.table`
+const EventTable = styled(DataTable)`
   width: 100%;
   border-collapse: collapse;
   
@@ -104,53 +89,6 @@ const StatusBadge = styled.span`
   color: ${({ $status, theme }) => $status === 'OPEN' ? theme.colors.warning : theme.colors.success};
 `;
 
-const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  backdrop-filter: blur(4px);
-`;
-
-const ModalContent = styled.div`
-  background: ${({ theme }) => theme.colors.bgCard};
-  width: 100%;
-  max-width: 800px;
-  border-radius: 16px;
-  box-shadow: ${({ theme }) => theme.shadows.xl};
-  overflow: hidden;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-`;
-
-const ModalHeader = styled.div`
-  padding: 20px 24px;
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  h2 { font-size: 1.25rem; margin: 0; }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-  overflow-y: auto;
-  flex: 1;
-`;
-
-const ModalFooter = styled.div`
-  padding: 16px 24px;
-  border-top: 1px solid ${({ theme }) => theme.colors.border};
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-`;
-
 const FormGroup = styled.div`
   margin-bottom: 20px;
   label {
@@ -179,15 +117,7 @@ const ItemRow = styled.div`
   align-items: flex-end;
 `;
 
-const RemoveBtn = styled.button`
-  background: ${({ theme }) => theme.colors.dangerLight};
-  color: ${({ theme }) => theme.colors.danger};
-  border: none;
-  padding: 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  &:hover { background: ${({ theme }) => theme.colors.danger}; color: #fff; }
-`;
+const RemoveBtn = (props) => <DSButton size="sm" iconOnly variant="danger" aria-label="Remover item" {...props} />;
 
 const SummaryBox = styled.div`
   background: ${({ theme }) => theme.colors.bg};
@@ -298,7 +228,7 @@ export default function MarketingEvents() {
     // Cabeçalho
     doc.setFontSize(18);
     doc.setTextColor(30, 41, 59); // Slate-800
-    doc.text('Ordem de Separação - Controle de Compras BDS', 14, 22);
+    doc.text('Ordem de Separação - Bastidor OS', 14, 22);
 
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139); // Slate-500
@@ -433,21 +363,23 @@ export default function MarketingEvents() {
 
       {/* MODAL NOVO EVENTO */}
       {showNewModal && (
-        <ModalOverlay>
-          <ModalContent>
-            <ModalHeader>
-              <h2>Nova Requisição de Consumo</h2>
-              <button 
-                onClick={() => setShowNewModal(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.5rem' }}
-              >
-                <MdClose />
-              </button>
-            </ModalHeader>
-            <ModalBody>
+        <Modal
+          isOpen={showNewModal}
+          onClose={() => setShowNewModal(false)}
+          title="Nova Requisição de Consumo"
+          maxWidth="800px"
+          footer={(
+            <>
+              <ActionButton $variant="secondary" onClick={() => setShowNewModal(false)}>Cancelar</ActionButton>
+              <ActionButton onClick={handleCreateEvent}>
+                <MdCheckCircle /> Criar Requisição
+              </ActionButton>
+            </>
+          )}
+        >
               <FormGroup>
                 <label>Nome do Evento / Ação</label>
-                <input 
+                <InputControl
                   placeholder="Ex: Resenha Marketing 06/04" 
                   value={eventName}
                   onChange={e => setEventName(e.target.value)}
@@ -475,7 +407,7 @@ export default function MarketingEvents() {
                     />
                   </FormGroup>
                   <FormGroup style={{ marginBottom: 0 }}>
-                    <input 
+                    <InputControl
                       type="number" 
                       min="1" 
                       value={item.units}
@@ -505,28 +437,30 @@ export default function MarketingEvents() {
               >
                 <MdAdd /> Adicionar Item
               </ActionButton>
-            </ModalBody>
-            <ModalFooter>
-              <ActionButton $variant="secondary" onClick={() => setShowNewModal(false)}>Cancelar</ActionButton>
-              <ActionButton onClick={handleCreateEvent}>
-                <MdCheckCircle /> Criar Requisição
-              </ActionButton>
-            </ModalFooter>
-          </ModalContent>
-        </ModalOverlay>
+        </Modal>
       )}
 
       {/* MODAL CHECK-IN / RELATÓRIO */}
       {showCheckInModal && report && (
-        <ModalOverlay>
-          <ModalContent style={{ maxWidth: '900px' }}>
-            <ModalHeader>
-              <h2>{report.status === 'OPEN' ? 'Check-in de Sobras' : 'Relatório da Ação'}</h2>
-              <div style={{ padding: '4px 12px', background: '#f1f5f9', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
-                {selectedEvent?.name}
-              </div>
-            </ModalHeader>
-            <ModalBody>
+        <Modal
+          isOpen={showCheckInModal}
+          onClose={() => setShowCheckInModal(false)}
+          title={`${report.status === 'OPEN' ? 'Check-in de Sobras' : 'Relatório da Ação'} · ${selectedEvent?.name || ''}`}
+          maxWidth="900px"
+          footer={(
+            <>
+              <ActionButton $variant="secondary" onClick={handleExportPDF} style={{ marginRight: 'auto' }}>
+                <MdPrint /> Exportar PDF
+              </ActionButton>
+              <ActionButton $variant="secondary" onClick={() => setShowCheckInModal(false)}>Fechar</ActionButton>
+              {report.status === 'OPEN' && (
+                <ActionButton onClick={handleCloseEvent}>
+                  <MdArrowForward /> Finalizar Ação e Devolver Estoque
+                </ActionButton>
+              )}
+            </>
+          )}
+        >
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                 <Card style={{ padding: '16px', background: '#f8fafc' }}>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>Total Retirado</div>
@@ -536,8 +470,8 @@ export default function MarketingEvents() {
                   <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase' }}>Total Devolvido</div>
                   <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10b981' }}>{formatCurrency(report.totalReturned)}</div>
                 </Card>
-                <Card style={{ padding: '16px', background: '#eff6ff', border: '1px solid #3b82f6' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#3b82f6', textTransform: 'uppercase' }}>Custo Real da Ação</div>
+                <Card style={{ padding: '16px', background: '#eff6ff', border: '1px solid #6D5EF4' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#6D5EF4', textTransform: 'uppercase' }}>Custo Real da Ação</div>
                   <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e40af' }}>{formatCurrency(report.realCost)}</div>
                 </Card>
               </div>
@@ -563,7 +497,7 @@ export default function MarketingEvents() {
                       </td>
                       <td>
                         {report.status === 'OPEN' ? (
-                          <input 
+                          <InputControl
                             type="number"
                             style={{ width: '80px', padding: '6px' }}
                             value={returnItems[idx]?.units || 0}
@@ -580,7 +514,7 @@ export default function MarketingEvents() {
                       <td>
                          {report.status === 'OPEN' ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                             <input 
+                             <InputControl
                                 type="number"
                                 style={{ width: '80px', padding: '6px' }}
                                 value={returnItems[idx]?.looseQty || 0}
@@ -600,20 +534,7 @@ export default function MarketingEvents() {
                   ))}
                 </tbody>
               </EventTable>
-            </ModalBody>
-            <ModalFooter>
-              <ActionButton $variant="secondary" onClick={handleExportPDF} style={{ marginRight: 'auto' }}>
-                <MdPrint /> Exportar PDF
-              </ActionButton>
-              <ActionButton $variant="secondary" onClick={() => setShowCheckInModal(false)}>Fechar</ActionButton>
-              {report.status === 'OPEN' && (
-                <ActionButton onClick={handleCloseEvent}>
-                  <MdArrowForward /> Finalizar Ação e Devolver Estoque
-                </ActionButton>
-              )}
-            </ModalFooter>
-          </ModalContent>
-        </ModalOverlay>
+        </Modal>
       )}
     </>
   );

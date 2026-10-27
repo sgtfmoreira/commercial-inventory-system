@@ -1,4 +1,5 @@
-import React from 'react';
+import DSButton from './Button';
+import React, { useEffect, useId } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { MdClose } from 'react-icons/md';
 
@@ -8,14 +9,13 @@ const slideUp = keyframes`from { transform: translateY(24px); opacity: 0; } to {
 const Backdrop = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
+  background: ${({ theme }) => theme.colors.backdrop};
+  z-index: ${({ theme }) => theme.zIndices.modal};
   display: flex;
   align-items: center;
   justify-content: center;
   padding: ${({ theme }) => theme.spacing.md};
-  animation: ${fadeIn} 0.2s ease;
+  animation: ${fadeIn} ${({ theme }) => theme.transitions.normal};
 `;
 
 const Sheet = styled.div`
@@ -27,14 +27,14 @@ const Sheet = styled.div`
   max-width: ${({ maxWidth }) => maxWidth || '560px'};
   max-height: 90vh;
   overflow-y: auto;
-  animation: ${slideUp} 0.25s ease;
+  animation: ${slideUp} ${({ theme }) => theme.transitions.slow};
 `;
 
 const Header = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: ${({ theme }) => `${theme.spacing.lg} ${theme.spacing.xl}`};
+  padding: ${({ theme }) => `${theme.spacing.md} ${theme.spacing.lg}`};
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
 `;
 
@@ -44,7 +44,7 @@ const Title = styled.h2`
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
-const CloseBtn = styled.button`
+const CloseBtn = styled(DSButton)`
   background: ${({ theme }) => theme.colors.bgInput};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.sm};
@@ -64,14 +64,14 @@ const CloseBtn = styled.button`
 `;
 
 const Body = styled.div`
-  padding: ${({ theme }) => theme.spacing.xl};
+  padding: ${({ theme }) => theme.spacing.lg};
 `;
 
 const Footer = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: ${({ theme }) => theme.spacing.sm};
-  padding: ${({ theme }) => `${theme.spacing.md} ${theme.spacing.xl}`};
+  padding: ${({ theme }) => `${theme.spacing.md} ${theme.spacing.lg}`};
   border-top: 1px solid ${({ theme }) => theme.colors.border};
 
   @media (max-width: 480px) {
@@ -84,13 +84,26 @@ const Footer = styled.div`
 `;
 
 const Modal = ({ isOpen, onClose, title, children, maxWidth, footer }) => {
+  const titleId = useId();
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleKeyDown = (event) => event.key === 'Escape' && onClose?.();
+    document.addEventListener('keydown', handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
     <Backdrop onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <Sheet maxWidth={maxWidth}>
+      <Sheet maxWidth={maxWidth} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <Header>
-          <Title>{title}</Title>
+          <Title id={titleId}>{title}</Title>
           <CloseBtn onClick={onClose} aria-label="Fechar">
             <MdClose />
           </CloseBtn>
