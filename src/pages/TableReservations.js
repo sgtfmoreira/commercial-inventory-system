@@ -31,34 +31,233 @@ const TABLES = [
   { n: 27, x: 61.2, y: 80.7, w: 5.5, h: 4.6 }
 ];
 
-const Page = styled.div`display:flex;flex-direction:column;gap:20px;max-width:1500px;`;
-const Header = styled.div`display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;`;
-const Title = styled.h1`font-size:${({theme})=>theme.fontSizes['3xl']};color:${({theme})=>theme.colors.textPrimary};`;
-const Subtitle = styled.p`color:${({theme})=>theme.colors.textSecondary};margin-top:4px;`;
-const Toolbar = styled.div`display:flex;align-items:center;gap:8px;flex-wrap:wrap;`;
-const DateInput = styled(InputControl)`background:${({theme})=>theme.colors.bgCard};color:${({theme})=>theme.colors.textPrimary};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};padding:9px 12px;font:inherit;`;
-const Stats = styled.div`display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;@media(max-width:850px){grid-template-columns:repeat(2,1fr);}@media(max-width:520px){grid-template-columns:1fr;}`;
-const Stat = styled.div`background:${({theme})=>theme.colors.bgCard};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.lg};padding:16px;display:flex;gap:12px;align-items:center;box-shadow:${({theme})=>theme.shadows.card};svg{font-size:1.65rem;color:${({theme})=>theme.colors.primary};}strong{display:block;font-size:1.5rem;}span{color:${({theme})=>theme.colors.textSecondary};font-size:.875rem;}`;
-const Grid = styled.div`display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.8fr);gap:20px;align-items:start;@media(max-width:1050px){grid-template-columns:1fr;}`;
-const Card = styled.section`background:${({theme})=>theme.colors.bgCard};border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.lg};padding:16px;box-shadow:${({theme})=>theme.shadows.card};`;
-const CardHeader = styled.div`display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;h2{font-size:${({theme})=>theme.fontSizes.lg};}`;
-const MapViewport = styled.div`overflow:auto;max-height:74vh;border-radius:10px;background:#062d55;overscroll-behavior:contain;`;
-const MapCanvas = styled.div`position:relative;width:${({$zoom})=>$zoom*100}%;min-width:${({$zoom})=>Math.round(690*$zoom)}px;line-height:0;transition:width .2s ease;`;
-const MapImage = styled.img`width:100%;height:auto;user-select:none;`;
+const Page = styled.div`
+  width: 100%;
+  min-width: 0;
+  max-width: 1500px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  @media (max-width: 700px) { gap: 16px; }
+`;
+const Header = styled.div`
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  @media (max-width: 700px) { flex-direction: column; }
+`;
+const HeaderCopy = styled.div`min-width:0;`;
+const Title = styled.h1`
+  color: ${({theme})=>theme.colors.textPrimary};
+  font-size: clamp(1.65rem, 4vw, ${({theme})=>theme.fontSizes['3xl']});
+  line-height: 1.15;
+`;
+const Subtitle = styled.p`
+  margin-top: 4px;
+  color: ${({theme})=>theme.colors.textSecondary};
+  overflow-wrap: anywhere;
+`;
+const Toolbar = styled.div`display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;`;
+const HeaderToolbar = styled(Toolbar)`
+  justify-content: flex-end;
+
+  @media (max-width: 700px) {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+`;
+const DateNavigator = styled.div`
+  display: grid;
+  grid-template-columns: auto minmax(148px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  @media (max-width: 480px) {
+    width: 100%;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    .button-label { display: none; }
+    button { width: 44px; min-height: 44px; padding: 0; }
+  }
+`;
+const HeaderActions = styled.div`
+  display: flex;
+  gap: 8px;
+
+  @media (max-width: 700px) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    button { width: 100%; min-height: 44px; }
+  }
+`;
+const DateInput = styled(InputControl)`
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid ${({theme})=>theme.colors.border};
+  border-radius: ${({theme})=>theme.radii.md};
+  background: ${({theme})=>theme.colors.bgCard};
+  color: ${({theme})=>theme.colors.textPrimary};
+  font: inherit;
+
+  @media (max-width: 480px) { min-height: 44px; }
+`;
+const Stats = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+
+  @media (max-width: 900px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 480px) { gap: 8px; }
+`;
+const Stat = styled.div`
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid ${({theme})=>theme.colors.border};
+  border-radius: ${({theme})=>theme.radii.lg};
+  background: ${({theme})=>theme.colors.bgCard};
+  box-shadow: ${({theme})=>theme.shadows.card};
+  svg { flex:0 0 auto;font-size:1.65rem;color:${({theme})=>theme.colors.primary}; }
+  div { min-width:0; }
+  strong { display:block;font-size:1.5rem;line-height:1.1; }
+  span { display:block;color:${({theme})=>theme.colors.textSecondary};font-size:.875rem;line-height:1.3;overflow-wrap:anywhere; }
+
+  @media (max-width: 480px) {
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 10px;
+    svg { font-size:1.35rem; }
+    strong { font-size:1.25rem; }
+    span { font-size:.78rem; }
+  }
+`;
+const Grid = styled.div`
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(330px, .8fr);
+  gap: 20px;
+  align-items: start;
+
+  @media (max-width: 1100px) { grid-template-columns: minmax(0, 1fr); }
+  @media (max-width: 700px) { gap: 16px; }
+`;
+const Card = styled.section`
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid ${({theme})=>theme.colors.border};
+  border-radius: ${({theme})=>theme.radii.lg};
+  background: ${({theme})=>theme.colors.bgCard};
+  box-shadow: ${({theme})=>theme.shadows.card};
+
+  @media (max-width: 480px) { padding: 12px; }
+`;
+const CardHeader = styled.div`
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  h2 { min-width:0;font-size:${({theme})=>theme.fontSizes.lg}; }
+
+  @media (max-width: 480px) {
+    align-items: stretch;
+    h2 { width:100%; }
+    > button { width:100%;min-height:44px; }
+  }
+`;
+const MapModeActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 8px;
+  margin-bottom: 12px;
+
+  @media (max-width: 700px) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    justify-content: stretch;
+    button { width:100%;min-height:44px;white-space:normal;line-height:1.2; }
+  }
+`;
+const ZoomControls = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: ${({theme})=>theme.colors.textSecondary};
+  font-size: .85rem;
+  button { min-width:40px;min-height:40px;padding:0; }
+`;
+const MapViewport = styled.div`
+  width: 100%;
+  max-height: 74vh;
+  overflow: auto;
+  border-radius: 10px;
+  background: #062d55;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+
+  @media (max-width: 700px) {
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 8px;
+    overscroll-behavior-x: contain;
+    scrollbar-gutter: auto;
+  }
+`;
+const MapCanvas = styled.div`
+  position: relative;
+  width: ${({$zoom})=>$zoom*100}%;
+  min-width: ${({$zoom})=>Math.round(690*$zoom)}px;
+  line-height: 0;
+  transition: width .2s ease, min-width .2s ease;
+
+  @media (max-width: 700px) { min-width:${({$zoom})=>Math.round(580*$zoom)}px; }
+`;
+const MapImage = styled.img`display:block;width:100%;height:auto;user-select:none;`;
 const TableHit = styled(Button).attrs(({ $table }) => ({ style: { left:`${$table.x-$table.w/2}%`,top:`${$table.y-$table.h/2}%`,width:`${$table.w}%`,height:`${$table.h}%` } }))`
-  position:absolute;border:2px solid ${({$occupied,$reserved,$selected})=>$occupied?'#60a5fa':$reserved?'#ef4444':$selected?'#facc15':'#22c55e'};border-radius:10px;background:${({$occupied,$reserved,$selected})=>$occupied?'rgba(59,130,246,.35)':$reserved?'rgba(239,68,68,.20)':$selected?'rgba(250,204,21,.35)':'rgba(34,197,94,.12)'};color:white;line-height:1;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px;box-shadow:${({$selected})=>$selected?'0 0 0 3px rgba(250,204,21,.75), inset 0 0 0 1px #fff':'inset 0 0 0 1px rgba(255,255,255,.55)'};transition:.15s;cursor:pointer;
+  position:absolute;min-width:36px;min-height:36px;border:2px solid ${({$occupied,$reserved,$selected})=>$occupied?'#60a5fa':$reserved?'#ef4444':$selected?'#facc15':'#22c55e'};border-radius:10px;background:${({$occupied,$reserved,$selected})=>$occupied?'rgba(59,130,246,.35)':$reserved?'rgba(239,68,68,.20)':$selected?'rgba(250,204,21,.35)':'rgba(34,197,94,.12)'};color:white;line-height:1;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px;box-shadow:${({$selected})=>$selected?'0 0 0 3px rgba(250,204,21,.75), inset 0 0 0 1px #fff':'inset 0 0 0 1px rgba(255,255,255,.55)'};transition:.15s;cursor:pointer;touch-action:manipulation;
   &:hover,&:focus-visible{z-index:4;outline:3px solid #fff;transform:scale(1.06);}
+  @media(max-width:700px){min-width:40px;min-height:40px;border-radius:8px;}
 `;
 const TableBadge = styled.span`min-width:22px;height:22px;padding:0 4px;border-radius:999px;background:${({$occupied,$reserved,$selected})=>$occupied?'#1d4ed8':$reserved?'#b91c1c':$selected?'#a16207':'#047857'};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 1px 4px #000;`;
-const Legend = styled.div`display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;color:${({theme})=>theme.colors.textSecondary};font-size:.85rem;span{display:flex;align-items:center;gap:6px;}i{width:13px;height:13px;border-radius:4px;display:inline-block;}`;
-const SelectionBar = styled.div`display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:12px 14px;border:1px solid #eab308;border-radius:${({theme})=>theme.radii.md};background:rgba(250,204,21,.12);color:${({theme})=>theme.colors.textPrimary};strong{color:#a16207;}`;
-const SearchBox = styled.div`position:relative;flex:1;min-width:220px;svg{position:absolute;left:11px;top:11px;color:${({theme})=>theme.colors.textMuted};}input{width:100%;padding:9px 12px 9px 36px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};}`;
-const ReservationList = styled.div`display:flex;flex-direction:column;gap:8px;max-height:68vh;overflow:auto;`;
-const ReservationRow = styled(Button)`text-align:left;width:100%;padding:12px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};&:hover{border-color:${({theme})=>theme.colors.primary};}.top{display:flex;justify-content:space-between;gap:10px;font-weight:700}.meta{color:${({theme})=>theme.colors.textSecondary};font-size:.86rem;margin-top:5px;}`;
+const Legend = styled.div`
+  display:flex;gap:12px 16px;flex-wrap:wrap;margin-top:12px;color:${({theme})=>theme.colors.textSecondary};font-size:.85rem;
+  span{display:flex;align-items:center;gap:6px;min-width:0;}i{width:13px;height:13px;border-radius:4px;display:inline-block;flex:0 0 auto;}
+  .instruction{flex-basis:100%;}
+  @media(max-width:600px){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-size:.78rem;.instruction{grid-column:1/-1;padding-top:4px;}}
+`;
+const SelectionBar = styled.div`
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:12px 14px;border:1px solid #eab308;border-radius:${({theme})=>theme.radii.md};background:rgba(250,204,21,.12);color:${({theme})=>theme.colors.textPrimary};
+  > div{min-width:0;overflow-wrap:anywhere;}strong{color:#a16207;}
+  @media(max-width:600px){align-items:stretch;padding:12px;>div{width:100%;}button{width:100%;min-height:44px;}}
+`;
+const SearchBox = styled.div`position:relative;width:100%;min-width:0;svg{position:absolute;left:11px;top:11px;color:${({theme})=>theme.colors.textMuted};}input{width:100%;min-width:0;padding:9px 12px 9px 36px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};}`;
+const ReservationList = styled.div`
+  display:flex;flex-direction:column;gap:8px;max-height:68vh;overflow:auto;
+  @media(max-width:1100px){max-height:none;overflow:visible;}
+`;
+const ReservationRow = styled(Button)`
+  width:100%;padding:12px;text-align:left;white-space:normal;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};color:${({theme})=>theme.colors.textPrimary};
+  > span{display:block;width:100%;min-width:0;}.top{display:flex;justify-content:space-between;gap:10px;font-weight:700;line-height:1.35;}.top span{min-width:0;overflow-wrap:anywhere;}.top span:last-child{flex:0 0 auto;}.meta{color:${({theme})=>theme.colors.textSecondary};font-size:.86rem;line-height:1.4;margin-top:5px;overflow-wrap:anywhere;}&:hover{border-color:${({theme})=>theme.colors.primary};}
+  @media(max-width:480px){min-height:44px;padding:12px 10px;.top{flex-direction:column;gap:3px;}.top span:last-child{font-size:.8rem;color:${({theme})=>theme.colors.textSecondary};}}
+`;
 const Empty = styled.div`padding:36px 12px;text-align:center;color:${({theme})=>theme.colors.textMuted};`;
-const StatusLine = styled.div`display:flex;align-items:center;gap:8px;color:${({theme,$error})=>$error?theme.colors.danger:theme.colors.textMuted};font-size:.82rem;`;
+const StatusLine = styled.div`display:flex;align-items:flex-start;gap:8px;color:${({theme,$error})=>$error?theme.colors.danger:theme.colors.textMuted};font-size:.82rem;line-height:1.4;overflow-wrap:anywhere;svg{flex:0 0 auto;margin-top:1px;}`;
 const FormGrid = styled.form`display:grid;grid-template-columns:1fr 1fr;gap:14px;@media(max-width:520px){grid-template-columns:1fr;}.wide{grid-column:1/-1;}`;
-const ImportBox = styled.div`margin-top:16px;padding:14px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};h3{font-size:1rem;margin-bottom:8px}.conflicts{color:${({theme})=>theme.colors.danger};margin-top:8px;font-size:.88rem;max-height:120px;overflow:auto;}`;
+const ImportBox = styled.div`margin-top:16px;padding:14px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};overflow-wrap:anywhere;h3{font-size:1rem;margin-bottom:8px}.conflicts{color:${({theme})=>theme.colors.danger};margin-top:8px;font-size:.88rem;max-height:120px;overflow:auto;}@media(max-width:480px){padding:12px;}`;
 const Responsibility = styled.div`grid-column:1/-1;padding:12px 14px;border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.infoLight};color:${({theme})=>theme.colors.textSecondary};font-size:.9rem;strong{color:${({theme})=>theme.colors.textPrimary};}.updated{display:block;margin-top:3px;font-size:.8rem;color:${({theme})=>theme.colors.textMuted};}`;
 const OccupancySection = styled.div`margin-top:14px;padding-top:14px;border-top:1px solid ${({theme})=>theme.colors.border};h3{font-size:.95rem;margin-bottom:8px;color:${({theme})=>theme.colors.textPrimary};}`;
 
@@ -125,6 +324,7 @@ export default function TableReservations() {
   const selectedDateRef = useRef(selectedDate);
   const establishmentRef = useRef(establishmentId);
   const fileInput = useRef(null);
+  const mapViewportRef = useRef(null);
 
   selectedDateRef.current = selectedDate;
 
@@ -183,6 +383,15 @@ export default function TableReservations() {
     }
   }, [establishmentId]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const viewport = mapViewportRef.current;
+      if (viewport && window.matchMedia('(max-width: 700px)').matches) {
+        viewport.scrollLeft = Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
   useEffect(() => {
     const refreshVisible = () => { if (document.visibilityState === 'visible') load(false); };
     const timer = setInterval(refreshVisible, 15000);
@@ -397,14 +606,18 @@ export default function TableReservations() {
 
   return <Page>
     <Header>
-      <div><Title>Reservas de mesas</Title><Subtitle>Mapa e agenda compartilhados de {formatDate(selectedDate)}</Subtitle></div>
-      <Toolbar>
-        <Button variant="secondary" size="sm" onClick={()=>changeDate(shiftDate(selectedDate,-1))} aria-label="Dia anterior"><MdArrowBack/> Anterior</Button>
-        <DateInput type="date" value={selectedDate} onChange={event=>changeDate(event.target.value)} aria-label="Data das reservas" />
-        <Button variant="secondary" size="sm" onClick={()=>changeDate(shiftDate(selectedDate,1))}>Próximo <MdArrowForward/></Button>
-        <Button variant="secondary" size="sm" onClick={()=>changeDate(localToday())}><MdCalendarToday/> Hoje</Button>
-        <Button variant="secondary" size="sm" onClick={()=>load()} disabled={loading}><MdRefresh/> Atualizar</Button>
-      </Toolbar>
+      <HeaderCopy><Title>Reservas de mesas</Title><Subtitle>Mapa e agenda compartilhados de {formatDate(selectedDate)}</Subtitle></HeaderCopy>
+      <HeaderToolbar>
+        <DateNavigator>
+          <Button variant="secondary" size="sm" onClick={()=>changeDate(shiftDate(selectedDate,-1))} aria-label="Dia anterior"><MdArrowBack/><span className="button-label">Anterior</span></Button>
+          <DateInput type="date" value={selectedDate} onChange={event=>changeDate(event.target.value)} aria-label="Data das reservas" />
+          <Button variant="secondary" size="sm" onClick={()=>changeDate(shiftDate(selectedDate,1))} aria-label="Próximo dia"><span className="button-label">Próximo</span><MdArrowForward/></Button>
+        </DateNavigator>
+        <HeaderActions>
+          <Button variant="secondary" size="sm" onClick={()=>changeDate(localToday())}><MdCalendarToday/> Hoje</Button>
+          <Button variant="secondary" size="sm" onClick={()=>load()} disabled={loading}><MdRefresh/> Atualizar</Button>
+        </HeaderActions>
+      </HeaderToolbar>
     </Header>
 
     <Stats>
@@ -418,10 +631,11 @@ export default function TableReservations() {
 
     <Grid>
       <Card>
-        <CardHeader><h2>Mapa de mesas</h2><Toolbar>{selectedDate===localToday()&&<Button variant={walkInMode?'danger':'secondary'} size="sm" onClick={toggleWalkInMode}>{walkInMode?'Cancelar ocupação':'Registrar chegada sem reserva'}</Button>}{selectedDate===localToday()&&<Button variant={multiSelect&&joiningNow?'danger':'secondary'} size="sm" onClick={toggleJoinNow}>{multiSelect&&joiningNow?'Cancelar união':'Juntar mesas agora'}</Button>}<Button variant={multiSelect&&!joiningNow?'danger':'secondary'} size="sm" onClick={toggleMultiSelect}>{multiSelect&&!joiningNow?'Cancelar seleção':'Reservar várias mesas'}</Button><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.max(.85,value-.15))} aria-label="Diminuir zoom"><MdZoomOut/></Button><span>{Math.round(zoom*100)}%</span><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.min(1.8,value+.15))} aria-label="Aumentar zoom"><MdZoomIn/></Button></Toolbar></CardHeader>
+        <CardHeader><h2>Mapa de mesas</h2><ZoomControls><Button variant="ghost" size="sm" iconOnly onClick={()=>setZoom(value=>Math.max(.85,value-.15))} aria-label="Diminuir zoom"><MdZoomOut/></Button><span aria-live="polite">{Math.round(zoom*100)}%</span><Button variant="ghost" size="sm" iconOnly onClick={()=>setZoom(value=>Math.min(1.8,value+.15))} aria-label="Aumentar zoom"><MdZoomIn/></Button></ZoomControls></CardHeader>
+        <MapModeActions>{selectedDate===localToday()&&<Button variant={walkInMode?'danger':'secondary'} size="sm" onClick={toggleWalkInMode}>{walkInMode?'Cancelar ocupação':'Registrar chegada sem reserva'}</Button>}{selectedDate===localToday()&&<Button variant={multiSelect&&joiningNow?'danger':'secondary'} size="sm" onClick={toggleJoinNow}>{multiSelect&&joiningNow?'Cancelar união':'Juntar mesas agora'}</Button>}<Button variant={multiSelect&&!joiningNow?'danger':'secondary'} size="sm" onClick={toggleMultiSelect}>{multiSelect&&!joiningNow?'Cancelar seleção':'Reservar várias mesas'}</Button></MapModeActions>
         {walkInMode && <SelectionBar><div><strong>Modo de ocupação sem reserva</strong><div>Clique em uma mesa livre para registrar as pessoas que chegaram agora.</div></div></SelectionBar>}
         {multiSelect && <SelectionBar><div><strong>{selectedTables.length} mesa(s) selecionada(s)</strong><div>{selectedTables.length ? `Mesas ${selectedTables.join(', ')}` : `Clique em quaisquer mesas livres que deseja ${joiningNow?'juntar agora':'reservar'}.`}</div></div><Button onClick={openBatch} disabled={selectedTables.length<2}>{joiningNow?'Juntar':'Reservar'} {selectedTables.length || ''} mesas</Button></SelectionBar>}
-        <MapViewport>
+        <MapViewport ref={mapViewportRef}>
           <MapCanvas $zoom={zoom}>
             <MapImage src="/mapa_mesas.png" alt="Mapa aprovado do salão com 27 mesas" draggable="false" />
             {TABLES.map(table => {
@@ -433,7 +647,7 @@ export default function TableReservations() {
             })}
           </MapCanvas>
         </MapViewport>
-        <Legend><span><i style={{background:'#047857'}}/>Livre (número da mesa)</span><span><i style={{background:'#1d4ed8'}}/>Ocupada agora (O)</span><span><i style={{background:'#a16207'}}/>Selecionada</span><span><i style={{background:'#b91c1c'}}/>Reservada (R)</span><span>{walkInMode?'Clique numa mesa livre para registrar a ocupação.':multiSelect?'Clique para selecionar ou remover mesas livres.':'Toque ou clique na área contornada para abrir.'}</span></Legend>
+        <Legend><span><i style={{background:'#047857'}}/>Livre (número da mesa)</span><span><i style={{background:'#1d4ed8'}}/>Ocupada agora (O)</span><span><i style={{background:'#a16207'}}/>Selecionada</span><span><i style={{background:'#b91c1c'}}/>Reservada (R)</span><span className="instruction">{walkInMode?'Clique numa mesa livre para registrar a ocupação.':multiSelect?'Clique para selecionar ou remover mesas livres.':'Arraste o mapa e toque na área contornada de uma mesa para abrir.'}</span></Legend>
       </Card>
 
       <Card>

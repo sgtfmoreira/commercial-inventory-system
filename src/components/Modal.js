@@ -16,6 +16,11 @@ const Backdrop = styled.div`
   justify-content: center;
   padding: ${({ theme }) => theme.spacing.md};
   animation: ${fadeIn} ${({ theme }) => theme.transitions.normal};
+
+  @media (max-width: 480px) {
+    align-items: flex-end;
+    padding: 8px 0 0;
+  }
 `;
 
 const Sheet = styled.div`
@@ -27,21 +32,39 @@ const Sheet = styled.div`
   max-width: ${({ maxWidth }) => maxWidth || '560px'};
   max-height: 90vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   animation: ${slideUp} ${({ theme }) => theme.transitions.slow};
+
+  @media (max-width: 480px) {
+    max-height: calc(100dvh - 8px);
+    border-radius: ${({ theme }) => `${theme.radii.xl} ${theme.radii.xl} 0 0`};
+  }
 `;
 
 const Header = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: ${({ theme }) => theme.spacing.sm};
   padding: ${({ theme }) => `${theme.spacing.md} ${theme.spacing.lg}`};
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  background: ${({ theme }) => theme.colors.bgCard};
+
+  @media (max-width: 480px) {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: ${({ theme }) => theme.spacing.md};
+  }
 `;
 
 const Title = styled.h2`
   font-size: ${({ theme }) => theme.fontSizes.xl};
   font-weight: ${({ theme }) => theme.fontWeights.bold};
   color: ${({ theme }) => theme.colors.textPrimary};
+  min-width: 0;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 `;
 
 const CloseBtn = styled(DSButton)`
@@ -56,6 +79,7 @@ const CloseBtn = styled(DSButton)`
   font-size: 1.25rem;
   cursor: pointer;
   transition: ${({ theme }) => theme.transition};
+  flex: 0 0 auto;
 
   &:hover {
     background: ${({ theme }) => theme.colors.dangerLight};
@@ -65,6 +89,8 @@ const CloseBtn = styled(DSButton)`
 
 const Body = styled.div`
   padding: ${({ theme }) => theme.spacing.lg};
+
+  @media (max-width: 480px) { padding: ${({ theme }) => theme.spacing.md}; }
 `;
 
 const Footer = styled.div`
@@ -73,9 +99,14 @@ const Footer = styled.div`
   gap: ${({ theme }) => theme.spacing.sm};
   padding: ${({ theme }) => `${theme.spacing.md} ${theme.spacing.lg}`};
   border-top: 1px solid ${({ theme }) => theme.colors.border};
+  background: ${({ theme }) => theme.colors.bgCard};
 
   @media (max-width: 480px) {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
     flex-direction: column-reverse;
+    padding: ${({ theme }) => theme.spacing.md};
     
     button {
       width: 100%;
