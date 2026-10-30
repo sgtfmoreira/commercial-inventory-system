@@ -11,6 +11,7 @@ const router = Router();
 router.use(auth, requireRole(['ADMIN', 'MANAGER']), requireEstablishment([ESTABLISHMENTS.COMMERCIAL]));
 router.get('/', controller.list);
 router.post('/', validate(schemas.createTableOccupancySchema), controller.create);
+router.post('/batch', validate(schemas.createBatchTableOccupanciesSchema), controller.createBatch);
 router.post('/:id/release', validate(schemas.releaseTableOccupancySchema), controller.release);
 
 module.exports = router;

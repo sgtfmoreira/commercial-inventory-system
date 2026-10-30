@@ -445,6 +445,7 @@ model TableOccupancy {
   tableNumber      Int
   customerName     String?              @db.VarChar(160)
   partySize        Int
+  occupancyGroupId String?              @db.Uuid
   notes            String?
   status           TableOccupancyStatus @default(ACTIVE)
   version          Int                  @default(1)
@@ -458,6 +459,7 @@ model TableOccupancy {
   updatedAt        DateTime             @updatedAt
 
   @@index([establishmentId, status])
+  @@index([occupancyGroupId])
   @@index([createdByUserId])
   @@index([releasedByUserId])
   @@map("table_occupancies")

@@ -109,6 +109,7 @@ export default function TableReservations() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [multiSelect, setMultiSelect] = useState(false);
+  const [joiningNow, setJoiningNow] = useState(false);
   const [selectedTables, setSelectedTables] = useState([]);
   const [creatingBatch, setCreatingBatch] = useState(false);
   const [walkInMode, setWalkInMode] = useState(false);
@@ -131,6 +132,7 @@ export default function TableReservations() {
     requestId.current += 1;
     selectedDateRef.current = value;
     setMultiSelect(false);
+    setJoiningNow(false);
     setWalkInMode(false);
     setSelectedTables([]);
     setSelectedDate(value);
@@ -171,6 +173,7 @@ export default function TableReservations() {
       setModalOpen(false);
       setEditing(null);
       setMultiSelect(false);
+      setJoiningNow(false);
       setWalkInMode(false);
       setSelectedTables([]);
       setCreatingBatch(false);
@@ -205,6 +208,11 @@ export default function TableReservations() {
     return uniqueReservations.filter(item => item.customerName.toLocaleLowerCase('pt-BR').includes(term)
       || (item.groupTableNumbers || [item.tableNumber]).some(tableNumber => String(tableNumber).includes(term)));
   }, [data.reservations, search]);
+  const visibleOccupancies = useMemo(() => Array.from(occupancyData.occupancies.reduce((items, item) => {
+    const key = item.occupancyGroupId || item.id;
+    if (!items.has(key)) items.set(key, item);
+    return items;
+  }, new Map()).values()), [occupancyData.occupancies]);
 
   const openTable = tableNumber => {
     const reservation = activeByTable.get(tableNumber) || null;
@@ -230,6 +238,15 @@ export default function TableReservations() {
 
   const toggleMultiSelect = () => {
     setMultiSelect(current => !current);
+    setJoiningNow(false);
+    setWalkInMode(false);
+    setSelectedTables([]);
+  };
+
+  const toggleJoinNow = () => {
+    const willJoin = !multiSelect || !joiningNow;
+    setMultiSelect(willJoin);
+    setJoiningNow(willJoin);
     setWalkInMode(false);
     setSelectedTables([]);
   };
@@ -237,6 +254,7 @@ export default function TableReservations() {
   const toggleWalkInMode = () => {
     setWalkInMode(current => !current);
     setMultiSelect(false);
+    setJoiningNow(false);
     setSelectedTables([]);
   };
 
@@ -257,6 +275,12 @@ export default function TableReservations() {
 
   const openBatch = () => {
     if (selectedTables.length < 2) return;
+    if (joiningNow) {
+      setOccupancyEditing(null);
+      setOccupancyForm({ tableNumber:selectedTables[0], customerName:'', partySize:'', notes:'' });
+      setOccupancyModalOpen(true);
+      return;
+    }
     setEditing(null);
     setCreatingBatch(true);
     setForm(emptyForm(selectedTables[0], selectedDate));
@@ -270,13 +294,21 @@ export default function TableReservations() {
     event.preventDefault();
     setOccupancySaving(true);
     try {
-      await tableOccupancyService.create({
-        tableNumber:Number(occupancyForm.tableNumber),
+      const details = {
         customerName:occupancyForm.customerName || null,
         partySize:Number(occupancyForm.partySize),
         notes:occupancyForm.notes || null
-      });
-      toast.success(`Mesa ${occupancyForm.tableNumber} marcada como ocupada.`);
+      };
+      if (joiningNow && selectedTables.length > 1) {
+        await tableOccupancyService.createBatch({ ...details, tableNumbers:selectedTables });
+        toast.success(`Mesas ${selectedTables.join(', ')} foram juntadas.`);
+        setSelectedTables([]);
+        setMultiSelect(false);
+        setJoiningNow(false);
+      } else {
+        await tableOccupancyService.create({ ...details, tableNumber:Number(occupancyForm.tableNumber) });
+        toast.success(`Mesa ${occupancyForm.tableNumber} marcada como ocupada.`);
+      }
       setOccupancyModalOpen(false); setOccupancyEditing(null); setWalkInMode(false);
       await load(false);
     } catch (err) { await load(false); setError(`A ocupação não foi registrada: ${err.message}`); }
@@ -284,11 +316,13 @@ export default function TableReservations() {
   };
 
   const releaseOccupancy = async () => {
-    if (!occupancyEditing || !window.confirm(`Liberar a mesa ${occupancyEditing.tableNumber}? O histórico será preservado.`)) return;
+    const tables = occupancyEditing?.groupTableNumbers || [occupancyEditing?.tableNumber];
+    const label = tables.length > 1 ? `as mesas ${tables.join(' e ')}` : `a mesa ${tables[0]}`;
+    if (!occupancyEditing || !window.confirm(`Liberar ${label}? O histórico será preservado.`)) return;
     setOccupancySaving(true);
     try {
       await tableOccupancyService.release(occupancyEditing.id, occupancyEditing.version);
-      toast.success(`Mesa ${occupancyEditing.tableNumber} liberada.`);
+      toast.success(tables.length > 1 ? 'Mesas liberadas.' : `Mesa ${occupancyEditing.tableNumber} liberada.`);
       setOccupancyModalOpen(false); setOccupancyEditing(null); await load(false);
     } catch (err) { await load(false); setError(`A mesa não foi liberada: ${err.message}`); }
     finally { setOccupancySaving(false); }
@@ -384,9 +418,9 @@ export default function TableReservations() {
 
     <Grid>
       <Card>
-        <CardHeader><h2>Mapa de mesas</h2><Toolbar>{selectedDate===localToday()&&<Button variant={walkInMode?'danger':'secondary'} size="sm" onClick={toggleWalkInMode}>{walkInMode?'Cancelar ocupação':'Registrar chegada sem reserva'}</Button>}<Button variant={multiSelect?'danger':'secondary'} size="sm" onClick={toggleMultiSelect}>{multiSelect?'Cancelar seleção':'Selecionar várias mesas'}</Button><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.max(.85,value-.15))} aria-label="Diminuir zoom"><MdZoomOut/></Button><span>{Math.round(zoom*100)}%</span><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.min(1.8,value+.15))} aria-label="Aumentar zoom"><MdZoomIn/></Button></Toolbar></CardHeader>
+        <CardHeader><h2>Mapa de mesas</h2><Toolbar>{selectedDate===localToday()&&<Button variant={walkInMode?'danger':'secondary'} size="sm" onClick={toggleWalkInMode}>{walkInMode?'Cancelar ocupação':'Registrar chegada sem reserva'}</Button>}{selectedDate===localToday()&&<Button variant={multiSelect&&joiningNow?'danger':'secondary'} size="sm" onClick={toggleJoinNow}>{multiSelect&&joiningNow?'Cancelar união':'Juntar mesas agora'}</Button>}<Button variant={multiSelect&&!joiningNow?'danger':'secondary'} size="sm" onClick={toggleMultiSelect}>{multiSelect&&!joiningNow?'Cancelar seleção':'Reservar várias mesas'}</Button><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.max(.85,value-.15))} aria-label="Diminuir zoom"><MdZoomOut/></Button><span>{Math.round(zoom*100)}%</span><Button variant="ghost" size="sm" onClick={()=>setZoom(value=>Math.min(1.8,value+.15))} aria-label="Aumentar zoom"><MdZoomIn/></Button></Toolbar></CardHeader>
         {walkInMode && <SelectionBar><div><strong>Modo de ocupação sem reserva</strong><div>Clique em uma mesa livre para registrar as pessoas que chegaram agora.</div></div></SelectionBar>}
-        {multiSelect && <SelectionBar><div><strong>{selectedTables.length} mesa(s) selecionada(s)</strong><div>{selectedTables.length ? `Mesas ${selectedTables.join(', ')}` : 'Clique nas mesas livres que deseja reservar.'}</div></div><Button onClick={openBatch} disabled={selectedTables.length<2}>Reservar {selectedTables.length || ''} mesas</Button></SelectionBar>}
+        {multiSelect && <SelectionBar><div><strong>{selectedTables.length} mesa(s) selecionada(s)</strong><div>{selectedTables.length ? `Mesas ${selectedTables.join(', ')}` : `Clique em quaisquer mesas livres que deseja ${joiningNow?'juntar agora':'reservar'}.`}</div></div><Button onClick={openBatch} disabled={selectedTables.length<2}>{joiningNow?'Juntar':'Reservar'} {selectedTables.length || ''} mesas</Button></SelectionBar>}
         <MapViewport>
           <MapCanvas $zoom={zoom}>
             <MapImage src="/mapa_mesas.png" alt="Mapa aprovado do salão com 27 mesas" draggable="false" />
@@ -406,7 +440,7 @@ export default function TableReservations() {
         <CardHeader><h2>Reservas da data</h2><Button variant="secondary" size="sm" onClick={()=>fileInput.current?.click()} disabled={importing}><MdFileUpload/> Importar JSON</Button><InputControl ref={fileInput} type="file" accept="application/json,.json" hidden onChange={handleFile}/></CardHeader>
         <SearchBox><MdSearch/><InputControl value={search} onChange={event=>setSearch(event.target.value)} placeholder="Buscar cliente ou mesa" aria-label="Buscar reservas"/></SearchBox>
         {importPreview && <ImportBox><h3>Prévia da importação</h3><p>{importPreview.available.length} pronta(s) para importar; {importPreview.conflicts.length} conflito(s).</p>{importPreview.conflicts.length>0&&<div className="conflicts">{importPreview.conflicts.map((item,index)=><div key={index}>Mesa {item.reservation.tableNumber}, {item.reservation.reservationDate}: {item.reason}</div>)}</div>}<Toolbar style={{marginTop:10}}><Button size="sm" onClick={confirmImport} disabled={!importPreview.available.length||importing}>Importar sem conflitos</Button><Button variant="ghost" size="sm" onClick={()=>setImportPreview(null)}>Fechar</Button></Toolbar></ImportBox>}
-        {selectedDate===localToday()&&occupancyData.occupancies.length>0&&<OccupancySection><h3>Ocupações sem reserva agora</h3>{occupancyData.occupancies.map(item=><ReservationRow key={item.id} onClick={()=>openOccupancy(item)}><div className="top"><span>Mesa {item.tableNumber} · {item.customerName || 'Cliente não identificado'}</span><span>Ocupada</span></div><div className="meta">{item.partySize} pessoa(s) · chegada {new Date(item.seatedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><div className="meta">Registrada por: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>)}</OccupancySection>}
+        {selectedDate===localToday()&&visibleOccupancies.length>0&&<OccupancySection><h3>Ocupações sem reserva agora</h3>{visibleOccupancies.map(item=>{const tables=item.groupTableNumbers||[item.tableNumber];return <ReservationRow key={item.occupancyGroupId||item.id} onClick={()=>openOccupancy(item)}><div className="top"><span>{tables.length>1?'Mesas':'Mesa'} {tables.join(' e ')} · {item.customerName || 'Cliente não identificado'}</span><span>{tables.length>1?'Juntas':'Ocupada'}</span></div><div className="meta">{item.partySize} pessoa(s) · chegada {new Date(item.seatedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><div className="meta">Registrada por: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>})}</OccupancySection>}
         <ReservationList style={{marginTop:12}}>
           {filtered.map(item=>{const tables=item.groupTableNumbers||[item.tableNumber];return <ReservationRow key={item.reservationGroupId||item.id} onClick={()=>openTable(item.tableNumber)}><div className="top"><span>{tables.length>1?'Mesas':'Mesa'} {tables.join(' e ')} · {item.customerName}</span><span>{item.reservationTime}</span></div><div className="meta">{item.partySize} pessoa(s){tables.length>1?' no total':''}{item.phone ? ` · ${item.phone}` : ''}</div><div className="meta">Responsável: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>})}
           {!loading && filtered.length===0 && <Empty>Nenhuma reserva encontrada nesta data.</Empty>}
@@ -430,8 +464,8 @@ export default function TableReservations() {
       </FormGrid>
     </Modal>
 
-    <Modal isOpen={occupancyModalOpen} onClose={closeOccupancyModal} title={`${occupancyEditing?'Mesa ocupada':'Registrar ocupação'} — Mesa ${occupancyForm.tableNumber}`} maxWidth="560px" footer={<><Button variant="secondary" onClick={closeOccupancyModal} disabled={occupancySaving}>Fechar</Button>{occupancyEditing?<Button variant="danger" onClick={releaseOccupancy} disabled={occupancySaving}>{occupancySaving?'Liberando…':'Liberar mesa'}</Button>:<Button type="submit" form="occupancy-form" disabled={occupancySaving}>{occupancySaving?'Salvando…':'Marcar como ocupada'}</Button>}</>}>
-      {occupancyEditing?<div><p><strong>{occupancyEditing.partySize} pessoa(s)</strong>{occupancyEditing.customerName?` · ${occupancyEditing.customerName}`:''}</p><p style={{marginTop:8,color:'#64748b'}}>Chegada: {new Date(occupancyEditing.seatedAt).toLocaleString('pt-BR')} · registrada por {occupancyEditing.createdByUser?.name || 'usuário não identificado'}.</p>{occupancyEditing.notes&&<p style={{marginTop:12}}>{occupancyEditing.notes}</p>}</div>:<FormGrid id="occupancy-form" onSubmit={submitOccupancy}><div className="wide"><Input label="Cliente ou identificação (opcional)" maxLength="160" value={occupancyForm.customerName} onChange={event=>setOccupancyForm({...occupancyForm,customerName:event.target.value})}/></div><Input label="Quantidade de pessoas" type="number" min="1" step="1" required value={occupancyForm.partySize} onChange={event=>setOccupancyForm({...occupancyForm,partySize:event.target.value})}/><div className="wide"><Textarea label="Observação (opcional)" maxLength="5000" value={occupancyForm.notes} onChange={event=>setOccupancyForm({...occupancyForm,notes:event.target.value})}/></div></FormGrid>}
+    <Modal isOpen={occupancyModalOpen} onClose={closeOccupancyModal} title={occupancyEditing?`${(occupancyEditing.groupTableNumbers?.length||0)>1?'Mesas ocupadas':'Mesa ocupada'} — ${(occupancyEditing.groupTableNumbers||[occupancyEditing.tableNumber]).join(' e ')}`:joiningNow?`Juntar mesas — ${selectedTables.join(' e ')}`:`Registrar ocupação — Mesa ${occupancyForm.tableNumber}`} maxWidth="560px" footer={<><Button variant="secondary" onClick={closeOccupancyModal} disabled={occupancySaving}>Fechar</Button>{occupancyEditing?<Button variant="danger" onClick={releaseOccupancy} disabled={occupancySaving}>{occupancySaving?'Liberando…':(occupancyEditing.groupTableNumbers?.length||0)>1?'Liberar mesas':'Liberar mesa'}</Button>:<Button type="submit" form="occupancy-form" disabled={occupancySaving}>{occupancySaving?'Salvando…':joiningNow?'Juntar e ocupar':'Marcar como ocupada'}</Button>}</>}>
+      {occupancyEditing?<div><p><strong>{occupancyEditing.partySize} pessoa(s)</strong>{occupancyEditing.customerName?` · ${occupancyEditing.customerName}`:''}</p>{(occupancyEditing.groupTableNumbers?.length||0)>1&&<p style={{marginTop:8}}>Mesas unidas: <strong>{occupancyEditing.groupTableNumbers.join(', ')}</strong></p>}<p style={{marginTop:8,color:'#64748b'}}>Chegada: {new Date(occupancyEditing.seatedAt).toLocaleString('pt-BR')} · registrada por {occupancyEditing.createdByUser?.name || 'usuário não identificado'}.</p>{occupancyEditing.notes&&<p style={{marginTop:12}}>{occupancyEditing.notes}</p>}</div>:<FormGrid id="occupancy-form" onSubmit={submitOccupancy}>{joiningNow&&<div className="wide">As mesas <strong>{selectedTables.join(', ')}</strong> serão ocupadas pelo mesmo grupo.</div>}<div className="wide"><Input label="Cliente ou identificação (opcional)" maxLength="160" value={occupancyForm.customerName} onChange={event=>setOccupancyForm({...occupancyForm,customerName:event.target.value})}/></div><Input label="Quantidade total de pessoas" type="number" min="1" step="1" required value={occupancyForm.partySize} onChange={event=>setOccupancyForm({...occupancyForm,partySize:event.target.value})}/><div className="wide"><Textarea label="Observação (opcional)" maxLength="5000" value={occupancyForm.notes} onChange={event=>setOccupancyForm({...occupancyForm,notes:event.target.value})}/></div></FormGrid>}
     </Modal>
   </Page>;
 }
