@@ -63,3 +63,11 @@ test('mantém reservas visíveis somente no estabelecimento comercial', () => {
   expect(isNavigationItemVisible(reservations, ESTABLISHMENTS.COMMERCIAL, 'ADMIN')).toBe(true);
   expect(isNavigationItemVisible(reservations, 'outro-estabelecimento', 'ADMIN')).toBe(false);
 });
+
+test('exibe o gerenciamento de usuários somente para administradores', () => {
+  const users = items.find(item => item.to === '/users');
+
+  expect(isNavigationItemVisible(users, 'estabelecimento-a', 'ADMIN')).toBe(true);
+  expect(isNavigationItemVisible(users, 'estabelecimento-a', 'MANAGER')).toBe(false);
+  expect(isNavigationItemVisible(users, 'estabelecimento-a', 'STOCK_COUNTER')).toBe(false);
+});

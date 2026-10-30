@@ -1,8 +1,10 @@
 import DataTable from '../components/Table';
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { MdAdd, MdEdit } from 'react-icons/md';
+import { MdAdd, MdDelete, MdEdit } from 'react-icons/md';
+import toast from 'react-hot-toast';
 import api from '../services/api';
+import { useApp } from '../context/AppContext';
 
 import Modal from '../components/Modal';
 import Button from '../components/Button';
@@ -124,15 +126,30 @@ const FormContainer = styled.div`
   padding: 8px 0;
 `;
 
+const ActionButtons = styled.div`
+  display: flex;
+  gap: ${({ theme }) => theme.spacing.sm};
+  flex-wrap: wrap;
+`;
+
+const ROLE_LABELS = {
+    ADMIN: 'Administrador',
+    MANAGER: 'Gerente',
+    STOCK_COUNTER: 'Contador de estoque',
+    STAFF: 'Equipe'
+};
+
 /* -------------------------------------------------------------------------- */
 /* Component                                   */
 /* -------------------------------------------------------------------------- */
 
 export default function Users() {
+    const { state } = useApp();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [users, setUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
 
     const loadUsers = async () => {
         try {
@@ -152,6 +169,25 @@ export default function Users() {
     useEffect(() => {
         loadUsers();
     }, []);
+
+    const handleDelete = async (user) => {
+        if (user.id === state.user?.id) {
+            toast.error('Você não pode excluir o próprio usuário.');
+            return;
+        }
+        if (!window.confirm(`Excluir o acesso de ${user.name} em toda a organização? O histórico será preservado.`)) return;
+
+        setDeletingId(user.id);
+        try {
+            await api.delete(`/users/${user.id}`);
+            await loadUsers();
+            toast.success('Acesso do usuário excluído.');
+        } catch (error) {
+            toast.error(error.message || 'Não foi possível excluir o usuário.');
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     return (
         <div>
@@ -203,23 +239,36 @@ export default function Users() {
 
                                         <Td data-label="Perfil de Acesso">
                                             <RoleBadge role={user.role}>
-                                                {user.role === 'ADMIN' ? 'Administrador' : 'Gerente'}
+                                                {ROLE_LABELS[user.role] || user.role}
                                             </RoleBadge>
                                         </Td>
 
                                         <Td data-label="Ações">
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                fullWidth={window.innerWidth < 768}
-                                                onClick={() => {
-                                                    setSelectedUser(user);
-                                                    setShowEditModal(true);
-                                                }}
-                                            >
-                                                <MdEdit size={16} />
-                                                Editar
-                                            </Button>
+                                            <ActionButtons>
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedUser(user);
+                                                        setShowEditModal(true);
+                                                    }}
+                                                >
+                                                    <MdEdit size={16} />
+                                                    Editar
+                                                </Button>
+                                                <Button
+                                                    variant="danger"
+                                                    size="sm"
+                                                    loading={deletingId === user.id}
+                                                    loadingLabel="Excluindo"
+                                                    disabled={user.id === state.user?.id || Boolean(deletingId)}
+                                                    title={user.id === state.user?.id ? 'Você não pode excluir o próprio usuário' : undefined}
+                                                    onClick={() => handleDelete(user)}
+                                                >
+                                                    <MdDelete size={16} />
+                                                    Excluir
+                                                </Button>
+                                            </ActionButtons>
                                         </Td>
                                     </Tr>
                                 ))
@@ -255,6 +304,7 @@ export default function Users() {
                 {selectedUser && (
                     <EditUserForm
                         user={selectedUser}
+                        isCurrentUser={selectedUser.id === state.user?.id}
                         onClose={() => setShowEditModal(false)}
                         onUpdated={loadUsers}
                     />
@@ -285,50 +335,25 @@ function CreateUserForm({ onClose, onCreated }) {
     };
 
     const handleSubmit = async () => {
-        // 1. Validação de campos do formulário
         if (!form.name || !form.email || !form.password) {
-            alert("Preencha todos os campos obrigatórios.");
+            toast.error('Preencha todos os campos obrigatórios.');
+            return;
+        }
+        if (form.password.length < 6) {
+            toast.error('A senha deve ter pelo menos 6 caracteres.');
             return;
         }
 
         setSaving(true);
         try {
-            // 2. Lógica baseada EXATAMENTE na sua imagem do LocalStorage
-            const raw = localStorage.getItem('establishments'); // Nome da chave na sua imagem
-            const establishmentsList = raw ? JSON.parse(raw) : [];
-
-            // Pegamos o ID do primeiro estabelecimento da lista (que é o "LIGHTS" na imagem)
-            const activeId = establishmentsList.length > 0 ? establishmentsList[0].id : null;
-
-            // DEBUG: Isso vai aparecer no seu console (F12) para termos certeza
-            console.log("ID capturado do LocalStorage:", activeId);
-
-            if (!activeId) {
-                alert("Erro: Não encontramos o ID do estabelecimento no seu navegador. Tente fazer login novamente.");
-                setSaving(false);
-                return;
-            }
-
-            // 3. Montagem do objeto de envio
-            // Enviamos 'establishmentId' (singular) pois o erro do Prisma indica que o back espera um valor único
-            const payload = {
-                name: form.name,
-                email: form.email,
-                password: form.password,
-                role: form.role
-            };
-
-            console.log("Enviando para o Backend:", payload);
-
-            await api.post('/users', payload);
-
-            onCreated();
+            await api.post('/users', form);
+            await onCreated();
             onClose();
-            alert("Usuário criado com sucesso!");
+            toast.success('Usuário criado com sucesso.');
 
         } catch (err) {
-            console.error("Erro detalhado:", err);
-            alert(err.response?.data?.error || 'Erro ao criar usuário. Verifique o console.');
+            console.error('Erro ao criar usuário:', err);
+            toast.error(err.message || 'Erro ao criar usuário.');
         } finally {
             setSaving(false);
         }
@@ -358,6 +383,9 @@ function CreateUserForm({ onClose, onCreated }) {
                     name="password"
                     type="password"
                     placeholder="Mínimo 6 caracteres"
+                    minLength={6}
+                    maxLength={128}
+                    autoComplete="new-password"
                     value={form.password}
                     onChange={handleChange}
                 />
@@ -378,8 +406,8 @@ function CreateUserForm({ onClose, onCreated }) {
                 <Button variant="secondary" onClick={onClose} fullWidth>
                     Cancelar
                 </Button>
-                <Button variant="primary" onClick={handleSubmit} disabled={saving} fullWidth>
-                    {saving ? "Salvando..." : "Criar Usuário"}
+                <Button variant="primary" onClick={handleSubmit} loading={saving} loadingLabel="Salvando" fullWidth>
+                    Criar Usuário
                 </Button>
             </div>
         </>
@@ -390,11 +418,13 @@ function CreateUserForm({ onClose, onCreated }) {
 /* EDIT USER FORM */
 /* ========================= */
 
-function EditUserForm({ user, onClose, onUpdated }) {
+function EditUserForm({ user, isCurrentUser, onClose, onUpdated }) {
     const [form, setForm] = useState({
         name: user.name || '',
         email: user.email || '',
-        role: user.role || 'STOCK_COUNTER'
+        role: user.role || 'STOCK_COUNTER',
+        password: '',
+        passwordConfirmation: ''
     });
     const [saving, setSaving] = useState(false);
 
@@ -406,15 +436,26 @@ function EditUserForm({ user, onClose, onUpdated }) {
     };
 
     const handleSubmit = async () => {
+        if (form.password && form.password.length < 6) {
+            toast.error('A nova senha deve ter pelo menos 6 caracteres.');
+            return;
+        }
+        if (form.password !== form.passwordConfirmation) {
+            toast.error('A confirmação da nova senha não confere.');
+            return;
+        }
+
         setSaving(true);
         try {
-            console.log("ENVIANDO PUT USUÁRIO:", form);
-            await api.put(`/users/${user.id}`, form);
-            onUpdated();
+            const { passwordConfirmation, ...payload } = form;
+            if (!payload.password) delete payload.password;
+            await api.put(`/users/${user.id}`, payload);
+            await onUpdated();
             onClose();
+            toast.success(payload.password ? 'Usuário e senha atualizados.' : 'Usuário atualizado.');
         } catch (err) {
             console.error(err);
-            alert(err.response?.data?.error || 'Erro ao atualizar usuário');
+            toast.error(err.message || 'Erro ao atualizar usuário');
         } finally {
             setSaving(false);
         }
@@ -443,10 +484,35 @@ function EditUserForm({ user, onClose, onUpdated }) {
                     name="role"
                     value={form.role}
                     onChange={(val) => setForm({ ...form, role: val })}
+                    isDisabled={isCurrentUser}
+                    helperText={isCurrentUser ? 'Seu próprio perfil de administrador não pode ser removido.' : undefined}
                     options={[
                         { value: 'ADMIN', label: 'Administrador' },
                         { value: 'STOCK_COUNTER', label: 'Gerente' }
                     ]}
+                />
+
+                <Input
+                    label="Nova senha (opcional)"
+                    name="password"
+                    type="password"
+                    minLength={6}
+                    maxLength={128}
+                    autoComplete="new-password"
+                    placeholder="Mínimo 6 caracteres"
+                    value={form.password}
+                    onChange={handleChange}
+                />
+
+                <Input
+                    label="Confirmar nova senha"
+                    name="passwordConfirmation"
+                    type="password"
+                    minLength={6}
+                    maxLength={128}
+                    autoComplete="new-password"
+                    value={form.passwordConfirmation}
+                    onChange={handleChange}
                 />
             </FormContainer>
 
@@ -454,8 +520,8 @@ function EditUserForm({ user, onClose, onUpdated }) {
                 <Button variant="secondary" onClick={onClose} fullWidth>
                     Cancelar
                 </Button>
-                <Button variant="primary" onClick={handleSubmit} disabled={saving} fullWidth>
-                    {saving ? "Salvando..." : "Salvar Alterações"}
+                <Button variant="primary" onClick={handleSubmit} loading={saving} loadingLabel="Salvando" fullWidth>
+                    Salvar Alterações
                 </Button>
             </div>
         </>

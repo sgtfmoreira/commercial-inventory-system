@@ -59,6 +59,7 @@ async function login({ email, password }) {
         where: { email },
         include: { 
             establishments: { 
+                where: { isActive: true },
                 include: { establishment: true } 
             } 
         }
@@ -70,6 +71,7 @@ async function login({ email, password }) {
     if (!valid) throw new Error('Credenciais inválidas');
 
     const defaultUE = user.establishments[0];
+    if (!defaultUE) throw new Error('Credenciais inválidas');
     const establishmentsList = user.establishments.map(ue => ue.establishment);
 
     const token = jwt.sign(
@@ -94,6 +96,7 @@ async function getContext({ userId, establishmentId }) {
         where: { id: userId },
         include: {
             establishments: {
+                where: { isActive: true },
                 include: {
                     establishment: { include: { organization: true } }
                 }
@@ -118,7 +121,7 @@ async function switchEstablishment({ userId, establishmentId }) {
         where: { userId_establishmentId: { userId, establishmentId } }
     });
 
-    if (!ue) throw new Error("Acesso não autorizado a este estabelecimento");
+    if (!ue?.isActive) throw new Error("Acesso não autorizado a este estabelecimento");
 
     const token = jwt.sign(
         { userId, establishmentId, role: ue.role }, 

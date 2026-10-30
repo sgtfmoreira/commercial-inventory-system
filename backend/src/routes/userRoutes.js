@@ -27,4 +27,11 @@ router.put(
     controller.update
 );
 
+router.delete(
+    '/:id',
+    authMiddleware,
+    requireRole(['ADMIN']),
+    controller.remove
+);
+
 module.exports = router;

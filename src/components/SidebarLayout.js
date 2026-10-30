@@ -501,7 +501,7 @@ export const NAV_GROUPS = [
       { to: '/organization-suppliers', label: 'Fornecedores centrais', icon: <MdBusiness /> },
       { to: '/supplier-price-updates', label: 'Atualizações de preços', icon: <MdPriceChange /> },
       { to: '/supplier-portal-users', label: 'Acessos de fornecedores', icon: <MdPeople /> },
-      { to: '/users', label: 'Usuários', icon: <MdPeople /> },
+      { to: '/users', label: 'Usuários', icon: <MdPeople />, roles: ['ADMIN'] },
     ],
   },
 ];

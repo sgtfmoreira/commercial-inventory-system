@@ -26,6 +26,7 @@ const create = async (req, res) => {
 };
 
 const postErrorStatus = (error) => {
+    if (error.statusCode) return error.statusCode;
     if (error.message.includes('email')) return 409;
     return 400;
 };
@@ -45,7 +46,8 @@ const list = async (req, res) => {
             where: {
                 establishments: {
                     some: {
-                        establishmentId: establishmentId
+                        establishmentId: establishmentId,
+                        isActive: true
                     }
                 }
             },
@@ -54,7 +56,7 @@ const list = async (req, res) => {
                 name: true,
                 email: true,
                 establishments: {
-                    where: { establishmentId: establishmentId },
+                    where: { establishmentId: establishmentId, isActive: true },
                     select: { role: true }
                 }
             }
@@ -77,8 +79,14 @@ const list = async (req, res) => {
 const update = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, role } = req.body;
+        const { name, email, password, role } = req.body;
         const establishmentId = req.user.establishmentId;
+
+        if (id === req.user.userId && role && role !== 'ADMIN') {
+            return res.status(400).json({
+                error: 'Você não pode remover o próprio perfil de administrador.'
+            });
+        }
 
         // 🛡️ VERIFICAÇÃO DE PERTENCIMENTO AO TENANT
         const membership = await prisma.userEstablishment.findUnique({
@@ -90,7 +98,7 @@ const update = async (req, res) => {
             }
         });
 
-        if (!membership) {
+        if (!membership?.isActive) {
             return res.status(403).json({ 
                 error: "Você não tem permissão para editar usuários de outros estabelecimentos." 
             });
@@ -99,18 +107,33 @@ const update = async (req, res) => {
         const user = await userService.update(id, {
             name,
             email,
+            password,
             role,
             establishmentId
         });
 
         return res.json(user);
     } catch (error) {
-        return res.status(400).json({ error: error.message });
+        return res.status(postErrorStatus(error)).json({ error: error.message });
+    }
+};
+
+const remove = async (req, res) => {
+    try {
+        await userService.deactivate({
+            userId: req.params.id,
+            establishmentId: req.user.establishmentId,
+            actorUserId: req.user.userId
+        });
+        return res.status(204).send();
+    } catch (error) {
+        return res.status(postErrorStatus(error)).json({ error: error.message });
     }
 };
 
 module.exports = {
     create,
     list,
-    update
+    update,
+    remove
 };

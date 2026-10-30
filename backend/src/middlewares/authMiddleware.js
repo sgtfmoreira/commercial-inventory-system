@@ -41,7 +41,7 @@ async function authMiddleware(req, res, next) {
                 }
             });
 
-            if (!relation) {
+            if (!relation?.isActive) {
                 return res.status(403).json({
                     error: 'Usuário não tem acesso a este estabelecimento'
                 });
