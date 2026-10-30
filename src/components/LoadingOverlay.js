@@ -8,7 +8,7 @@ const spin = keyframes`to { transform: rotate(360deg); }`;
 const Overlay = styled.div`
   position: fixed;
   inset: 0;
-  z-index: ${({ theme }) => theme.zIndices.modal};
+  z-index: ${({ theme }) => theme.zIndices.loading};
   display: flex;
   align-items: center;
   justify-content: center;

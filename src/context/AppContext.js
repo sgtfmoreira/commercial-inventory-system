@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import api from '../services/api';
-import LoadingOverlay from '../components/LoadingOverlay';
 
 // ─── Initial State ───────────────────────────────────────────────────────────
 const initialState = {
@@ -54,6 +53,19 @@ const appReducer = (state, action) => {
 
         case 'SET_ERROR':
             return { ...state, error: action.payload, loading: false };
+
+        case 'RESET_ESTABLISHMENT_DATA':
+            return {
+                ...state,
+                categories: [],
+                products: [],
+                suppliers: [],
+                purchaseOrders: [],
+                stockMovements: [],
+                auditLogs: [],
+                loading: true,
+                error: null,
+            };
 
         case 'SET_ALL_DATA':
             return { ...state, ...action.payload, loading: false, error: null };
@@ -272,6 +284,7 @@ export const AppProvider = ({ children }) => {
             localStorage.setItem("token", token);
             api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
+            dispatchRaw({ type: 'RESET_ESTABLISHMENT_DATA' });
             await fetchContext();
             await fetchAllData();
         } catch (err) {
@@ -389,7 +402,6 @@ export const AppProvider = ({ children }) => {
                 fetchAllData
             }}
         >
-            {state.isSaving && <LoadingOverlay />}
             {children}
         </AppContext.Provider>
     );

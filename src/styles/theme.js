@@ -15,7 +15,7 @@ const baseTheme = {
   breakpoints: { sm: '480px', md: '768px', lg: '1024px', xl: '1280px' },
   transitions: { fast: '120ms ease', normal: '180ms ease', slow: '280ms cubic-bezier(0.4, 0, 0.2, 1)' },
   transition: 'all 180ms ease',
-  zIndices: { dropdown: 600, sticky: 700, overlay: 900, modal: 1000, toast: 1100 },
+  zIndices: { dropdown: 600, sticky: 700, overlay: 900, modal: 1000, loading: 1050, toast: 1100 },
 };
 
 export const lightTheme = {

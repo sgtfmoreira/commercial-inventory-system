@@ -805,7 +805,7 @@ const SidebarLayout = () => {
 
       <Main $collapsed={collapsed}>
         <PageWrapper>
-          <Outlet />
+          <Outlet key={`establishment:${establishment?.id || 'none'}`} />
         </PageWrapper>
       </Main>
     </Layout>
