@@ -113,6 +113,7 @@ model Supplier {
   commercialAgreements CommercialAgreement[]
   purchaseInvoices     PurchaseInvoice[]
   bonusReceipts        BonusReceipt[]
+  cashbackSettlements  CommercialAgreementCashbackSettlement[]
   inventoryLots        InventoryLot[]
 
   @@unique([establishmentId, organizationSupplierId])
@@ -233,8 +234,8 @@ model PurchaseOrderItem {
 
   createdAt DateTime @default(now())
 
-  receivedStockQuantity Decimal? @db.Decimal(12, 3)
-  receivedUnitCost      Decimal? @db.Decimal(12, 4)
+  receivedStockQuantity Decimal?         @db.Decimal(12, 3)
+  receivedUnitCost      Decimal?         @db.Decimal(12, 4)
   receivedUnit          String?
   returns               PurchaseReturn[]
   inventoryLot          InventoryLot?
@@ -248,22 +249,22 @@ model PurchaseOrderItem {
 }
 
 model PurchaseReturn {
-  id                  String @id @default(uuid()) @db.Uuid
-  establishmentId     String @db.Uuid
-  requestId           String @db.Uuid
-  purchaseOrderItemId  String @db.Uuid
-  purchaseOrderItem    PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
-  stockMovementId     String @unique @db.Uuid
-  stockMovement       StockMovement @relation(fields: [stockMovementId], references: [id], onDelete: Restrict)
-  quantity            Decimal @db.Decimal(12, 3)
-  purchaseQuantity    Decimal @db.Decimal(18, 9)
-  unitCost            Decimal @db.Decimal(12, 4)
-  totalCost           Decimal @db.Decimal(14, 4)
+  id                  String            @id @default(uuid()) @db.Uuid
+  establishmentId     String            @db.Uuid
+  requestId           String            @db.Uuid
+  purchaseOrderItemId String            @db.Uuid
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  stockMovementId     String            @unique @db.Uuid
+  stockMovement       StockMovement     @relation(fields: [stockMovementId], references: [id], onDelete: Restrict)
+  quantity            Decimal           @db.Decimal(12, 3)
+  purchaseQuantity    Decimal           @db.Decimal(18, 9)
+  unitCost            Decimal           @db.Decimal(12, 4)
+  totalCost           Decimal           @db.Decimal(14, 4)
   returnedAt          DateTime
-  createdAt           DateTime @default(now())
-  recordedByUserId    String @db.Uuid
+  createdAt           DateTime          @default(now())
+  recordedByUserId    String            @db.Uuid
   reason              String
-  financialTreatment  String @default("PENDING")
+  financialTreatment  String            @default("PENDING")
   notes               String?
 
   @@unique([establishmentId, requestId])
@@ -307,7 +308,7 @@ model StockMovement {
   periodFrom             DateTime?
   periodTo               DateTime?
   recordedByUserId       String?                 @db.Uuid
-  purchaseReturn        PurchaseReturn?
+  purchaseReturn         PurchaseReturn?
 
   @@index([establishmentId])
   @@index([productId])
@@ -355,10 +356,10 @@ model establishments {
   organizationId String?
   organization   Organization?       @relation(fields: [organizationId], references: [id])
 
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @default(now()) @updatedAt
-  transfersFrom        StockTransfer[]       @relation("TransferFrom")
-  transfersTo          StockTransfer[]       @relation("TransferTo")
+  createdAt            DateTime                                @default(now())
+  updatedAt            DateTime                                @default(now()) @updatedAt
+  transfersFrom        StockTransfer[]                         @relation("TransferFrom")
+  transfersTo          StockTransfer[]                         @relation("TransferTo")
   stockMovements       StockMovement[]
   purchaseOrders       PurchaseOrder[]
   consumptionEvents    ConsumptionEvent[]
@@ -372,6 +373,7 @@ model establishments {
   commercialAgreements CommercialAgreement[]
   purchaseInvoices     PurchaseInvoice[]
   bonusReceipts        BonusReceipt[]
+  cashbackSettlements  CommercialAgreementCashbackSettlement[]
   inventoryLots        InventoryLot[]
   tableReservations    TableReservation[]
   tableOccupancies     TableOccupancy[]
@@ -385,18 +387,18 @@ model users {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  establishments   UserEstablishment[]
-  stockAudits      StockAudit[]
-  purchase_orders  PurchaseOrder[]
-  productionOrders ProductionOrder[]
-  portioningOrders PortioningOrder[]
-  responsibleCommercialEvents CommercialEvent[] @relation("CommercialEventResponsible")
-  eventBudgetsCreated EventBudget[] @relation("EventBudgetCreatedBy")
-  eventBudgetsApproved EventBudget[] @relation("EventBudgetApprovedBy")
-  tableReservationsCreated TableReservation[] @relation("TableReservationCreatedBy")
-  tableReservationsUpdated TableReservation[] @relation("TableReservationUpdatedBy")
-  tableOccupanciesCreated TableOccupancy[] @relation("TableOccupancyCreatedBy")
-  tableOccupanciesReleased TableOccupancy[] @relation("TableOccupancyReleasedBy")
+  establishments              UserEstablishment[]
+  stockAudits                 StockAudit[]
+  purchase_orders             PurchaseOrder[]
+  productionOrders            ProductionOrder[]
+  portioningOrders            PortioningOrder[]
+  responsibleCommercialEvents CommercialEvent[]   @relation("CommercialEventResponsible")
+  eventBudgetsCreated         EventBudget[]       @relation("EventBudgetCreatedBy")
+  eventBudgetsApproved        EventBudget[]       @relation("EventBudgetApprovedBy")
+  tableReservationsCreated    TableReservation[]  @relation("TableReservationCreatedBy")
+  tableReservationsUpdated    TableReservation[]  @relation("TableReservationUpdatedBy")
+  tableOccupanciesCreated     TableOccupancy[]    @relation("TableOccupancyCreatedBy")
+  tableOccupanciesReleased    TableOccupancy[]    @relation("TableOccupancyReleasedBy")
 }
 
 enum TableReservationStatus {
@@ -405,25 +407,25 @@ enum TableReservationStatus {
 }
 
 model TableReservation {
-  id              String                 @id @default(uuid()) @db.Uuid
-  establishmentId String                 @db.Uuid
-  establishment   establishments         @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
-  tableNumber     Int
-  reservationDate DateTime               @db.Date
-  reservationTime DateTime               @db.Time(0)
-  customerName    String                 @db.VarChar(160)
-  phone           String?                @db.VarChar(30)
-  partySize       Int
-  reservationGroupId String?             @db.Uuid
-  notes           String?
-  status          TableReservationStatus @default(CONFIRMED)
-  version         Int                    @default(1)
-  createdByUserId String                 @db.Uuid
-  createdByUser   users                  @relation("TableReservationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  updatedByUserId String                 @db.Uuid
-  updatedByUser   users                  @relation("TableReservationUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
+  id                 String                 @id @default(uuid()) @db.Uuid
+  establishmentId    String                 @db.Uuid
+  establishment      establishments         @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  tableNumber        Int
+  reservationDate    DateTime               @db.Date
+  reservationTime    DateTime               @db.Time(0)
+  customerName       String                 @db.VarChar(160)
+  phone              String?                @db.VarChar(30)
+  partySize          Int
+  reservationGroupId String?                @db.Uuid
+  notes              String?
+  status             TableReservationStatus @default(CONFIRMED)
+  version            Int                    @default(1)
+  createdByUserId    String                 @db.Uuid
+  createdByUser      users                  @relation("TableReservationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedByUserId    String                 @db.Uuid
+  updatedByUser      users                  @relation("TableReservationUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   @@index([establishmentId, reservationDate])
   @@index([establishmentId, reservationDate, status])
@@ -598,7 +600,7 @@ model EventBudgetItem {
   sourceSnapshot             Json?
   sortOrder                  Int                  @default(0)
   createdAt                  DateTime             @default(now())
-  updatedAt                  DateTime              @updatedAt
+  updatedAt                  DateTime             @updatedAt
 
   @@index([budgetId, sortOrder])
   @@index([sourceId])
@@ -652,33 +654,46 @@ enum CommercialAgreementStatus {
   CLOSED
 }
 
+enum CommercialAgreementBenefitType {
+  PRODUCT_BONUS
+  CASHBACK_FIXED_PER_UNIT
+}
+
 enum BonusReceiptStatus {
   RECEIVED
   CANCELLED
 }
 
+enum CashbackSettlementStatus {
+  RECEIVED
+  CANCELLED
+}
+
 model CommercialAgreement {
-  id                 String                       @id @default(uuid()) @db.Uuid
-  establishmentId    String                       @db.Uuid
-  establishment      establishments               @relation(fields: [establishmentId], references: [id])
-  supplierId         String                       @db.Uuid
-  supplier           Supplier                     @relation(fields: [supplierId], references: [id])
-  name               String
-  brand              String?
-  buyQuantity        Decimal                      @db.Decimal(12, 3)
-  bonusQuantity      Decimal                      @db.Decimal(12, 3)
-  currentRemainder   Decimal                      @default(0) @db.Decimal(12, 3)
-  allowMixedProducts Boolean                      @default(true)
-  startsAt           DateTime
-  endsAt             DateTime?
-  status             CommercialAgreementStatus    @default(ACTIVE)
-  notes              String?
-  createdByUserId    String                       @db.Uuid
-  createdAt          DateTime                     @default(now())
-  updatedAt          DateTime                     @updatedAt
-  products           CommercialAgreementProduct[]
-  accruals           BonusAccrual[]
-  receipts           BonusReceipt[]
+  id                  String                                  @id @default(uuid()) @db.Uuid
+  establishmentId     String                                  @db.Uuid
+  establishment       establishments                          @relation(fields: [establishmentId], references: [id])
+  supplierId          String                                  @db.Uuid
+  supplier            Supplier                                @relation(fields: [supplierId], references: [id])
+  name                String
+  brand               String?
+  benefitType         CommercialAgreementBenefitType          @default(PRODUCT_BONUS)
+  buyQuantity         Decimal                                 @db.Decimal(12, 3)
+  bonusQuantity       Decimal                                 @db.Decimal(12, 3)
+  cashbackPerUnit     Decimal?                                @db.Decimal(14, 2)
+  currentRemainder    Decimal                                 @default(0) @db.Decimal(12, 3)
+  allowMixedProducts  Boolean                                 @default(true)
+  startsAt            DateTime
+  endsAt              DateTime?
+  status              CommercialAgreementStatus               @default(ACTIVE)
+  notes               String?
+  createdByUserId     String                                  @db.Uuid
+  createdAt           DateTime                                @default(now())
+  updatedAt           DateTime                                @updatedAt
+  products            CommercialAgreementProduct[]
+  accruals            BonusAccrual[]
+  receipts            BonusReceipt[]
+  cashbackSettlements CommercialAgreementCashbackSettlement[]
 
   @@index([establishmentId, status])
   @@index([supplierId, status])
@@ -739,20 +754,45 @@ model PurchaseInvoiceItem {
 }
 
 model BonusAccrual {
-  id                  String              @id @default(uuid()) @db.Uuid
-  agreementId         String              @db.Uuid
-  agreement           CommercialAgreement @relation(fields: [agreementId], references: [id])
-  invoiceId           String              @db.Uuid
-  invoice             PurchaseInvoice     @relation(fields: [invoiceId], references: [id])
-  eligibleQuantity    Decimal             @db.Decimal(12, 3)
-  balanceBefore       Decimal             @db.Decimal(12, 3)
-  earnedBonusQuantity Decimal             @db.Decimal(12, 3)
-  balanceAfter        Decimal             @db.Decimal(12, 3)
-  createdAt           DateTime            @default(now())
+  id                   String              @id @default(uuid()) @db.Uuid
+  agreementId          String              @db.Uuid
+  agreement            CommercialAgreement @relation(fields: [agreementId], references: [id])
+  invoiceId            String              @db.Uuid
+  invoice              PurchaseInvoice     @relation(fields: [invoiceId], references: [id])
+  eligibleQuantity     Decimal             @db.Decimal(12, 3)
+  balanceBefore        Decimal             @db.Decimal(12, 3)
+  earnedBonusQuantity  Decimal             @db.Decimal(12, 3)
+  earnedCashbackAmount Decimal             @default(0) @db.Decimal(14, 2)
+  balanceAfter         Decimal             @db.Decimal(12, 3)
+  createdAt            DateTime            @default(now())
 
   @@unique([agreementId, invoiceId])
   @@index([agreementId, createdAt])
   @@map("bonus_accruals")
+}
+
+model CommercialAgreementCashbackSettlement {
+  id                String                   @id @default(uuid()) @db.Uuid
+  establishmentId   String                   @db.Uuid
+  establishment     establishments           @relation(fields: [establishmentId], references: [id])
+  supplierId        String                   @db.Uuid
+  supplier          Supplier                 @relation(fields: [supplierId], references: [id])
+  agreementId       String                   @db.Uuid
+  agreement         CommercialAgreement      @relation(fields: [agreementId], references: [id])
+  amount            Decimal                  @db.Decimal(14, 2)
+  receivedAt        DateTime
+  method            String
+  reference         String?
+  notes             String?
+  status            CashbackSettlementStatus @default(RECEIVED)
+  createdByUserId   String                   @db.Uuid
+  cancelledAt       DateTime?
+  cancelledByUserId String?                  @db.Uuid
+  createdAt         DateTime                 @default(now())
+
+  @@index([agreementId, receivedAt])
+  @@index([establishmentId, status])
+  @@map("commercial_agreement_cashback_settlements")
 }
 
 model BonusReceipt {
@@ -1075,15 +1115,15 @@ model OrganizationProductReview {
 model StockTransfer {
   id String @id @default(uuid()) @db.Uuid
 
-  productId            String  @db.Uuid
-  destinationProductId String? @db.Uuid
-  quantity             Float
-  destinationQuantity  Float?
-  sourceUnit            String?
-  destinationUnit       String?
-  sourcePackQuantity    Float?
+  productId               String  @db.Uuid
+  destinationProductId    String? @db.Uuid
+  quantity                Float
+  destinationQuantity     Float?
+  sourceUnit              String?
+  destinationUnit         String?
+  sourcePackQuantity      Float?
   destinationPackQuantity Float?
-  conversionFactor      Float?
+  conversionFactor        Float?
 
   fromEstablishmentId String @db.Uuid
   toEstablishmentId   String @db.Uuid

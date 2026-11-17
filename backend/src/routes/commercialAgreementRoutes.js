@@ -11,5 +11,7 @@ router.post('/', requireRole(['ADMIN']), controller.create);
 router.put('/:id', requireRole(['ADMIN']), controller.update);
 router.delete('/:id', requireRole(['ADMIN']), controller.remove);
 router.post('/bonus-receipts', requireRole(['ADMIN', 'STOCK_COUNTER']), controller.receiveBonus);
+router.post('/cashback-settlements', requireRole(['ADMIN']), controller.receiveCashback);
+router.post('/cashback-settlements/:id/cancel', requireRole(['ADMIN']), controller.cancelCashbackSettlement);
 
 module.exports = router;

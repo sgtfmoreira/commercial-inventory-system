@@ -37,9 +37,36 @@ const receiveBonus = asyncHandler(async (req, res) => {
     res.status(201).json({ success: true, data });
 });
 
+const receiveCashback = asyncHandler(async (req, res) => {
+    const data = await service.receiveCashback({
+        ...req.body,
+        establishmentId: req.user.establishmentId,
+        userId: req.user.userId
+    });
+    res.status(201).json({ success: true, data });
+});
+
+const cancelCashbackSettlement = asyncHandler(async (req, res) => {
+    const data = await service.cancelCashbackSettlement({
+        settlementId: req.params.id,
+        establishmentId: req.user.establishmentId,
+        userId: req.user.userId
+    });
+    res.json({ success: true, data });
+});
+
 const summary = asyncHandler(async (req, res) => {
     const data = await service.getSummary(req.user.establishmentId, req.query.dateFrom, req.query.dateTo);
     res.json({ success: true, data });
 });
 
-module.exports = { list, create, update, remove, receiveBonus, summary };
+module.exports = {
+    list,
+    create,
+    update,
+    remove,
+    receiveBonus,
+    receiveCashback,
+    cancelCashbackSettlement,
+    summary
+};
