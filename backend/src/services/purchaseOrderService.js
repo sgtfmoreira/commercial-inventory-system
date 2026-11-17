@@ -7,6 +7,25 @@ const stockMovementService = require('./stockMovementService');
 const commercialAgreementService = require('./commercialAgreementService');
 const { validateAutomaticOrderClassifications } = require('../utils/purchaseOrderRules');
 
+const shouldPreserveSharedSupplierPrice = async (product, supplierId, establishmentId, tx) => {
+    if (!product.organizationProductId || !supplierId) return false;
+    const supplier = await tx.supplier.findFirst({
+        where: { id: supplierId, establishmentId },
+        select: { organizationSupplierId: true }
+    });
+    if (!supplier?.organizationSupplierId) return false;
+    const catalogItem = await tx.supplierCatalogItem.findUnique({
+        where: {
+            organizationSupplierId_organizationProductId: {
+                organizationSupplierId: supplier.organizationSupplierId,
+                organizationProductId: product.organizationProductId
+            }
+        },
+        select: { id: true }
+    });
+    return Boolean(catalogItem);
+};
+
 /**
  * 🔐 LISTAR ORDENS
  */
@@ -205,21 +224,26 @@ const completeOrder = async (orderId, establishmentId, incomingItems = [], invoi
 
                 // 🔹 HISTÓRICO DO FORNECEDOR (Vínculo Produto-Supplier)
                 if (dbItem.supplierId) {
-                    // Upsert garantindo que o produto é do tenant
-                    await tx.productSupplier.upsert({
-                        where: {
-                            productId_supplierId: {
+                    const preserveSharedPrice = await shouldPreserveSharedSupplierPrice(
+                        product, dbItem.supplierId, establishmentId, tx
+                    );
+                    if (!preserveSharedPrice) {
+                        // Cadastros locais/legados continuam usando o último preço recebido.
+                        await tx.productSupplier.upsert({
+                            where: {
+                                productId_supplierId: {
+                                    productId: dbItem.productId,
+                                    supplierId: dbItem.supplierId
+                                }
+                            },
+                            update: { price: unitPrice },
+                            create: {
                                 productId: dbItem.productId,
-                                supplierId: dbItem.supplierId
+                                supplierId: dbItem.supplierId,
+                                price: unitPrice
                             }
-                        },
-                        update: { price: unitPrice },
-                        create: {
-                            productId: dbItem.productId,
-                            supplierId: dbItem.supplierId,
-                            price: unitPrice
-                        }
-                    });
+                        });
+                    }
 
                     // Cada recebimento precisa de um snapshot, inclusive quando
                     // o preço não mudou, para preservar a série histórica real.
@@ -422,6 +446,7 @@ module.exports = {
     createOrder,
     createOrdersGroupedBySupplier,
     completeOrder,
+    shouldPreserveSharedSupplierPrice,
     deleteOrder,
     generatePdf
 };
