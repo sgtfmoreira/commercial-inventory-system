@@ -37,8 +37,9 @@ const emptyBonusReceipt = () => ({
   productId:'', locationId:'', quantity:'', fiscalUnitPrice:'', commercialReferencePrice:''
 });
 const emptyCashbackReceipt = () => ({
-  agreementId:'', amount:'', receivedAt:today(), method:'PIX', reference:'', notes:''
+  agreementId:'', amount:0, receivedAt:today(), method:'PIX', reference:'', notes:'', allocations:{}
 });
+const orderLabel = id => id ? `OC-${String(id).slice(-6).toUpperCase()}` : '—';
 
 export default function CommercialAgreements() {
   const { state } = useApp();
@@ -153,9 +154,13 @@ export default function CommercialAgreements() {
 
   const receiveCashback = async event => {
     event.preventDefault();
+    const allocations = Object.entries(cashback.allocations)
+      .map(([accrualId, amount]) => ({ accrualId, amount:Number(amount) }))
+      .filter(item => item.amount > 0);
     await api.post('/commercial-agreements/cashback-settlements', {
       ...cashback,
-      amount:Number(cashback.amount)
+      amount:Number(cashback.amount),
+      allocations
     });
     toast.success('Recebimento de cashback registrado.');
     setCashback(emptyCashbackReceipt());
@@ -180,9 +185,24 @@ export default function CommercialAgreements() {
         0
       );
       const earned = Number(accrual.earnedCashbackAmount || 0);
-      return { ...accrual, fiscalTotal, effectiveTotal: fiscalTotal - earned };
+      const received = (accrual.cashbackAllocations || []).reduce(
+        (sum, allocation) => sum + Number(allocation.amount || 0), 0
+      );
+      return {
+        ...accrual,
+        fiscalTotal,
+        received,
+        pending:Math.max(0, earned - received),
+        effectiveTotal:fiscalTotal - earned
+      };
     });
   }, [selectedCashbackAgreement]);
+
+  const updateCashbackAllocation = (accrualId, value) => {
+    const allocations = { ...cashback.allocations, [accrualId]:value };
+    const amount = Object.values(allocations).reduce((sum, item) => sum + Number(item || 0), 0);
+    setCashback({ ...cashback, allocations, amount:Number(amount.toFixed(2)) });
+  };
 
   const changeTab = id => {
     setTab(id);
@@ -263,18 +283,19 @@ export default function CommercialAgreements() {
     </Grid><Hint style={{margin:'14px 0'}}>Valor fiscal: {money(Number(receipt.quantity||0)*Number(receipt.fiscalUnitPrice||0))}. Benefício comercial: {money(Number(receipt.quantity||0)*Number(receipt.commercialReferencePrice||0)+Number(receipt.additionalCredits||0))}.</Hint><Button>Confirmar recebimento</Button></form></Panel>}
 
     {tab === 'cashback' && <Panel><form onSubmit={receiveCashback}><Grid>
-      <Field>Acordo de cashback<Select required value={cashback.agreementId} onChange={e=>setCashback({...cashback,agreementId:e.target.value,amount:''})}><option value="">Selecione</option>{agreements.filter(a=>a.benefitType===CASHBACK_FIXED_PER_UNIT).map(a=><option key={a.id} value={a.id}>{a.name} - {a.supplier?.name}</option>)}</Select></Field>
-      <Field>Valor recebido<Control required min="0.01" step="0.01" type="number" value={cashback.amount} onChange={e=>setCashback({...cashback,amount:e.target.value})}/></Field>
+      <Field>Acordo de cashback<Select required value={cashback.agreementId} onChange={e=>setCashback({...emptyCashbackReceipt(),agreementId:e.target.value})}><option value="">Selecione</option>{agreements.filter(a=>a.benefitType===CASHBACK_FIXED_PER_UNIT).map(a=><option key={a.id} value={a.id}>{a.name} - {a.supplier?.name}</option>)}</Select></Field>
+      <Field>Valor recebido (soma das ordens)<Control readOnly type="number" value={cashback.amount}/></Field>
       <Field>Data do recebimento<Control required type="date" value={cashback.receivedAt} onChange={e=>setCashback({...cashback,receivedAt:e.target.value})}/></Field>
       <Field>Forma de recebimento<Select required value={cashback.method} onChange={e=>setCashback({...cashback,method:e.target.value})}><option value="PIX">PIX</option><option value="BANK_TRANSFER">Transferência bancária</option><option value="INVOICE_DISCOUNT">Desconto em boleto</option><option value="NEXT_PURCHASE_CREDIT">Crédito na próxima compra</option><option value="OTHER">Outro</option></Select></Field>
       <Field>Referência/comprovante<Control value={cashback.reference} onChange={e=>setCashback({...cashback,reference:e.target.value})}/></Field>
       <Field>Observação<Control value={cashback.notes} onChange={e=>setCashback({...cashback,notes:e.target.value})}/></Field>
     </Grid>
       {selectedCashbackSummary&&<Hint style={{margin:'14px 0'}}>Gerado: {money(selectedCashbackSummary.earnedCashbackAmount)}. Recebido: {money(selectedCashbackSummary.receivedCashbackAmount)}. Pendente: <strong>{money(selectedCashbackSummary.pendingCashbackAmount)}</strong>.</Hint>}
-      <Button disabled={!cashback.agreementId||Number(cashback.amount)<=0}>Registrar cashback</Button>
+      <Button disabled={!cashback.agreementId||Number(cashback.amount)<=0}>Registrar cashback vinculado</Button>
     </form>
-      {selectedCashbackAgreement?.cashbackSettlements?.length>0&&<TableSurface style={{marginTop:18}}><Table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Referência</th><th>Ação</th></tr></thead><tbody>{selectedCashbackAgreement.cashbackSettlements.map(item=><tr key={item.id}><td>{String(item.receivedAt).slice(0,10).split('-').reverse().join('/')}</td><td>{money(item.amount)}</td><td>{item.method}</td><td>{item.reference||'—'}</td><td><Button size="sm" variant="danger" onClick={()=>cancelCashback(item)}>Cancelar</Button></td></tr>)}</tbody></Table></TableSurface>}
-      {cashbackAccrualDetails.length>0&&<TableSurface style={{marginTop:18}}><Table><thead><tr><th>Nota de compra</th><th>Data</th><th>Quantidade elegível</th><th>Valor fiscal elegível</th><th>Cashback gerado</th><th>Custo líquido gerencial</th></tr></thead><tbody>{cashbackAccrualDetails.map(item=><tr key={item.id}><td>{item.invoice?.invoiceNumber}{item.invoice?.invoiceSeries?`/${item.invoice.invoiceSeries}`:''}</td><td>{String(item.invoice?.issuedAt||'').slice(0,10).split('-').reverse().join('/')}</td><td>{qty(item.eligibleQuantity)}</td><td>{money(item.fiscalTotal)}</td><td>{money(item.earnedCashbackAmount)}</td><td><strong>{money(item.effectiveTotal)}</strong></td></tr>)}</tbody></Table></TableSurface>}
+      {selectedCashbackAgreement?.cashbackSettlements?.length>0&&<TableSurface style={{marginTop:18}}><Table><thead><tr><th>Data</th><th>Valor</th><th>Ordens vinculadas</th><th>Forma</th><th>Referência</th><th>Ação</th></tr></thead><tbody>{selectedCashbackAgreement.cashbackSettlements.map(item=><tr key={item.id}><td>{String(item.receivedAt).slice(0,10).split('-').reverse().join('/')}</td><td>{money(item.amount)}</td><td>{(item.allocations||[]).map(allocation=>`${orderLabel(allocation.accrual?.invoice?.purchaseOrderId)} (${money(allocation.amount)})`).join(', ')||'—'}</td><td>{item.method}</td><td>{item.reference||'—'}</td><td><Button size="sm" variant="danger" onClick={()=>cancelCashback(item)}>Cancelar</Button></td></tr>)}</tbody></Table></TableSurface>}
+      {cashbackAccrualDetails.length>0&&<TableSurface style={{marginTop:18}}><Table><thead><tr><th>Ordem recebida</th><th>Nota de compra</th><th>Data</th><th>Quantidade elegível</th><th>Valor fiscal</th><th>Cashback gerado</th><th>Já recebido</th><th>Pendente</th><th>Vincular agora</th><th>Custo líquido gerencial</th></tr></thead><tbody>{cashbackAccrualDetails.map(item=><tr key={item.id}><td><strong>{orderLabel(item.invoice?.purchaseOrder?.id)}</strong></td><td>{item.invoice?.invoiceNumber}{item.invoice?.invoiceSeries?`/${item.invoice.invoiceSeries}`:''}</td><td>{String(item.invoice?.issuedAt||'').slice(0,10).split('-').reverse().join('/')}</td><td>{qty(item.eligibleQuantity)}</td><td>{money(item.fiscalTotal)}</td><td>{money(item.earnedCashbackAmount)}</td><td>{money(item.received)}</td><td><strong>{money(item.pending)}</strong></td><td><Control aria-label={`Valor para ${orderLabel(item.invoice?.purchaseOrder?.id)}`} disabled={item.pending<=0} min="0" max={item.pending} step="0.01" type="number" value={cashback.allocations[item.id]||''} onChange={e=>updateCashbackAllocation(item.id,e.target.value)}/></td><td><strong>{money(item.effectiveTotal)}</strong></td></tr>)}</tbody></Table></TableSurface>}
+      {selectedCashbackAgreement&&!cashbackAccrualDetails.length&&<Hint style={{marginTop:18}}>Nenhuma ordem recebida gerou cashback para este acordo.</Hint>}
     </Panel>}
   </Page>;
 }

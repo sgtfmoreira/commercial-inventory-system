@@ -77,11 +77,16 @@ async function listAgreements(establishmentId) {
                     earnedBonusQuantity: true,
                     earnedCashbackAmount: true,
                     createdAt: true,
+                    cashbackAllocations: {
+                        where: { settlement: { status: 'RECEIVED' } },
+                        select: { id: true, settlementId: true, amount: true }
+                    },
                     invoice: {
                         select: {
                             invoiceNumber: true,
                             invoiceSeries: true,
                             issuedAt: true,
+                            purchaseOrder: { select: { id: true, createdAt: true, completedAt: true } },
                             items: { select: { productId: true, quantity: true, unitPrice: true } }
                         }
                     }
@@ -89,7 +94,19 @@ async function listAgreements(establishmentId) {
                 orderBy: { createdAt: 'desc' }
             },
             receipts: { where: { status: 'RECEIVED' }, include: { items: true } },
-            cashbackSettlements: { where: { status: 'RECEIVED' }, orderBy: { receivedAt: 'desc' } }
+            cashbackSettlements: {
+                where: { status: 'RECEIVED' },
+                include: {
+                    allocations: {
+                        include: {
+                            accrual: {
+                                select: { invoice: { select: { invoiceNumber: true, purchaseOrderId: true } } }
+                            }
+                        }
+                    }
+                },
+                orderBy: { receivedAt: 'desc' }
+            }
         },
         orderBy: [{ status: 'asc' }, { createdAt: 'desc' }]
     });
@@ -330,30 +347,64 @@ async function receiveBonus({ establishmentId, userId, agreementId, invoiceNumbe
     }, { maxWait: 10000, timeout: 60000 });
 }
 
-async function receiveCashback({ establishmentId, userId, agreementId, amount, receivedAt, method, reference, notes }) {
+async function receiveCashback({ establishmentId, userId, agreementId, amount, receivedAt, method, reference, notes, allocations }) {
     const numericAmount = Number(amount);
     const receivedDate = new Date(receivedAt);
     if (!(numericAmount > 0) || !receivedAt || Number.isNaN(receivedDate.getTime())) {
         throw new AppError('Informe um valor e uma data de recebimento válidos.', 400);
     }
     if (!CASHBACK_METHODS.has(method)) throw new AppError('Forma de recebimento inválida.', 400);
+    if (!Array.isArray(allocations) || allocations.length === 0) {
+        throw new AppError('Vincule o recebimento a pelo menos uma ordem recebida.', 400);
+    }
+    const normalizedAllocations = allocations.map(item => ({
+        accrualId: String(item.accrualId || ''),
+        amount: Number(item.amount)
+    }));
+    if (normalizedAllocations.some(item => !item.accrualId || !(item.amount > 0))) {
+        throw new AppError('As alocações por ordem devem possuir valores maiores que zero.', 400);
+    }
+    if (new Set(normalizedAllocations.map(item => item.accrualId)).size !== normalizedAllocations.length) {
+        throw new AppError('Uma ordem recebida não pode ser informada mais de uma vez.', 400);
+    }
+    const allocatedTotal = Number(normalizedAllocations.reduce((sum, item) => sum + item.amount, 0).toFixed(2));
+    if (Math.abs(allocatedTotal - numericAmount) > 0.001) {
+        throw new AppError('O valor recebido deve ser igual ao total vinculado às ordens.', 400);
+    }
 
     try {
         return await prisma.$transaction(async tx => {
             const agreement = await tx.commercialAgreement.findFirst({
                 where: { id: agreementId, establishmentId, benefitType: CASHBACK_FIXED_PER_UNIT },
                 include: {
-                    accruals: { select: { earnedCashbackAmount: true } },
-                    cashbackSettlements: { where: { status: 'RECEIVED' }, select: { amount: true } }
+                    accruals: {
+                        where: { id: { in: normalizedAllocations.map(item => item.accrualId) } },
+                        select: {
+                            id: true,
+                            earnedCashbackAmount: true,
+                            cashbackAllocations: {
+                                where: { settlement: { status: 'RECEIVED' } },
+                                select: { amount: true }
+                            }
+                        }
+                    }
                 }
             });
             if (!agreement) throw new AppError('Acordo de cashback não encontrado neste estabelecimento.', 404);
+            if (agreement.accruals.length !== normalizedAllocations.length) {
+                throw new AppError('Uma ou mais ordens não pertencem a este acordo e estabelecimento.', 400);
+            }
 
-            const earned = agreement.accruals.reduce((sum, row) => sum + Number(row.earnedCashbackAmount), 0);
-            const received = agreement.cashbackSettlements.reduce((sum, row) => sum + Number(row.amount), 0);
-            const pending = Number((earned - received).toFixed(2));
-            if (numericAmount - pending > 0.001) {
-                throw new AppError(`O recebimento excede o cashback pendente de R$ ${pending.toFixed(2)}.`, 409);
+            const accrualMap = new Map(agreement.accruals.map(row => [row.id, row]));
+            for (const allocation of normalizedAllocations) {
+                const accrual = accrualMap.get(allocation.accrualId);
+                const alreadyReceived = accrual.cashbackAllocations.reduce(
+                    (sum, row) => sum + Number(row.amount), 0
+                );
+                const pending = Number((Number(accrual.earnedCashbackAmount) - alreadyReceived).toFixed(2));
+                if (allocation.amount - pending > 0.001) {
+                    throw new AppError(`O valor vinculado excede o saldo de R$ ${pending.toFixed(2)} desta ordem.`, 409);
+                }
             }
 
             return tx.commercialAgreementCashbackSettlement.create({
@@ -366,8 +417,10 @@ async function receiveCashback({ establishmentId, userId, agreementId, amount, r
                     method,
                     reference: String(reference || '').trim() || null,
                     notes: String(notes || '').trim() || null,
-                    createdByUserId: userId
-                }
+                    createdByUserId: userId,
+                    allocations: { create: normalizedAllocations }
+                },
+                include: { allocations: true }
             });
         }, { isolationLevel: 'Serializable' });
     } catch (error) {

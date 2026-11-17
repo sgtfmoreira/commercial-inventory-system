@@ -69,7 +69,7 @@ test('apuração de cashback usa apenas fornecedor, vigência e estabelecimento 
     assert.equal(accrualData.earnedBonusQuantity, 0);
 });
 
-test('recebimento de cashback respeita o saldo e o estabelecimento do acordo', async () => {
+test('recebimento de cashback é vinculado às ordens e respeita o saldo de cada entrada', async () => {
     const originalTransaction = prisma.$transaction;
     let agreementWhere;
     let settlementData;
@@ -79,8 +79,11 @@ test('recebimento de cashback respeita o saldo e o estabelecimento do acordo', a
                 agreementWhere = where;
                 return {
                     supplierId: 'sanguine-lights',
-                    accruals: [{ earnedCashbackAmount: 50 }],
-                    cashbackSettlements: [{ amount: 20 }]
+                    accruals: [{
+                        id: 'accrual-order-101',
+                        earnedCashbackAmount: 50,
+                        cashbackAllocations: [{ amount: 20 }]
+                    }]
                 };
             }
         },
@@ -96,12 +99,16 @@ test('recebimento de cashback respeita o saldo e o estabelecimento do acordo', a
             amount: 30,
             receivedAt: '2026-11-17',
             method: 'PIX',
-            reference: 'PIX-001'
+            reference: 'PIX-001',
+            allocations: [{ accrualId: 'accrual-order-101', amount: 30 }]
         });
         assert.equal(agreementWhere.establishmentId, 'lights');
         assert.equal(agreementWhere.benefitType, 'CASHBACK_FIXED_PER_UNIT');
         assert.equal(settlementData.amount, 30);
         assert.equal(settlementData.supplierId, 'sanguine-lights');
+        assert.deepEqual(settlementData.allocations.create, [
+            { accrualId: 'accrual-order-101', amount: 30 }
+        ]);
 
         await assert.rejects(receiveCashback({
             establishmentId: 'lights',
@@ -109,9 +116,22 @@ test('recebimento de cashback respeita o saldo e o estabelecimento do acordo', a
             agreementId: 'agreement-lights',
             amount: 30.01,
             receivedAt: '2026-11-17',
-            method: 'PIX'
-        }), /excede o cashback pendente/);
+            method: 'PIX',
+            allocations: [{ accrualId: 'accrual-order-101', amount: 30.01 }]
+        }), /excede o saldo/);
     } finally {
         prisma.$transaction = originalTransaction;
     }
+});
+
+test('recebimento exige que o total seja integralmente distribuído entre ordens', async () => {
+    await assert.rejects(receiveCashback({
+        establishmentId: 'lights',
+        userId: 'admin',
+        agreementId: 'agreement-lights',
+        amount: 20,
+        receivedAt: '2026-11-17',
+        method: 'PIX',
+        allocations: [{ accrualId: 'accrual-order-101', amount: 10 }]
+    }), /igual ao total vinculado/);
 });

@@ -765,6 +765,7 @@ model BonusAccrual {
   earnedCashbackAmount Decimal             @default(0) @db.Decimal(14, 2)
   balanceAfter         Decimal             @db.Decimal(12, 3)
   createdAt            DateTime            @default(now())
+  cashbackAllocations  CommercialAgreementCashbackAllocation[]
 
   @@unique([agreementId, invoiceId])
   @@index([agreementId, createdAt])
@@ -789,10 +790,25 @@ model CommercialAgreementCashbackSettlement {
   cancelledAt       DateTime?
   cancelledByUserId String?                  @db.Uuid
   createdAt         DateTime                 @default(now())
+  allocations       CommercialAgreementCashbackAllocation[]
 
   @@index([agreementId, receivedAt])
   @@index([establishmentId, status])
   @@map("commercial_agreement_cashback_settlements")
+}
+
+model CommercialAgreementCashbackAllocation {
+  id           String                                @id @default(uuid()) @db.Uuid
+  settlementId String                                @db.Uuid
+  settlement   CommercialAgreementCashbackSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  accrualId    String                                @db.Uuid
+  accrual      BonusAccrual                          @relation(fields: [accrualId], references: [id], onDelete: Restrict)
+  amount       Decimal                               @db.Decimal(14, 2)
+  createdAt    DateTime                              @default(now())
+
+  @@unique([settlementId, accrualId])
+  @@index([accrualId])
+  @@map("commercial_agreement_cashback_allocations")
 }
 
 model BonusReceipt {
