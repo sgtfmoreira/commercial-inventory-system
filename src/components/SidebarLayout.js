@@ -471,6 +471,10 @@ export const NAV_GROUPS = [
       { to: '/production', label: 'Produção', icon: <MdFactory /> },
       { to: '/portioning', label: 'Desossa e porcionamento', icon: <MdContentCut /> },
       { to: '/material-consumption', label: 'Consumo de materiais', icon: <MdReceiptLong /> },
+      { to: '/checklists', label: 'Checklists', icon: <MdChecklist />, capabilities: ['checklists.runs.manage', 'checklists.execute'], end: true },
+      { to: '/checklists/approvals', label: 'Aprovações de checklists', icon: <MdChecklist />, capability: 'checklists.approve', end: true },
+      { to: '/checklists/reports', label: 'Relatórios de checklists', icon: <MdChecklist />, capability: 'checklists.approve', end: true },
+      { to: '/checklists/templates', label: 'Modelos de checklists', icon: <MdChecklist />, capability: 'checklists.templates.manage', match: 'prefix' },
       { to: '/entries', label: 'Lançamentos', icon: <MdReceiptLong /> },
       { to: '/patrimony', label: 'Patrimônio', icon: <MdStore /> },
     ],
@@ -520,9 +524,11 @@ export const isNavigationItemActive = (item, pathname) => {
   return pathname === item.to;
 };
 
-export const isNavigationItemVisible = (item, establishmentId, role) => {
+export const isNavigationItemVisible = (item, establishmentId, role, capabilities = {}) => {
   if (item.establishmentId && item.establishmentId !== establishmentId) return false;
   if (item.roles && !item.roles.includes(role)) return false;
+  if (item.capability && capabilities[item.capability] !== true) return false;
+  if (item.capabilities && !item.capabilities.some(capability => capabilities[capability] === true)) return false;
   return true;
 };
 
@@ -543,9 +549,9 @@ const SidebarLayout = () => {
   const visibleGroups = useMemo(() => NAV_GROUPS
     .map(group => ({
       ...group,
-      items: group.items.filter(item => isNavigationItemVisible(item, establishment?.id, user?.role)),
+      items: group.items.filter(item => isNavigationItemVisible(item, establishment?.id, user?.role, state.capabilities)),
     }))
-    .filter(group => group.items.length > 0), [establishment?.id, user?.role]);
+    .filter(group => group.items.length > 0), [establishment?.id, user?.role, state.capabilities]);
 
   useEffect(() => {
     localStorage.setItem('sidebar:collapsed', String(collapsed));

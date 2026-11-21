@@ -4,7 +4,19 @@ const db = client => client || prisma;
 const personSelect = { id: true, name: true };
 const includePeople = {
     createdByUser: { select: personSelect },
-    updatedByUser: { select: personSelect }
+    updatedByUser: { select: personSelect },
+    checkedInByUser: { select: personSelect },
+    occupancy: {
+        select: {
+            id: true,
+            status: true,
+            version: true,
+            seatedAt: true,
+            releasedAt: true,
+            partySize: true,
+            occupancyGroupId: true
+        }
+    }
 };
 
 const listByDate = (establishmentId, reservationDate, includeCancelled, client) => db(client).tableReservation.findMany({
@@ -26,6 +38,11 @@ const findActiveGroup = (reservationGroupId, establishmentId, client) => db(clie
     include: includePeople,
     orderBy: { tableNumber: 'asc' }
 });
+const findGroup = (reservationGroupId, establishmentId, client) => db(client).tableReservation.findMany({
+    where: { reservationGroupId, establishmentId },
+    include: includePeople,
+    orderBy: { tableNumber: 'asc' }
+});
 
 const findActiveForKeys = (establishmentId, keys, client) => {
     if (!keys.length) return [];
@@ -41,16 +58,42 @@ const findActiveForKeys = (establishmentId, keys, client) => {
 
 const create = (data, client) => db(client).tableReservation.create({ data, include: includePeople });
 const updateActiveVersioned = (id, establishmentId, version, data, client) => db(client).tableReservation.updateMany({
-    where: { id, establishmentId, version, status: 'CONFIRMED' },
+    where: { id, establishmentId, version, status: 'CONFIRMED', checkedInAt: null },
     data: { ...data, version: { increment: 1 } }
 });
 
 const updateActiveGroupVersioned = (reservationGroupId, establishmentId, version, data, client) => db(client).tableReservation.updateMany({
-    where: { reservationGroupId, establishmentId, version, status: 'CONFIRMED' },
+    where: { reservationGroupId, establishmentId, version, status: 'CONFIRMED', checkedInAt: null },
     data: { ...data, version: { increment: 1 } }
 });
 
+const markCheckedInVersioned = (id, establishmentId, version, data, client) => db(client).tableReservation.updateMany({
+    where: { id, establishmentId, version, status: 'CONFIRMED', checkedInAt: null },
+    data: { ...data, version: { increment: 1 } }
+});
+
+const markCheckedInGroupVersioned = (reservationGroupId, establishmentId, version, data, client) => db(client).tableReservation.updateMany({
+    where: { reservationGroupId, establishmentId, version, status: 'CONFIRMED', checkedInAt: null },
+    data: { ...data, version: { increment: 1 } }
+});
+
+const findActiveOccupanciesForTables = (establishmentId, tableNumbers, client) => db(client).tableOccupancy.findMany({
+    where: { establishmentId, tableNumber: { in: tableNumbers }, status: 'ACTIVE' },
+    select: { id: true, tableNumber: true }
+});
+
+const createOccupancy = (data, client) => db(client).tableOccupancy.create({
+    data,
+    include: {
+        createdByUser: { select: personSelect },
+        releasedByUser: { select: personSelect },
+        reservation: { select: { id: true, customerName: true, reservationTime: true } }
+    }
+});
+
 module.exports = {
-    listByDate, findById, findActiveGroup, findActiveForKeys, create,
-    updateActiveVersioned, updateActiveGroupVersioned
+    listByDate, findById, findActiveGroup, findGroup, findActiveForKeys, create,
+    updateActiveVersioned, updateActiveGroupVersioned,
+    markCheckedInVersioned, markCheckedInGroupVersioned,
+    findActiveOccupanciesForTables, createOccupancy
 };

@@ -8,6 +8,7 @@ const record = (overrides = {}) => ({
     id: 'reservation-a', establishmentId: 'est-a', tableNumber: 26,
     reservationDate: date, reservationTime: time, customerName: 'Cliente A', phone: null,
     partySize: 4, notes: null, status: 'CONFIRMED', version: 1,
+    checkedInAt: null, checkedInByUserId: null, occupancy: null,
     createdByUserId: 'user-a', updatedByUserId: 'user-a', ...overrides
 });
 const input = { tableNumber:26, reservationDate:'2026-10-20', reservationTime:'19:30', customerName:'Cliente A', phone:null, partySize:4, notes:null };
@@ -134,4 +135,180 @@ test('prévia de importação separa conflitos sem sobrescrever reserva existent
     assert.equal(result.conflicts.length, 1);
     assert.equal(result.available.length, 1);
     assert.match(result.conflicts[0].reason, /Já existe/);
+});
+
+test('confirma chegada individual e cria ocupação vinculada no mesmo tenant', async () => {
+    let checkedIn;
+    let occupancy;
+    const repository = {
+        findById: async (id, establishmentId) => {
+            assert.equal(establishmentId, 'est-a');
+            return checkedIn
+                ? record({ version:2, checkedInAt:checkedIn.checkedInAt, checkedInByUserId:'user-b' })
+                : record();
+        },
+        findActiveOccupanciesForTables: async (establishmentId, tables) => {
+            assert.equal(establishmentId, 'est-a');
+            assert.deepEqual(tables, [26]);
+            return [];
+        },
+        markCheckedInVersioned: async (id, establishmentId, version, data) => {
+            checkedIn = { id, establishmentId, version, ...data };
+            return { count:1 };
+        },
+        createOccupancy: async data => {
+            occupancy = { id:'occupancy-a', ...data };
+            return occupancy;
+        }
+    };
+    const service = createTableReservationService({
+        repository,
+        database,
+        now:() => new Date('2026-10-20T22:15:00.000Z')
+    });
+    const result = await service.checkIn('reservation-a', { version:1, partySize:5 }, 'est-a', 'user-b');
+    assert.equal(checkedIn.checkedInByUserId, 'user-b');
+    assert.equal(occupancy.reservationId, 'reservation-a');
+    assert.equal(occupancy.occupancyGroupId, null);
+    assert.equal(result.count, 1);
+    assert.equal(result.reservation.checkedInByUserId, 'user-b');
+});
+
+test('confirma chegada do grupo inteiro e cria ocupações vinculadas com um único grupo', async () => {
+    const group = [
+        record({ id:'a', tableNumber:15, reservationGroupId:'reservation-group' }),
+        record({ id:'b', tableNumber:16, reservationGroupId:'reservation-group' })
+    ];
+    const created = [];
+    let update;
+    const repository = {
+        findById: async id => {
+            const item = group.find(candidate => candidate.id === id);
+            return update ? { ...item, version:2, checkedInAt:update.checkedInAt } : item;
+        },
+        findActiveGroup: async (groupId, establishmentId) => {
+            assert.equal(groupId, 'reservation-group');
+            assert.equal(establishmentId, 'est-a');
+            return group;
+        },
+        findActiveOccupanciesForTables: async (establishmentId, tables) => {
+            assert.equal(establishmentId, 'est-a');
+            assert.deepEqual(tables, [15, 16]);
+            return [];
+        },
+        markCheckedInGroupVersioned: async (groupId, establishmentId, version, data) => {
+            update = data;
+            assert.equal(groupId, 'reservation-group');
+            assert.equal(establishmentId, 'est-a');
+            assert.equal(version, 1);
+            return { count:2 };
+        },
+        createOccupancy: async data => {
+            created.push(data);
+            return { id:`occupancy-${data.tableNumber}`, ...data };
+        }
+    };
+    const service = createTableReservationService({
+        repository,
+        database,
+        now:() => new Date('2026-10-20T22:15:00.000Z')
+    });
+    const result = await service.checkIn('a', { version:1 }, 'est-a', 'user-b');
+    assert.equal(result.count, 2);
+    assert.deepEqual(created.map(item => item.reservationId), ['a', 'b']);
+    assert.ok(created[0].occupancyGroupId);
+    assert.equal(created[0].occupancyGroupId, created[1].occupancyGroupId);
+});
+
+test('falha antes de atualizar quando uma mesa do grupo já está ocupada', async () => {
+    const group = [
+        record({ id:'a', tableNumber:15, reservationGroupId:'reservation-group' }),
+        record({ id:'b', tableNumber:16, reservationGroupId:'reservation-group' })
+    ];
+    let mutated = false;
+    const repository = {
+        findById: async () => group[0],
+        findActiveGroup: async () => group,
+        findActiveOccupanciesForTables: async () => [{ id:'occupied', tableNumber:16 }],
+        markCheckedInGroupVersioned: async () => { mutated = true; }
+    };
+    const service = createTableReservationService({
+        repository,
+        database,
+        now:() => new Date('2026-10-20T22:15:00.000Z')
+    });
+    await assert.rejects(
+        service.checkIn('a', { version:1 }, 'est-a', 'user-b'),
+        error => error.statusCode === 409 && /16/.test(error.message)
+    );
+    assert.equal(mutated, false);
+});
+
+test('falha fechado se qualquer membro histórico do grupo não estiver confirmado', async () => {
+    const group = [
+        record({ id:'a', tableNumber:15, reservationGroupId:'reservation-group' }),
+        record({ id:'b', tableNumber:16, reservationGroupId:'reservation-group', status:'CANCELLED' })
+    ];
+    let mutated = false;
+    const repository = {
+        findById: async () => group[0],
+        findGroup: async () => group,
+        findActiveOccupanciesForTables: async () => [],
+        markCheckedInGroupVersioned: async () => { mutated = true; }
+    };
+    const service = createTableReservationService({
+        repository,
+        database,
+        now:() => new Date('2026-10-20T22:15:00.000Z')
+    });
+    await assert.rejects(
+        service.checkIn('a', { version:1 }, 'est-a', 'user-b'),
+        error => error.statusCode === 409 && /grupo/.test(error.message)
+    );
+    assert.equal(mutated, false);
+});
+
+test('converte conflito concorrente durante criação das ocupações em 409', async () => {
+    const group = [
+        record({ id:'a', tableNumber:15, reservationGroupId:'reservation-group' }),
+        record({ id:'b', tableNumber:16, reservationGroupId:'reservation-group' })
+    ];
+    let creates = 0;
+    const repository = {
+        findById: async id => group.find(item => item.id === id),
+        findGroup: async () => group,
+        findActiveOccupanciesForTables: async () => [],
+        markCheckedInGroupVersioned: async () => ({ count:2 }),
+        createOccupancy: async data => {
+            creates += 1;
+            if (creates === 2) {
+                const error = new Error('unique');
+                error.code = 'P2002';
+                throw error;
+            }
+            return { id:'occupancy-a', ...data };
+        }
+    };
+    const service = createTableReservationService({
+        repository,
+        database,
+        now:() => new Date('2026-10-20T22:15:00.000Z')
+    });
+    await assert.rejects(
+        service.checkIn('a', { version:1 }, 'est-a', 'user-b'),
+        error => error.statusCode === 409 && /ocupada/.test(error.message)
+    );
+});
+
+test('bloqueia edição e cancelamento depois do check-in', async () => {
+    const repository = { findById: async () => record({ checkedInAt:new Date() }) };
+    const service = createTableReservationService({ repository, database });
+    await assert.rejects(
+        service.update('reservation-a', { notes:'x', version:1 }, 'est-a', 'user-b'),
+        error => error.statusCode === 409 && /não podem mais ser alterados/.test(error.message)
+    );
+    await assert.rejects(
+        service.cancel('reservation-a', 1, 'est-a', 'user-b'),
+        error => error.statusCode === 409 && /não podem mais ser alterados/.test(error.message)
+    );
 });

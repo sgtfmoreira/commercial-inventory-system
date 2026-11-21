@@ -43,6 +43,11 @@ import TableReservations from "./pages/TableReservations";
 import SidebarLayout from "./components/SidebarLayout";
 import PrivateRoute from "./components/PrivateRoute";
 import Users from "./pages/Users";
+import ChecklistTemplates from "./pages/ChecklistTemplates";
+import ChecklistRuns from "./pages/ChecklistRuns";
+import ChecklistExecution from "./pages/ChecklistExecution";
+import ChecklistApprovals from "./pages/ChecklistApprovals";
+import ChecklistReports from "./pages/ChecklistReports";
 
 import { AppProvider } from "./context/AppContext";
 import { ThemeModeProvider } from "./context/ThemeModeProvider";
@@ -110,6 +115,12 @@ function App() {
               <Route path="/" element={<Dashboard />} />
 
               <Route path="users" element={<Users />} />
+              <Route path="/checklists/templates" element={<ChecklistTemplates />} />
+              <Route path="/checklists/templates/:templateId" element={<ChecklistTemplates />} />
+              <Route path="/checklists" element={<ChecklistRuns />} />
+              <Route path="/checklists/approvals" element={<ChecklistApprovals />} />
+              <Route path="/checklists/reports" element={<ChecklistReports />} />
+              <Route path="/checklists/execute/:attemptId" element={<ChecklistExecution />} />
 
               <Route path="/products" element={<Products />} />
               <Route path="/organization-products" element={<OrganizationProducts />} />

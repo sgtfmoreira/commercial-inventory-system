@@ -124,7 +124,7 @@ const createFakeTransaction = ({ products, stocks, recipes }) => {
         recipe: {
             findFirst: async ({ where }) => recipes[where.productId] || null
         },
-        stockLocation: { findFirst: async () => null },
+        stockLocation: { findFirst: async ({ where }) => where.id === 'loc' && where.establishmentId === 'est' ? { id: 'loc' } : null },
         stockMovement: { create: async ({ data }) => movements.push(data) },
         purchaseOrderItem: { findFirst: async () => null },
         productSupplier: { findFirst: async () => null }
@@ -132,6 +132,32 @@ const createFakeTransaction = ({ products, stocks, recipes }) => {
 
     return { tx, productMap, stockMap, movements };
 };
+
+test('venda rejeita local de outro estabelecimento antes de alterar qualquer saldo', async () => {
+    const fixture = createFakeTransaction({
+        products: [{ id: 'water', name: 'Água', type: 'INVENTORY', quantity: 58, establishmentId: 'est', defaultLocationId: 'loc' }],
+        stocks: [{ productId: 'water', locationId: 'loc', quantity: 58 }], recipes: {}
+    });
+    await assert.rejects(consumeProduct({ productId: 'water', quantity: 18, establishmentId: 'est',
+        locationId: 'foreign', reason: 'SALE', reference: 'MANUAL_SALE', preloadedCost: 1 }, fixture.tx), /Local de estoque inválido/);
+    assert.equal(fixture.productMap.get('water').quantity, 58);
+    assert.equal(fixture.stockMap.size, 1);
+    assert.equal(fixture.movements.length, 0);
+    await consumeProduct({ productId: 'water', quantity: 18, establishmentId: 'est',
+        reason: 'SALE', reference: 'MANUAL_SALE', preloadedCost: 1 }, fixture.tx);
+    assert.equal(fixture.productMap.get('water').quantity, 40);
+    assert.equal(fixture.stockMap.get('water:loc').quantity, 40);
+});
+
+test('entrada também rejeita local de outro estabelecimento', async () => {
+    const fixture = createFakeTransaction({
+        products: [{ id: 'water', quantity: 40, establishmentId: 'est', defaultLocationId: 'foreign' }], stocks: [], recipes: {}
+    });
+    await assert.rejects(require('../src/services/stockMovementService').addStock({ productId: 'water', quantity: 2,
+        establishmentId: 'est', reason: 'PURCHASE' }, fixture.tx), /Local de estoque inválido/);
+    assert.equal(fixture.productMap.get('water').quantity, 40);
+    assert.equal(fixture.stockMap.size, 0);
+});
 
 test('consome saldo pronto e explode apenas a diferença da produção', async () => {
     const fixture = createFakeTransaction({

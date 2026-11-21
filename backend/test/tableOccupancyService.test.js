@@ -1,10 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createTableOccupancyService, todayInSaoPaulo } = require('../src/services/tableOccupancyService');
+const {
+    createTableOccupancyService,
+    todayInSaoPaulo,
+    calculateMetrics,
+    startOfSaoPauloDay
+} = require('../src/services/tableOccupancyService');
 const {
     createTableOccupancySchema,
     createBatchTableOccupanciesSchema,
-    releaseTableOccupancySchema
+    releaseTableOccupancySchema,
+    tableOccupancyMetricsQuerySchema
 } = require('../src/validations/tableOccupancyValidation');
 
 const record = (overrides = {}) => ({
@@ -24,10 +30,53 @@ test('valida ocupação walk-in e liberação', () => {
         [2, 26]
     );
     assert.equal(createBatchTableOccupanciesSchema.safeParse({ tableNumbers:[2, 2], partySize:8 }).success, false);
+    assert.equal(tableOccupancyMetricsQuerySchema.safeParse({ dateFrom:'2026-10-01', dateTo:'2026-10-21' }).success, true);
+    assert.equal(tableOccupancyMetricsQuerySchema.safeParse({ dateFrom:'2026-10-22', dateTo:'2026-10-21' }).success, false);
 });
 
 test('calcula a data atual em São Paulo sem depender do UTC do servidor', () => {
     assert.equal(todayInSaoPaulo(new Date('2026-10-21T01:30:00.000Z')), '2026-10-20');
+    assert.equal(startOfSaoPauloDay('2026-10-20').toISOString(), '2026-10-20T03:00:00.000Z');
+});
+
+test('métricas contam grupo uma vez e mantêm giro por mesa', () => {
+    const seatedAt = new Date('2026-10-20T21:00:00Z');
+    const releasedAt = new Date('2026-10-20T23:00:00Z');
+    const result = calculateMetrics([
+        record({ id:'a', tableNumber:2, partySize:8, occupancyGroupId:'group-a', reservationId:'reservation-a', status:'RELEASED', seatedAt, releasedAt }),
+        record({ id:'b', tableNumber:26, partySize:8, occupancyGroupId:'group-a', reservationId:'reservation-b', status:'RELEASED', seatedAt, releasedAt }),
+        record({ id:'c', tableNumber:4, partySize:3, seatedAt:new Date('2026-10-21T21:00:00Z') })
+    ], '2026-10-20', '2026-10-21');
+
+    assert.deepEqual(result.summary, {
+        totalOccupancies:2,
+        totalPeople:11,
+        reservedOccupancies:1,
+        reservedPeople:8,
+        walkInOccupancies:1,
+        walkInPeople:3,
+        activeOccupancies:1,
+        completedOccupancies:1,
+        averageStayMinutes:120,
+        averageTurnsPerDay:1
+    });
+    assert.equal(result.tables.find(item => item.tableNumber === 2).turnovers, 1);
+    assert.equal(result.tables.find(item => item.tableNumber === 26).turnovers, 1);
+});
+
+test('consulta métricas dentro das fronteiras de São Paulo e somente para o tenant', async () => {
+    let query;
+    const repository = {
+        listForMetrics: async (establishmentId, seatedAt) => {
+            query = { establishmentId, seatedAt };
+            return [];
+        }
+    };
+    const service = createTableOccupancyService({ repository, database });
+    await service.metrics('est-a', { dateFrom:'2026-10-01', dateTo:'2026-10-21' });
+    assert.equal(query.establishmentId, 'est-a');
+    assert.equal(query.seatedAt.gte.toISOString(), '2026-10-01T03:00:00.000Z');
+    assert.equal(query.seatedAt.lt.toISOString(), '2026-10-22T03:00:00.000Z');
 });
 
 test('lista somente ocupações ativas do estabelecimento e resume pessoas', async () => {

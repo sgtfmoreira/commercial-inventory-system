@@ -4,6 +4,7 @@ const {
     createTableReservationSchema,
     createBatchTableReservationsSchema,
     updateTableReservationSchema,
+    checkInTableReservationSchema,
     listTableReservationsQuerySchema
 } = require('../src/validations/tableReservationValidation');
 
@@ -43,4 +44,6 @@ test('valida datas reais, horários e versão obrigatória na edição', () => {
     assert.equal(updateTableReservationSchema.safeParse({ customerName: 'Novo nome' }).success, false);
     assert.equal(updateTableReservationSchema.safeParse({ customerName: 'Novo nome', version: 2 }).success, true);
     assert.equal(listTableReservationsQuerySchema.parse({ date: '2026-10-20' }).includeCancelled, false);
+    assert.deepEqual(checkInTableReservationSchema.parse({ version:'2', partySize:'5' }), { version:2, partySize:5 });
+    assert.equal(checkInTableReservationSchema.safeParse({ version:1, establishmentId:'forged' }).success, false);
 });

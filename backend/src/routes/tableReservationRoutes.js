@@ -18,6 +18,7 @@ router.post('/', validate(schemas.createTableReservationSchema), controller.crea
 router.post('/batch', validate(schemas.createBatchTableReservationsSchema), controller.createBatch);
 router.post('/import/preview', validate(schemas.importTableReservationsSchema), controller.previewImport);
 router.post('/import', validate(schemas.importTableReservationsSchema), controller.importReservations);
+router.post('/:id/check-in', validate(schemas.checkInTableReservationSchema), controller.checkIn);
 router.patch('/:id', validate(schemas.updateTableReservationSchema), controller.update);
 router.post('/:id/cancel', validate(schemas.cancelTableReservationSchema), controller.cancel);
 

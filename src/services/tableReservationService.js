@@ -6,6 +6,7 @@ const tableReservationService = {
   createBatch: data => api.post('/table-reservations/batch', data),
   update: (id, data) => api.patch(`/table-reservations/${id}`, data),
   cancel: (id, version) => api.post(`/table-reservations/${id}/cancel`, { version }),
+  checkIn: (id, data) => api.post(`/table-reservations/${id}/check-in`, data),
   previewImport: reservations => api.post('/table-reservations/import/preview', { reservations }),
   importReservations: reservations => api.post('/table-reservations/import', { reservations })
 };

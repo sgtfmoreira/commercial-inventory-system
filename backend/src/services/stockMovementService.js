@@ -1,5 +1,11 @@
 const prisma = require('../config/prisma');
 const stockMovementRepo = require('../repositories/stockMovementRepository');
+const AppError = require('../utils/AppError');
+
+async function validateStockLocation(tx, locationId, establishmentId) {
+    const location = await tx.stockLocation.findFirst({ where: { id: locationId, establishmentId } });
+    if (!location) throw new AppError('Local de estoque inválido para este estabelecimento. Atualize a página e selecione o local novamente.', 422);
+}
 
 /**
  * 🔐 REGRA DE CUSTO (CORE FINANCEIRO)
@@ -117,6 +123,8 @@ const consumeProduct = async ({
     }
 
     if (!targetLocationId) throw new Error("Local de estoque não definido para este produto.");
+
+    await validateStockLocation(tx, targetLocationId, establishmentId);
 
     const stockRecord = await tx.productStock.findUnique({
         where: { productId_locationId: { productId: product.id, locationId: targetLocationId } }
@@ -261,6 +269,8 @@ const addStock = async ({
     }
 
     if (!targetLocationId) throw new Error("Local de estoque não definido para este produto.");
+
+    await validateStockLocation(tx, targetLocationId, establishmentId);
 
     const stockRecord = await tx.productStock.upsert({
         where: { productId_locationId: { productId: product.id, locationId: targetLocationId } },

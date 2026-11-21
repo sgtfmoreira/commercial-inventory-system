@@ -16,6 +16,10 @@ test('preserva todos os destinos da navegação ao reorganizar os grupos', () =>
   expect(items.map(item => item.to).sort()).toEqual([
     '/activity-log',
     '/commercial-agreements',
+    '/checklists',
+    '/checklists/approvals',
+    '/checklists/reports',
+    '/checklists/templates',
     '/entries',
     '/events',
     '/financial-report',
@@ -70,4 +74,51 @@ test('exibe o gerenciamento de usuários somente para administradores', () => {
   expect(isNavigationItemVisible(users, 'estabelecimento-a', 'ADMIN')).toBe(true);
   expect(isNavigationItemVisible(users, 'estabelecimento-a', 'MANAGER')).toBe(false);
   expect(isNavigationItemVisible(users, 'estabelecimento-a', 'STOCK_COUNTER')).toBe(false);
+});
+
+test('exibe modelos de checklists somente com a capacidade efetiva', () => {
+  const templates = items.find(item => item.to === '/checklists/templates');
+  expect(isNavigationItemVisible(templates, 'estabelecimento-a', 'ADMIN', {
+    'checklists.templates.manage': true,
+  })).toBe(true);
+  expect(isNavigationItemVisible(templates, 'estabelecimento-a', 'ADMIN', {})).toBe(false);
+  expect(isNavigationItemVisible(templates, 'estabelecimento-a', 'MANAGER', {
+    'checklists.templates.manage': false,
+  })).toBe(false);
+});
+
+test('exibe distribuição de checklists somente com a capacidade efetiva', () => {
+  const runs = items.find(item => item.to === '/checklists');
+  expect(isNavigationItemVisible(runs, 'estabelecimento-a', 'MANAGER', {
+    'checklists.runs.manage': true,
+  })).toBe(true);
+  expect(isNavigationItemVisible(runs, 'estabelecimento-a', 'ADMIN', {})).toBe(false);
+  expect(isNavigationItemVisible(runs, 'estabelecimento-a', 'OWNER', {
+    'checklists.runs.manage': false,
+  })).toBe(false);
+  expect(isNavigationItemVisible(runs, 'estabelecimento-a', 'STAFF', {
+    'checklists.execute': true,
+  })).toBe(true);
+});
+
+test('exibe aprovações de checklists somente com a capacidade efetiva', () => {
+  const approvals = items.find(item => item.to === '/checklists/approvals');
+  expect(isNavigationItemVisible(approvals, 'estabelecimento-a', 'MANAGER', {
+    'checklists.approve': true,
+  })).toBe(true);
+  expect(isNavigationItemVisible(approvals, 'estabelecimento-a', 'MANAGER', {
+    'checklists.approve': false,
+  })).toBe(false);
+  expect(isNavigationItemVisible(approvals, 'estabelecimento-a', 'STAFF', {})).toBe(false);
+});
+
+test('exibe relatórios de checklists sem ampliar o perfil auditor', () => {
+  const reports = items.find(item => item.to === '/checklists/reports');
+  expect(isNavigationItemVisible(reports, 'estabelecimento-a', 'SUPERVISOR', {
+    'checklists.approve': true,
+  })).toBe(true);
+  expect(isNavigationItemVisible(reports, 'estabelecimento-a', 'AUDITOR', {
+    'checklists.approve': false,
+  })).toBe(false);
+  expect(isNavigationItemVisible(reports, 'estabelecimento-a', 'COLLABORATOR', {})).toBe(false);
 });

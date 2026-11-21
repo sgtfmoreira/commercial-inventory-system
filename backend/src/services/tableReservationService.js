@@ -7,6 +7,12 @@ const asDate = value => new Date(`${value}T00:00:00.000Z`);
 const asTime = value => new Date(`1970-01-01T${value}:00.000Z`);
 const dateText = value => value.toISOString().slice(0, 10);
 const timeText = value => value.toISOString().slice(11, 16);
+const todayInSaoPaulo = (now = new Date()) => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(now).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+    return `${parts.year}-${parts.month}-${parts.day}`;
+};
 const toDto = value => ({
     ...value,
     reservationDate: dateText(value.reservationDate),
@@ -31,11 +37,17 @@ function mapDatabaseConflict(error) {
     throw error;
 }
 
-function createTableReservationService({ repository = defaultRepository, database = prisma } = {}) {
+function createTableReservationService({ repository = defaultRepository, database = prisma, now = () => new Date() } = {}) {
+    const loadGroup = (reservationGroupId, establishmentId, client) => (
+        (repository.findGroup || repository.findActiveGroup)(reservationGroupId, establishmentId, client)
+    );
     const ensureEditable = async (id, establishmentId, version, client) => {
         const current = await repository.findById(id, establishmentId, client);
         if (!current) throw new AppError('Reserva não encontrada.', 404);
         if (current.status === 'CANCELLED') throw new AppError('Esta reserva já foi cancelada.', 409);
+        if (current.checkedInAt || current.occupancy) {
+            throw new AppError('O cliente desta reserva já chegou e os dados não podem mais ser alterados.', 409);
+        }
         if (current.version !== version) throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
         return current;
     };
@@ -124,9 +136,9 @@ function createTableReservationService({ repository = defaultRepository, databas
                     const normalized = normalizeData(fields);
                     if (current.reservationGroupId) delete normalized.tableNumber;
                     const group = current.reservationGroupId
-                        ? await repository.findActiveGroup(current.reservationGroupId, establishmentId, tx)
+                        ? await loadGroup(current.reservationGroupId, establishmentId, tx)
                         : [current];
-                    if (group.some(item => item.version !== version)) {
+                    if (group.length === 0 || group.some(item => item.version !== version || item.checkedInAt || item.occupancy)) {
                         throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
                     }
                     const data = { ...normalized, updatedByUserId: userId };
@@ -145,9 +157,9 @@ function createTableReservationService({ repository = defaultRepository, databas
             return database.$transaction(async tx => {
                 const current = await ensureEditable(id, establishmentId, version, tx);
                 const group = current.reservationGroupId
-                    ? await repository.findActiveGroup(current.reservationGroupId, establishmentId, tx)
+                    ? await loadGroup(current.reservationGroupId, establishmentId, tx)
                     : [current];
-                if (group.some(item => item.version !== version)) {
+                if (group.length === 0 || group.some(item => item.version !== version || item.checkedInAt || item.occupancy)) {
                     throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
                 }
                 const data = { status: 'CANCELLED', updatedByUserId: userId };
@@ -157,6 +169,95 @@ function createTableReservationService({ repository = defaultRepository, databas
                 if (result.count !== group.length) throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
                 return toDto(await repository.findById(id, establishmentId, tx));
             });
+        },
+
+        async checkIn(id, input, establishmentId, userId) {
+            try {
+                return await database.$transaction(async tx => {
+                    const current = await repository.findById(id, establishmentId, tx);
+                    if (!current) throw new AppError('Reserva não encontrada.', 404);
+                    if (current.status !== 'CONFIRMED') throw new AppError('Esta reserva foi cancelada.', 409);
+                    if (current.checkedInAt || current.occupancy) {
+                        throw new AppError('A chegada desta reserva já foi confirmada.', 409);
+                    }
+                    if (current.version !== input.version) {
+                        throw new AppError('Esta reserva foi alterada por outra pessoa. Atualize os dados antes de continuar.', 409);
+                    }
+
+                    const group = current.reservationGroupId
+                        ? await loadGroup(current.reservationGroupId, establishmentId, tx)
+                        : [current];
+                    if (!group.length || group.some(item => (
+                        item.establishmentId !== establishmentId
+                        || item.status !== 'CONFIRMED'
+                        || item.version !== input.version
+                        || item.checkedInAt
+                        || item.occupancy
+                        || dateText(item.reservationDate) !== dateText(current.reservationDate)
+                    ))) {
+                        throw new AppError('Uma das reservas do grupo foi alterada ou já teve a chegada confirmada. Atualize os dados.', 409);
+                    }
+
+                    const checkedInAt = now();
+                    if (dateText(current.reservationDate) !== todayInSaoPaulo(checkedInAt)) {
+                        throw new AppError('A chegada só pode ser confirmada na data da reserva.', 409);
+                    }
+
+                    const active = await repository.findActiveOccupanciesForTables(
+                        establishmentId, group.map(item => item.tableNumber), tx
+                    );
+                    if (active.length) {
+                        const numbers = active.map(item => item.tableNumber).sort((a, b) => a - b).join(', ');
+                        throw new AppError(`As mesas ${numbers} já estão ocupadas. Atualize o mapa.`, 409);
+                    }
+
+                    const updateData = {
+                        checkedInAt,
+                        checkedInByUserId: userId,
+                        updatedByUserId: userId
+                    };
+                    const updated = current.reservationGroupId
+                        ? await repository.markCheckedInGroupVersioned(
+                            current.reservationGroupId, establishmentId, input.version, updateData, tx
+                        )
+                        : await repository.markCheckedInVersioned(
+                            id, establishmentId, input.version, updateData, tx
+                        );
+                    if (updated.count !== group.length) {
+                        throw new AppError('A chegada já foi confirmada ou uma reserva do grupo foi alterada. Atualize os dados.', 409);
+                    }
+
+                    const occupancyGroupId = group.length > 1 ? randomUUID() : null;
+                    const occupancies = await Promise.all(group.map(reservation => repository.createOccupancy({
+                        establishmentId,
+                        reservationId: reservation.id,
+                        occupancyGroupId,
+                        tableNumber: reservation.tableNumber,
+                        customerName: reservation.customerName,
+                        partySize: input.partySize ?? current.partySize,
+                        notes: input.notes !== undefined ? (input.notes || null) : current.notes,
+                        status: 'ACTIVE',
+                        seatedAt: checkedInAt,
+                        createdByUserId: userId
+                    }, tx)));
+                    const reservations = await Promise.all(group.map(reservation => (
+                        repository.findById(reservation.id, establishmentId, tx)
+                    )));
+
+                    return {
+                        count: group.length,
+                        reservation: toDto(reservations[0]),
+                        occupancy: occupancies[0],
+                        reservations: reservations.map(toDto),
+                        occupancies
+                    };
+                });
+            } catch (error) {
+                if (error?.code === 'P2002') {
+                    throw new AppError('A chegada já foi confirmada ou uma das mesas está ocupada. Atualize o mapa.', 409);
+                }
+                throw error;
+            }
         },
 
         async previewImport(items, establishmentId) {
@@ -198,4 +299,4 @@ function createTableReservationService({ repository = defaultRepository, databas
     };
 }
 
-module.exports = { ...createTableReservationService(), createTableReservationService, toDto };
+module.exports = { ...createTableReservationService(), createTableReservationService, toDto, todayInSaoPaulo };

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import checklistTemplateService from '../services/checklistTemplateService';
 
 // ─── Initial State ───────────────────────────────────────────────────────────
 const initialState = {
@@ -7,6 +8,8 @@ const initialState = {
     organization: null,
     establishment: null,
     establishments: [],
+    capabilities: {},
+    capabilitiesLoaded: false,
 
     categories: [],
     products: [],
@@ -79,7 +82,9 @@ const appReducer = (state, action) => {
                 user: action.payload.user,
                 organization: action.payload.organization,
                 establishment: action.payload.establishment,
-                establishments: action.payload.establishments
+                establishments: action.payload.establishments,
+                capabilities: action.payload.capabilities || {},
+                capabilitiesLoaded: true,
             };
 
         case ACTIONS.SET_PURCHASE_ORDERS:
@@ -205,6 +210,7 @@ export const AppProvider = ({ children }) => {
             const res = await api.get("/auth/context", {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            const capabilities = await checklistTemplateService.capabilities().catch(() => ({}));
 
             const data = res.data || res;
 
@@ -214,7 +220,8 @@ export const AppProvider = ({ children }) => {
                     user: data.user,
                     organization: data.organization,
                     establishment: data.establishment,
-                    establishments: Array.isArray(data.establishments) ? data.establishments : []
+                    establishments: Array.isArray(data.establishments) ? data.establishments : [],
+                    capabilities
                 }
             });
         } catch (err) {
@@ -310,6 +317,7 @@ export const AppProvider = ({ children }) => {
     async function reloadContext() {
         try {
             const res = await api.get("/auth/context");
+            const capabilities = await checklistTemplateService.capabilities().catch(() => ({}));
             const data = res.data || res;
             dispatchRaw({
                 type: "SET_CONTEXT",
@@ -317,7 +325,8 @@ export const AppProvider = ({ children }) => {
                     user: data.user,
                     organization: data.organization,
                     establishment: data.establishment,
-                    establishments: Array.isArray(data.establishments) ? data.establishments : []
+                    establishments: Array.isArray(data.establishments) ? data.establishments : [],
+                    capabilities
                 }
             });
         } catch (err) {
@@ -399,7 +408,8 @@ export const AppProvider = ({ children }) => {
                 getProductById,
                 loadProducts,
                 loadCategories,
-                fetchAllData
+                fetchAllData,
+                hasCapability: (code) => state.capabilities?.[code] === true,
             }}
         >
             {children}

@@ -8,6 +8,7 @@ import {
 } from 'react-icons/md';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import DataTable from '../components/Table';
 import { Input, InputControl, Textarea } from '../components/FormFields';
 import tableReservationService from '../services/tableReservationService';
 import tableOccupancyService from '../services/tableOccupancyService';
@@ -260,6 +261,10 @@ const FormGrid = styled.form`display:grid;grid-template-columns:1fr 1fr;gap:14px
 const ImportBox = styled.div`margin-top:16px;padding:14px;border:1px solid ${({theme})=>theme.colors.border};border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};overflow-wrap:anywhere;h3{font-size:1rem;margin-bottom:8px}.conflicts{color:${({theme})=>theme.colors.danger};margin-top:8px;font-size:.88rem;max-height:120px;overflow:auto;}@media(max-width:480px){padding:12px;}`;
 const Responsibility = styled.div`grid-column:1/-1;padding:12px 14px;border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.infoLight};color:${({theme})=>theme.colors.textSecondary};font-size:.9rem;strong{color:${({theme})=>theme.colors.textPrimary};}.updated{display:block;margin-top:3px;font-size:.8rem;color:${({theme})=>theme.colors.textMuted};}`;
 const OccupancySection = styled.div`margin-top:14px;padding-top:14px;border-top:1px solid ${({theme})=>theme.colors.border};h3{font-size:.95rem;margin-bottom:8px;color:${({theme})=>theme.colors.textPrimary};}`;
+const MetricsFilters = styled.div`display:flex;gap:10px;align-items:end;flex-wrap:wrap;label{display:flex;flex-direction:column;gap:5px;font-size:.78rem;color:${({theme})=>theme.colors.textSecondary};}`;
+const MetricsGrid = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:16px;`;
+const Metric = styled.div`padding:14px;border-radius:${({theme})=>theme.radii.md};background:${({theme})=>theme.colors.bgInput};border:1px solid ${({theme})=>theme.colors.border};strong{display:block;font-size:1.35rem;}span{font-size:.82rem;color:${({theme})=>theme.colors.textSecondary};}`;
+const MetricsTable = styled.div`overflow:auto;table{width:100%;border-collapse:collapse;}th,td{text-align:left;padding:10px;border-bottom:1px solid ${({theme})=>theme.colors.border};white-space:nowrap;}th{font-size:.78rem;color:${({theme})=>theme.colors.textSecondary};}td{font-size:.9rem;}tbody tr:first-child td{font-weight:700;color:${({theme})=>theme.colors.primary};}`;
 
 const localToday = () => {
   const date = new Date();
@@ -275,6 +280,17 @@ const emptyForm = (tableNumber, reservationDate) => ({ tableNumber, reservationD
 const toggleTableSelection = (selected, tableNumber) => selected.includes(tableNumber)
   ? selected.filter(number => number !== tableNumber)
   : [...selected, tableNumber].sort((a, b) => a - b);
+const uniqueGroupItems = (items, groupField) => Array.from(items.reduce((result, item) => {
+  const key = item[groupField] || item.id;
+  if (!result.has(key)) result.set(key, item);
+  return result;
+}, new Map()).values());
+const canCheckInReservation = (reservation, today) => Boolean(
+  reservation
+  && reservation.status === 'CONFIRMED'
+  && !reservation.checkedInAt
+  && reservation.reservationDate === today
+);
 
 function normalizeBackup(raw) {
   const source = Array.isArray(raw) ? raw : raw?.reservations || raw?.reservas;
@@ -290,7 +306,14 @@ function normalizeBackup(raw) {
   }));
 }
 
-export { TABLES, normalizeBackup, shiftDate, toggleTableSelection };
+export {
+  TABLES,
+  normalizeBackup,
+  shiftDate,
+  toggleTableSelection,
+  uniqueGroupItems,
+  canCheckInReservation
+};
 
 export default function TableReservations() {
   const { state } = useApp();
@@ -320,6 +343,10 @@ export default function TableReservations() {
   const [saving, setSaving] = useState(false);
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [metricsFrom, setMetricsFrom] = useState(() => shiftDate(localToday(), -29));
+  const [metricsTo, setMetricsTo] = useState(localToday);
+  const [metrics, setMetrics] = useState(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
   const requestId = useRef(0);
   const selectedDateRef = useRef(selectedDate);
   const establishmentRef = useRef(establishmentId);
@@ -366,6 +393,18 @@ export default function TableReservations() {
     }
   }, [selectedDate, establishmentId, isCommercial]);
 
+  const loadMetrics = useCallback(async () => {
+    if (!isCommercial || metricsFrom > metricsTo) return;
+    setMetricsLoading(true);
+    try {
+      setMetrics(await tableOccupancyService.metrics(metricsFrom, metricsTo));
+    } catch (err) {
+      setError(`Não foi possível atualizar as métricas: ${err.message}`);
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [isCommercial, metricsFrom, metricsTo]);
+
   useEffect(() => {
     if (establishmentRef.current !== establishmentId) {
       requestId.current += 1;
@@ -383,6 +422,7 @@ export default function TableReservations() {
     }
   }, [establishmentId]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadMetrics(); }, [loadMetrics]);
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       const viewport = mapViewportRef.current;
@@ -407,21 +447,16 @@ export default function TableReservations() {
     return TABLES.length - unavailable.size;
   }, [activeByTable, occupiedByTable]);
   const filtered = useMemo(() => {
-    const uniqueReservations = Array.from(data.reservations.reduce((items, item) => {
-      const key = item.reservationGroupId || item.id;
-      if (!items.has(key)) items.set(key, item);
-      return items;
-    }, new Map()).values());
+    const uniqueReservations = uniqueGroupItems(data.reservations, 'reservationGroupId');
     const term = search.trim().toLocaleLowerCase('pt-BR');
     if (!term) return uniqueReservations;
     return uniqueReservations.filter(item => item.customerName.toLocaleLowerCase('pt-BR').includes(term)
       || (item.groupTableNumbers || [item.tableNumber]).some(tableNumber => String(tableNumber).includes(term)));
   }, [data.reservations, search]);
-  const visibleOccupancies = useMemo(() => Array.from(occupancyData.occupancies.reduce((items, item) => {
-    const key = item.occupancyGroupId || item.id;
-    if (!items.has(key)) items.set(key, item);
-    return items;
-  }, new Map()).values()), [occupancyData.occupancies]);
+  const visibleOccupancies = useMemo(
+    () => uniqueGroupItems(occupancyData.occupancies, 'occupancyGroupId'),
+    [occupancyData.occupancies]
+  );
 
   const openTable = tableNumber => {
     const reservation = activeByTable.get(tableNumber) || null;
@@ -520,6 +555,7 @@ export default function TableReservations() {
       }
       setOccupancyModalOpen(false); setOccupancyEditing(null); setWalkInMode(false);
       await load(false);
+      await loadMetrics();
     } catch (err) { await load(false); setError(`A ocupação não foi registrada: ${err.message}`); }
     finally { setOccupancySaving(false); }
   };
@@ -533,6 +569,7 @@ export default function TableReservations() {
       await tableOccupancyService.release(occupancyEditing.id, occupancyEditing.version);
       toast.success(tables.length > 1 ? 'Mesas liberadas.' : `Mesa ${occupancyEditing.tableNumber} liberada.`);
       setOccupancyModalOpen(false); setOccupancyEditing(null); await load(false);
+      await loadMetrics();
     } catch (err) { await load(false); setError(`A mesa não foi liberada: ${err.message}`); }
     finally { setOccupancySaving(false); }
   };
@@ -575,6 +612,31 @@ export default function TableReservations() {
       setModalOpen(false); setEditing(null); await load(false);
     } catch (err) { await load(false); setError(`A reserva não foi cancelada: ${err.message}`); }
     finally { setSaving(false); }
+  };
+
+  const confirmArrival = async () => {
+    if (!editing || editing.checkedInAt) return;
+    const tables = editing.groupTableNumbers || [editing.tableNumber];
+    const label = tables.length > 1 ? `as mesas ${tables.join(' e ')}` : `a mesa ${tables[0]}`;
+    if (!window.confirm(`Confirmar a chegada e ocupar ${label}?`)) return;
+    setSaving(true);
+    try {
+      await tableReservationService.checkIn(editing.id, {
+        version:editing.version,
+        partySize:Number(form.partySize),
+        notes:form.notes || null
+      });
+      toast.success(tables.length > 1 ? 'Chegada do grupo confirmada.' : 'Chegada confirmada.');
+      setModalOpen(false);
+      setEditing(null);
+      await load(false);
+      await loadMetrics();
+    } catch (err) {
+      await load(false);
+      setError(`A chegada não foi confirmada: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleFile = async event => {
@@ -654,27 +716,49 @@ export default function TableReservations() {
         <CardHeader><h2>Reservas da data</h2><Button variant="secondary" size="sm" onClick={()=>fileInput.current?.click()} disabled={importing}><MdFileUpload/> Importar JSON</Button><InputControl ref={fileInput} type="file" accept="application/json,.json" hidden onChange={handleFile}/></CardHeader>
         <SearchBox><MdSearch/><InputControl value={search} onChange={event=>setSearch(event.target.value)} placeholder="Buscar cliente ou mesa" aria-label="Buscar reservas"/></SearchBox>
         {importPreview && <ImportBox><h3>Prévia da importação</h3><p>{importPreview.available.length} pronta(s) para importar; {importPreview.conflicts.length} conflito(s).</p>{importPreview.conflicts.length>0&&<div className="conflicts">{importPreview.conflicts.map((item,index)=><div key={index}>Mesa {item.reservation.tableNumber}, {item.reservation.reservationDate}: {item.reason}</div>)}</div>}<Toolbar style={{marginTop:10}}><Button size="sm" onClick={confirmImport} disabled={!importPreview.available.length||importing}>Importar sem conflitos</Button><Button variant="ghost" size="sm" onClick={()=>setImportPreview(null)}>Fechar</Button></Toolbar></ImportBox>}
-        {selectedDate===localToday()&&visibleOccupancies.length>0&&<OccupancySection><h3>Ocupações sem reserva agora</h3>{visibleOccupancies.map(item=>{const tables=item.groupTableNumbers||[item.tableNumber];return <ReservationRow key={item.occupancyGroupId||item.id} onClick={()=>openOccupancy(item)}><div className="top"><span>{tables.length>1?'Mesas':'Mesa'} {tables.join(' e ')} · {item.customerName || 'Cliente não identificado'}</span><span>{tables.length>1?'Juntas':'Ocupada'}</span></div><div className="meta">{item.partySize} pessoa(s) · chegada {new Date(item.seatedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><div className="meta">Registrada por: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>})}</OccupancySection>}
+        {selectedDate===localToday()&&visibleOccupancies.length>0&&<OccupancySection><h3>Mesas ocupadas agora</h3>{visibleOccupancies.map(item=>{const tables=item.groupTableNumbers||[item.tableNumber];return <ReservationRow key={item.occupancyGroupId||item.id} onClick={()=>openOccupancy(item)}><div className="top"><span>{tables.length>1?'Mesas':'Mesa'} {tables.join(' e ')} · {item.customerName || 'Cliente não identificado'}</span><span>{item.reservationId?'Com reserva':tables.length>1?'Juntas':'Sem reserva'}</span></div><div className="meta">{item.partySize} pessoa(s) · chegada {new Date(item.seatedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><div className="meta">Registrada por: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>})}</OccupancySection>}
         <ReservationList style={{marginTop:12}}>
-          {filtered.map(item=>{const tables=item.groupTableNumbers||[item.tableNumber];return <ReservationRow key={item.reservationGroupId||item.id} onClick={()=>openTable(item.tableNumber)}><div className="top"><span>{tables.length>1?'Mesas':'Mesa'} {tables.join(' e ')} · {item.customerName}</span><span>{item.reservationTime}</span></div><div className="meta">{item.partySize} pessoa(s){tables.length>1?' no total':''}{item.phone ? ` · ${item.phone}` : ''}</div><div className="meta">Responsável: {item.createdByUser?.name || 'Usuário não identificado'}</div></ReservationRow>})}
+          {filtered.map(item=>{const tables=item.groupTableNumbers||[item.tableNumber];return <ReservationRow key={item.reservationGroupId||item.id} onClick={()=>openTable(item.tableNumber)}><div className="top"><span>{tables.length>1?'Mesas':'Mesa'} {tables.join(' e ')} · {item.customerName}</span><span>{item.checkedInAt?'Cliente chegou':item.reservationTime}</span></div><div className="meta">{item.partySize} pessoa(s){tables.length>1?' no total':''}{item.phone ? ` · ${item.phone}` : ''}</div><div className="meta">{item.checkedInAt?`Chegada confirmada às ${new Date(item.checkedInAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`:`Responsável: ${item.createdByUser?.name || 'Usuário não identificado'}`}</div></ReservationRow>})}
           {!loading && filtered.length===0 && <Empty>Nenhuma reserva encontrada nesta data.</Empty>}
         </ReservationList>
       </Card>
     </Grid>
 
-    <Modal isOpen={modalOpen} onClose={closeModal} title={creatingBatch?`Nova reserva — ${selectedTables.length} mesas`:`${editing ? 'Editar reserva' : 'Nova reserva'} — ${(editing?.groupTableNumbers?.length||0)>1?'Mesas '+editing.groupTableNumbers.join(' e '):'Mesa '+form.tableNumber}`} maxWidth="640px" footer={<><Button variant="secondary" onClick={closeModal} disabled={saving}>Fechar</Button>{editing&&<Button variant="danger" onClick={cancelReservation} disabled={saving}>Cancelar reserva</Button>}<Button type="submit" form="reservation-form" disabled={saving}>{saving?'Salvando…':editing?'Salvar alterações':creatingBatch?`Confirmar ${selectedTables.length} mesas`:'Confirmar reserva'}</Button></>}>
+    <Card>
+      <CardHeader>
+        <div><h2>Uso e giro das mesas</h2><Subtitle>Atendimentos agrupados são contabilizados uma única vez no resumo.</Subtitle></div>
+        <MetricsFilters>
+          <label>De<DateInput type="date" value={metricsFrom} onChange={event=>setMetricsFrom(event.target.value)}/></label>
+          <label>Até<DateInput type="date" value={metricsTo} onChange={event=>setMetricsTo(event.target.value)}/></label>
+          <Button variant="secondary" size="sm" onClick={loadMetrics} disabled={metricsLoading||metricsFrom>metricsTo}>{metricsLoading?'Atualizando…':'Atualizar indicadores'}</Button>
+        </MetricsFilters>
+      </CardHeader>
+      {metrics&&<>
+        <MetricsGrid>
+          <Metric><strong>{metrics.summary.totalOccupancies}</strong><span>atendimentos</span></Metric>
+          <Metric><strong>{metrics.summary.totalPeople}</strong><span>pessoas sem duplicar grupos</span></Metric>
+          <Metric><strong>{metrics.summary.reservedOccupancies}</strong><span>chegadas com reserva</span></Metric>
+          <Metric><strong>{metrics.summary.walkInOccupancies}</strong><span>ocupações sem reserva</span></Metric>
+          <Metric><strong>{metrics.summary.averageStayMinutes==null?'—':`${metrics.summary.averageStayMinutes} min`}</strong><span>permanência média concluída</span></Metric>
+        </MetricsGrid>
+        <MetricsTable><DataTable><thead><tr><th>Mesa</th><th>Giros</th><th>Pessoas por atendimento</th><th>Giros/dia</th><th>Permanência média</th></tr></thead><tbody>{metrics.tables.filter(item=>item.turnovers>0).map(item=><tr key={item.tableNumber}><td>Mesa {item.tableNumber}</td><td>{item.turnovers}</td><td>{item.people}</td><td>{item.averageTurnsPerDay}</td><td>{item.averageStayMinutes==null?'Em aberto':`${item.averageStayMinutes} min`}</td></tr>)}</tbody></DataTable>{!metrics.tables.some(item=>item.turnovers>0)&&<Empty>Nenhuma ocupação registrada neste período.</Empty>}</MetricsTable>
+      </>}
+    </Card>
+
+    <Modal isOpen={modalOpen} onClose={closeModal} title={creatingBatch?`Nova reserva — ${selectedTables.length} mesas`:`${editing ? 'Editar reserva' : 'Nova reserva'} — ${(editing?.groupTableNumbers?.length||0)>1?'Mesas '+editing.groupTableNumbers.join(' e '):'Mesa '+form.tableNumber}`} maxWidth="640px" footer={<><Button variant="secondary" onClick={closeModal} disabled={saving}>Fechar</Button>{editing&&!editing.checkedInAt&&<Button variant="danger" onClick={cancelReservation} disabled={saving}>Cancelar reserva</Button>}{canCheckInReservation(editing, localToday())&&<Button onClick={confirmArrival} disabled={saving||Number(form.partySize)<1}>{saving?'Confirmando…':'Confirmar chegada'}</Button>}{(!editing||!editing.checkedInAt)&&<Button type="submit" form="reservation-form" disabled={saving}>{saving?'Salvando…':editing?'Salvar alterações':creatingBatch?`Confirmar ${selectedTables.length} mesas`:'Confirmar reserva'}</Button>}</>}>
       <p style={{marginBottom:16}}>{creatingBatch?<><strong>Mesas {selectedTables.join(', ')}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. A quantidade informada representa o total de pessoas do grupo.</>:editing?.groupTableNumbers?.length>1?<><strong>Mesas {editing.groupTableNumbers.join(' e ')}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. As alterações serão aplicadas à reserva completa.</>:<>Mesa <strong>{form.tableNumber}</strong> em <strong>{form.reservationDate?.split('-').reverse().join('/')}</strong>. Uma mesa aceita uma reserva ativa por data.</>}</p>
       <FormGrid id="reservation-form" onSubmit={submit}>
         <Responsibility>
           Responsável pela reserva: <strong>{editing?.createdByUser?.name || loggedUser?.name || 'Usuário logado'}</strong>
           {editing?.updatedByUser?.name && <span className="updated">Última alteração por {editing.updatedByUser.name}</span>}
+          {editing?.checkedInAt && <span className="updated">Chegada confirmada por {editing.checkedInByUser?.name || 'usuário não identificado'} às {new Date(editing.checkedInAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>}
         </Responsibility>
-        <Input label="Data" type="date" required value={form.reservationDate} onChange={event=>setForm({...form,reservationDate:event.target.value})}/>
-        <Input label="Horário" type="time" required value={form.reservationTime} onChange={event=>setForm({...form,reservationTime:event.target.value})}/>
-        <div className="wide"><Input label="Cliente ou responsável" required maxLength="160" value={form.customerName} onChange={event=>setForm({...form,customerName:event.target.value})}/></div>
-        <Input label="Telefone (opcional)" maxLength="30" value={form.phone} onChange={event=>setForm({...form,phone:event.target.value})}/>
-        <Input label={creatingBatch||editing?.groupTableNumbers?.length>1?'Quantidade total de pessoas':'Quantidade de pessoas'} type="number" min="1" step="1" required value={form.partySize} onChange={event=>setForm({...form,partySize:event.target.value})}/>
-        <div className="wide"><Textarea label="Observação (opcional)" maxLength="5000" value={form.notes} onChange={event=>setForm({...form,notes:event.target.value})}/></div>
+        <Input label="Data" type="date" required disabled={Boolean(editing?.checkedInAt)} value={form.reservationDate} onChange={event=>setForm({...form,reservationDate:event.target.value})}/>
+        <Input label="Horário" type="time" required disabled={Boolean(editing?.checkedInAt)} value={form.reservationTime} onChange={event=>setForm({...form,reservationTime:event.target.value})}/>
+        <div className="wide"><Input label="Cliente ou responsável" required disabled={Boolean(editing?.checkedInAt)} maxLength="160" value={form.customerName} onChange={event=>setForm({...form,customerName:event.target.value})}/></div>
+        <Input label="Telefone (opcional)" disabled={Boolean(editing?.checkedInAt)} maxLength="30" value={form.phone} onChange={event=>setForm({...form,phone:event.target.value})}/>
+        <Input label={creatingBatch||editing?.groupTableNumbers?.length>1?'Quantidade total de pessoas':'Quantidade de pessoas'} type="number" min="1" step="1" required disabled={Boolean(editing?.checkedInAt)} value={form.partySize} onChange={event=>setForm({...form,partySize:event.target.value})}/>
+        <div className="wide"><Textarea label="Observação (opcional)" disabled={Boolean(editing?.checkedInAt)} maxLength="5000" value={form.notes} onChange={event=>setForm({...form,notes:event.target.value})}/></div>
       </FormGrid>
     </Modal>
 

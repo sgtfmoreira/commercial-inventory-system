@@ -12,7 +12,7 @@ test('middleware recusa imediatamente uma associação de usuário revogada', as
         loaded: true,
         exports: {
             userEstablishment: {
-                findUnique: async () => ({ role: 'ADMIN', isActive: false })
+                findFirst: async () => null
             }
         }
     };

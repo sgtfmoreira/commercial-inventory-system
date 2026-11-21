@@ -27,6 +27,10 @@ const update = asyncHandler(async (req, res) => res.json({
 const cancel = asyncHandler(async (req, res) => res.json({
     success: true, data: await service.cancel(req.params.id, req.body.version, req.user.establishmentId, req.user.userId)
 }));
+const checkIn = asyncHandler(async (req, res) => res.status(201).json({
+    success: true,
+    data: await service.checkIn(req.params.id, req.body, req.user.establishmentId, req.user.userId)
+}));
 const previewImport = asyncHandler(async (req, res) => res.json({
     success: true, data: await service.previewImport(req.body.reservations, req.user.establishmentId)
 }));
@@ -34,4 +38,4 @@ const importReservations = asyncHandler(async (req, res) => res.status(201).json
     success: true, data: await service.importReservations(req.body.reservations, req.user.establishmentId, req.user.userId)
 }));
 
-module.exports = { list, create, createBatch, update, cancel, previewImport, importReservations };
+module.exports = { list, create, createBatch, update, cancel, checkIn, previewImport, importReservations };

@@ -10,6 +10,111 @@ const todayInSaoPaulo = (now = new Date()) => {
     return `${parts.year}-${parts.month}-${parts.day}`;
 };
 const asDate = value => new Date(`${value}T00:00:00.000Z`);
+const startOfSaoPauloDay = value => new Date(`${value}T00:00:00.000-03:00`);
+const nextDate = value => {
+    const date = asDate(value);
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+};
+const round = value => Math.round(value * 10) / 10;
+
+function calculateMetrics(occupancies, dateFrom, dateTo) {
+    const periodDays = Math.round((asDate(dateTo) - asDate(dateFrom)) / 86400000) + 1;
+    const tables = Array.from({ length: 27 }, (_, index) => ({
+        tableNumber: index + 1,
+        turnovers: 0,
+        completedTurnovers: 0,
+        people: 0,
+        totalStayMinutes: 0,
+        completedStays: 0,
+        averageStayMinutes: null,
+        averageTurnsPerDay: 0
+    }));
+    const sessions = new Map();
+
+    occupancies.forEach(item => {
+        const table = tables[item.tableNumber - 1];
+        if (table) {
+            table.turnovers += 1;
+            table.people += item.partySize;
+            if (item.releasedAt) {
+                const stayMinutes = Math.max(0, (new Date(item.releasedAt) - new Date(item.seatedAt)) / 60000);
+                table.completedTurnovers += 1;
+                table.completedStays += 1;
+                table.totalStayMinutes += stayMinutes;
+            }
+        }
+
+        const key = item.occupancyGroupId || item.id;
+        const session = sessions.get(key) || {
+            partySize: item.partySize,
+            reserved: false,
+            active: false,
+            seatedAt: new Date(item.seatedAt),
+            releasedAt: null,
+            allReleased: true
+        };
+        session.partySize = Math.max(session.partySize, item.partySize);
+        session.reserved = session.reserved || Boolean(item.reservationId);
+        session.active = session.active || item.status === 'ACTIVE';
+        session.seatedAt = new Date(Math.min(session.seatedAt.getTime(), new Date(item.seatedAt).getTime()));
+        session.allReleased = session.allReleased && Boolean(item.releasedAt);
+        if (item.releasedAt) {
+            const releasedAt = new Date(item.releasedAt);
+            session.releasedAt = !session.releasedAt || releasedAt > session.releasedAt ? releasedAt : session.releasedAt;
+        }
+        sessions.set(key, session);
+    });
+
+    let totalPeople = 0;
+    let reservedOccupancies = 0;
+    let reservedPeople = 0;
+    let walkInOccupancies = 0;
+    let walkInPeople = 0;
+    let activeOccupancies = 0;
+    let completedOccupancies = 0;
+    let totalStayMinutes = 0;
+
+    sessions.forEach(session => {
+        totalPeople += session.partySize;
+        if (session.reserved) {
+            reservedOccupancies += 1;
+            reservedPeople += session.partySize;
+        } else {
+            walkInOccupancies += 1;
+            walkInPeople += session.partySize;
+        }
+        if (session.active) activeOccupancies += 1;
+        if (session.allReleased && session.releasedAt) {
+            completedOccupancies += 1;
+            totalStayMinutes += Math.max(0, (session.releasedAt - session.seatedAt) / 60000);
+        }
+    });
+
+    tables.forEach(table => {
+        table.averageStayMinutes = table.completedStays ? round(table.totalStayMinutes / table.completedStays) : null;
+        table.averageTurnsPerDay = round(table.turnovers / periodDays);
+        delete table.totalStayMinutes;
+        delete table.completedStays;
+    });
+
+    return {
+        period: { dateFrom, dateTo, days: periodDays },
+        summary: {
+            totalOccupancies: sessions.size,
+            totalPeople,
+            reservedOccupancies,
+            reservedPeople,
+            walkInOccupancies,
+            walkInPeople,
+            activeOccupancies,
+            completedOccupancies,
+            averageStayMinutes: completedOccupancies ? round(totalStayMinutes / completedOccupancies) : null,
+            averageTurnsPerDay: round(sessions.size / periodDays)
+        },
+        tables: tables.sort((a, b) => b.turnovers - a.turnovers || b.people - a.people || a.tableNumber - b.tableNumber)
+    };
+}
 
 function mapConflict(error) {
     if (error?.code === 'P2002') throw new AppError('Esta mesa já está ocupada. Atualize o mapa.', 409);
@@ -47,6 +152,14 @@ function createTableOccupancyService({ repository = defaultRepository, database 
                     seatedPeople
                 }
             };
+        },
+
+        async metrics(establishmentId, { dateFrom, dateTo }) {
+            const occupancies = await repository.listForMetrics(establishmentId, {
+                gte: startOfSaoPauloDay(dateFrom),
+                lt: startOfSaoPauloDay(nextDate(dateTo))
+            });
+            return calculateMetrics(occupancies, dateFrom, dateTo);
         },
 
         async create(input, establishmentId, userId) {
@@ -130,4 +243,10 @@ function createTableOccupancyService({ repository = defaultRepository, database 
     };
 }
 
-module.exports = { ...createTableOccupancyService(), createTableOccupancyService, todayInSaoPaulo };
+module.exports = {
+    ...createTableOccupancyService(),
+    createTableOccupancyService,
+    todayInSaoPaulo,
+    calculateMetrics,
+    startOfSaoPauloDay
+};

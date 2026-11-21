@@ -33,6 +33,11 @@ const updateTableReservationSchema = reservationFields.partial().extend({
     message: 'Informe ao menos um campo para atualizar'
 });
 const cancelTableReservationSchema = z.object({ version: z.coerce.number().int().positive() }).strict();
+const checkInTableReservationSchema = z.object({
+    version: z.coerce.number().int().positive(),
+    partySize: z.coerce.number().int().positive('Quantidade de pessoas deve ser positiva').max(10000).optional(),
+    notes: z.string().trim().max(5000).optional().nullable()
+}).strict();
 const listTableReservationsQuerySchema = z.object({
     date: isoDate,
     includeCancelled: z.enum(['true', 'false']).optional().transform(value => value === 'true')
@@ -46,6 +51,7 @@ module.exports = {
     createBatchTableReservationsSchema,
     updateTableReservationSchema,
     cancelTableReservationSchema,
+    checkInTableReservationSchema,
     listTableReservationsQuerySchema,
     importTableReservationsSchema
 };
