@@ -132,12 +132,12 @@ test('não propaga acesso automaticamente para unidades futuras ou não selecion
     assert.deepEqual(fixture.calls.memberships.map(item => item.establishmentId), ['est-a']);
 });
 
-test('bloqueia o 11º usuário ativo sem criar registro', async () => {
+test('bloqueia o 16º usuário ativo sem criar registro', async () => {
     const fixture = createTx({ activeUsers: MAX_ACTIVE_USERS_PER_ORGANIZATION });
     let created = false;
     fixture.tx.users.create = async () => { created = true; };
     const service = createUserService({ db: fixture.db, audit: fixture.audit, passwordService: { hash: async () => 'hash' } });
-    await assert.rejects(() => service.create(baseInput()), error => error.statusCode === 409 && /limite de 10/.test(error.message));
+    await assert.rejects(() => service.create(baseInput()), error => error.statusCode === 409 && /limite de 15/.test(error.message));
     assert.equal(created, false);
 });
 
@@ -161,17 +161,17 @@ test('somente OWNER organizacional explícito pode preparar perfil OWNER', async
 });
 
 test('reativação de usuário inativo também respeita o limite organizacional', async () => {
-    const fixture = createTx({ activeUsers: 10 });
+    const fixture = createTx({ activeUsers: MAX_ACTIVE_USERS_PER_ORGANIZATION - 1 });
     fixture.tx.userEstablishment.findMany = async args => {
         if (args.where?.userId === 'actor-a') return [{ id: 'actor-m', establishmentId: 'est-a' }];
         if (args.where?.userId === 'user-b') return [{ id: 'membership-est-a', establishmentId: 'est-a', role: 'STAFF', isActive: false }];
-        if (args.distinct) return Array.from({ length: 10 }, (_, index) => ({ userId: `active-${index}` }));
+        if (args.distinct) return Array.from({ length: MAX_ACTIVE_USERS_PER_ORGANIZATION }, (_, index) => ({ userId: `active-${index}` }));
         return [];
     };
     const service = createUserService({ db: fixture.db, audit: fixture.audit });
     await assert.rejects(
         () => service.update('user-b', baseInput({ password: undefined, accesses: [{ establishmentId: 'est-a', legacyRole: 'STAFF' }] })),
-        error => error.statusCode === 409 && /limite de 10/.test(error.message)
+        error => error.statusCode === 409 && /limite de 15/.test(error.message)
     );
 });
 

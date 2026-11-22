@@ -6,7 +6,7 @@ const { PROFILE_VERSION, getProfile } = require('../constants/accessProfiles');
 const { getPermission, isPermissionCode } = require('../constants/permissions');
 
 const ALLOWED_ROLES = Object.freeze(['ADMIN', 'MANAGER', 'STAFF', 'STOCK_COUNTER']);
-const MAX_ACTIVE_USERS_PER_ORGANIZATION = 10;
+const MAX_ACTIVE_USERS_PER_ORGANIZATION = 15;
 const SERIALIZABLE_RETRIES = 3;
 
 const validatePassword = password => {
@@ -128,7 +128,7 @@ async function countActiveUsers(tx, organizationId) {
 
 async function assertCapacity(tx, organizationId) {
     if (await countActiveUsers(tx, organizationId) >= MAX_ACTIVE_USERS_PER_ORGANIZATION) {
-        throw new AppError('A organização atingiu o limite de 10 usuários ativos.', 409);
+        throw new AppError(`A organização atingiu o limite de ${MAX_ACTIVE_USERS_PER_ORGANIZATION} usuários ativos.`, 409);
     }
 }
 

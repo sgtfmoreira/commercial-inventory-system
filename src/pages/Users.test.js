@@ -203,10 +203,10 @@ test('edição não oferece unidade não administrável e preserva o vínculo fo
   expect(userAccessService.updateUser.mock.calls[0][1].accesses.map((item) => item.establishmentId)).toEqual(['est-a']);
 });
 
-test('bloqueia cadastro quando dez pessoas ativas já existem', async () => {
-  await renderPage(Array.from({ length: 10 }, (_, index) => user(`user-${index}`, `Pessoa ${index}`)));
-  expect(container.textContent).toContain('10 / 10');
-  expect(container.textContent).toContain('Limite de 10 usuários ativos atingido');
+test('bloqueia cadastro quando quinze pessoas ativas já existem', async () => {
+  await renderPage(Array.from({ length: 15 }, (_, index) => user(`user-${index}`, `Pessoa ${index}`)));
+  expect(container.textContent).toContain('15 / 15');
+  expect(container.textContent).toContain('Limite de 15 usuários ativos atingido');
   expect(button('Novo usuário').disabled).toBe(true);
 });
 

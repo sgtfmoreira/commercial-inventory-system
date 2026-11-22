@@ -68,7 +68,7 @@ test('contrato LEGACY continua limitado ao estabelecimento ativo', async () => {
 });
 
 test('erro de domínio do service preserva status HTTP', async () => {
-    const error = new Error('A organização atingiu o limite de 10 usuários ativos.');
+    const error = new Error('A organização atingiu o limite de 15 usuários ativos.');
     error.statusCode = 409;
     const loaded = loadController({ create: async () => { throw error; } });
     const req = {
@@ -79,5 +79,5 @@ test('erro de domínio do service preserva status HTTP', async () => {
     await loaded.controller.create(req, res);
     loaded.restore();
     assert.equal(res.statusCode, 409);
-    assert.match(res.body.error, /limite de 10/);
+    assert.match(res.body.error, /limite de 15/);
 });

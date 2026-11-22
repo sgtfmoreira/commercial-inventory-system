@@ -18,7 +18,7 @@ import {
   Page, PageActions, PageHeader, PageHeading, PageSubtitle, PageTitle,
 } from '../components/PageLayout';
 
-export const USER_LIMIT = 10;
+export const USER_LIMIT = 15;
 export const LEGACY_ROLE_LABELS = Object.freeze({
   ADMIN: 'Administrador LEGACY',
   MANAGER: 'Gerente',
@@ -556,7 +556,7 @@ export default function Users() {
         <StatCard><span>Unidades administráveis</span><strong>{establishments.length}</strong></StatCard>
         <StatCard><span>Modo efetivo</span><strong>LEGACY</strong></StatCard>
       </Stats>
-      {activeCount >= USER_LIMIT && <Notice $kind="warning" role="alert">Limite de 10 usuários ativos atingido. Desative um usuário antes de cadastrar ou reativar outro.</Notice>}
+      {activeCount >= USER_LIMIT && <Notice $kind="warning" role="alert">Limite de {USER_LIMIT} usuários ativos atingido. Desative um usuário antes de cadastrar ou reativar outro.</Notice>}
       {error && <Notice $kind="danger" role="alert">{error}</Notice>}
       {establishments.length === 0 && <Notice $kind="danger">Você não possui unidade com papel ADMIN para administrar usuários.</Notice>}
       <Toolbar>
