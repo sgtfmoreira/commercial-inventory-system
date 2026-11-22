@@ -36,7 +36,7 @@ Fora de produção, a ausência de `CHECKLIST_EVIDENCE_STORAGE_PROVIDER` mantém
 7. publicar o frontend apontando para o backend validado;
 8. executar smoke test com uma organização e unidade de teste.
 
-Nesta release, o `start` do backend executa `prisma migrate deploy` antes de iniciar o servidor. O Prisma aplica somente migrations pendentes sob lock; se a migration falhar, a nova instância não inicia e não deve receber tráfego. O comando não executa seed nem altera migrations já aplicadas.
+Nesta release, o entrypoint `src/server.js` executa `prisma migrate deploy` em produção antes de carregar a aplicação. Isso protege inclusive serviços cujo Start Command do provedor chama `node src/server.js` diretamente. O Prisma aplica somente migrations pendentes sob lock; se a migration falhar, a nova instância não inicia e não deve receber tráfego. O comando não executa seed nem altera migrations já aplicadas.
 
 ## Smoke test
 
