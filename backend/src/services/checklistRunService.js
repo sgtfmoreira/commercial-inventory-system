@@ -60,6 +60,8 @@ function runDto(run) {
         } : undefined,
         assignedTo: personDto(run.assignedTo),
         createdBy: personDto(run.createdBy),
+        scheduleId: run.scheduleId || null,
+        scheduledFor: iso(run.scheduledFor),
         dueAt: iso(run.dueAt),
         status: run.status,
         version: run.version,
@@ -254,5 +256,5 @@ async function reassign(context, runId, input, options = {}) {
 
 module.exports = {
     capabilities, publishedTemplates, eligibleAssignees, list, get, create, reassign,
-    fingerprint, runDto, canExecute
+    fingerprint, runDto, canExecute, assertEligible
 };

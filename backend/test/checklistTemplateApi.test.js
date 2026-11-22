@@ -92,7 +92,7 @@ test('controller falha fechado quando o contexto multi-tenant está incompleto',
     assert.equal(failure?.statusCode, 403);
 });
 
-test('router expõe templates e distribuição manual com políticas diretas', () => {
+test('router expõe templates, distribuição e agendamentos com políticas diretas', () => {
     const router = require('../src/routes/checklistTemplateRoutes');
     const contracts = router.stack.filter(layer => layer.route).map(layer => ({
         path: layer.route.path,
@@ -116,6 +116,9 @@ test('router expõe templates e distribuição manual com políticas diretas', (
         { path: '/reports', methods: ['get'] },
         { path: '/published-templates', methods: ['get'] },
         { path: '/eligible-assignees', methods: ['get'] },
+        { path: '/schedules', methods: ['get'] },
+        { path: '/schedules', methods: ['post'] },
+        { path: '/schedules/:scheduleId/status', methods: ['patch'] },
         { path: '/runs', methods: ['get'] },
         { path: '/runs', methods: ['post'] },
         { path: '/runs/:runId', methods: ['get'] },

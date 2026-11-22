@@ -23,6 +23,16 @@ const checklistRunService = {
   reassign(runId, payload) {
     return api.patch(`/checklists/runs/${runId}/assignment`, payload);
   },
+  async listSchedules() {
+    const result = await api.get('/checklists/schedules');
+    return result?.schedules || [];
+  },
+  createSchedule(payload) {
+    return api.post('/checklists/schedules', payload);
+  },
+  setScheduleStatus(scheduleId, payload) {
+    return api.patch(`/checklists/schedules/${scheduleId}/status`, payload);
+  },
   async listMine() {
     const result = await api.get('/checklists/my-runs');
     return result?.runs || [];

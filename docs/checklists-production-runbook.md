@@ -17,6 +17,8 @@ CHECKLIST_EVIDENCE_STORAGE_PROVIDER=SUPABASE
 SUPABASE_URL=https://<projeto>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<segredo somente do backend>
 CHECKLIST_EVIDENCE_BUCKET=checklist-evidence
+CHECKLIST_SCHEDULER_ENABLED=true
+CHECKLIST_SCHEDULER_INTERVAL_MS=60000
 ```
 
 O bucket deve permanecer privado. A `SUPABASE_SERVICE_ROLE_KEY` não pode usar prefixo `REACT_APP_`, ser enviada ao navegador ou ser registrada em logs.
@@ -29,7 +31,7 @@ Fora de produção, a ausência de `CHECKLIST_EVIDENCE_STORAGE_PROVIDER` mantém
 2. confirmar backup/PITR e validar a conexão de produção;
 3. executar `npm run db:deploy` uma única vez como job controlado;
 4. conferir `prisma migrate status` e os índices/constraints esperados;
-5. publicar o backend com as variáveis de storage já configuradas;
+5. publicar o backend com as variáveis de storage e scheduler já configuradas;
 6. validar health check, autenticação e as rotas de checklist;
 7. publicar o frontend apontando para o backend validado;
 8. executar smoke test com uma organização e unidade de teste.
@@ -46,6 +48,8 @@ O `build` e o `start` do backend não executam migrations. Isso evita duas inst�
 - submeter, revisar com outro usuário e aprovar ou rejeitar;
 - abrir histórico e relatório, conferindo organização e estabelecimento;
 - confirmar `403` para usuário sem capability e isolamento entre tenants.
+- criar uma agenda semanal de teste com horário próximo e confirmar geração única;
+- pausar a agenda e confirmar que nenhuma nova ocorrência é materializada;
 
 ## Recuo seguro
 
@@ -53,5 +57,6 @@ O `build` e o `start` do backend não executam migrations. Isso evita duas inst�
 - reverter backend e frontend ao commit anterior compatível;
 - não apagar migrations aplicadas nem tabelas históricas;
 - se a falha estiver apenas nas evidências, desabilitar temporariamente o fluxo de upload na aplicação, preservando os objetos e metadados existentes;
+- se a falha estiver no agendador, definir `CHECKLIST_SCHEDULER_ENABLED=false` e reiniciar o backend; agendas e ocorrências já criadas permanecem preservadas;
 - restaurar banco somente em incidente confirmado e conforme o procedimento de backup aprovado.
 

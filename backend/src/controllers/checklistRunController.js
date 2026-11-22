@@ -4,6 +4,7 @@ const service = require('../services/checklistRunService');
 const executionService = require('../services/checklistExecutionService');
 const approvalService = require('../services/checklistApprovalService');
 const reportService = require('../services/checklistReportService');
+const scheduleService = require('../services/checklistScheduleService');
 
 function context(req) {
     if (!req.user?.userId || !req.user?.membershipId || !req.user?.establishmentId || !req.user?.organizationId) {
@@ -24,6 +25,9 @@ const list = asyncHandler(async (req, res) => res.json({ runs: await service.lis
 const get = asyncHandler(async (req, res) => res.json(await service.get(context(req), req.params.runId)));
 const create = asyncHandler(async (req, res) => res.status(201).json(await service.create(context(req), req.body)));
 const reassign = asyncHandler(async (req, res) => res.json(await service.reassign(context(req), req.params.runId, req.body)));
+const listSchedules = asyncHandler(async (req, res) => res.json({ schedules: await scheduleService.list(context(req)) }));
+const createSchedule = asyncHandler(async (req, res) => res.status(201).json(await scheduleService.create(context(req), req.body)));
+const setScheduleStatus = asyncHandler(async (req, res) => res.json(await scheduleService.setStatus(context(req), req.params.scheduleId, req.body)));
 const listMine = asyncHandler(async (req, res) => res.json({ runs: await executionService.listMine(context(req)) }));
 const start = asyncHandler(async (req, res) => res.status(201).json(await executionService.start(context(req), req.params.runId)));
 const getAttempt = asyncHandler(async (req, res) => res.json(await executionService.getAttempt(context(req), req.params.attemptId)));
@@ -51,6 +55,7 @@ const report = asyncHandler(async (req, res) => res.json(await reportService.get
 
 module.exports = {
     context, capabilities, publishedTemplates, eligibleAssignees, list, get, create, reassign,
+    listSchedules, createSchedule, setScheduleStatus,
     listMine, start, getAttempt, saveResponse, addEvidence, evidenceContent, submit,
     pendingApprovals, approvalAttempt, approve, reject, approvalEvidenceContent, history, report
 };

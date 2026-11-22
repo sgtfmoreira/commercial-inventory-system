@@ -57,6 +57,7 @@ test('DTO distingue criador, responsável atual e histórico de reatribuição',
         id: 'run-a', clientRequestId: 'request-a', templateVersionId: 'version-a',
         templateVersion: { version: 1, approvalRequired: true, passingScore: 80, template: { id: 'template-a', name: 'Abertura', category: null } },
         assignedTo: membership('new', 'Novo'), createdBy: membership('creator', 'Gestor'),
+        scheduleId: null, scheduledFor: null,
         dueAt: now, status: 'ASSIGNED', version: 2, createdAt: now, updatedAt: now,
         assignments: [{ id: 'assignment-a', sequence: 2, changeType: 'REASSIGNMENT', reason: 'Troca', createdAt: now,
             previous: membership('old', 'Anterior'), assignedTo: membership('new', 'Novo'), changedBy: membership('creator', 'Gestor') }]
@@ -65,4 +66,5 @@ test('DTO distingue criador, responsável atual e histórico de reatribuição',
     assert.equal(dto.assignedTo.name, 'Novo');
     assert.equal(dto.assignments[0].previous.name, 'Anterior');
     assert.equal(dto.template.passingScore, 80);
+    assert.equal(dto.scheduleId, null);
 });

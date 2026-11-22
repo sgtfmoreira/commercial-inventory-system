@@ -421,6 +421,7 @@ model establishments {
   tableOccupancies     TableOccupancy[]
   securityAuditEvents  SecurityAuditEvent[]
   checklistRuns        ChecklistRun[]
+  checklistSchedules   ChecklistSchedule[]
 }
 
 model users {
@@ -998,6 +999,7 @@ model Organization {
   securityAuditEvents SecurityAuditEvent[]
   checklistTemplates  ChecklistTemplate[]
   checklistRuns       ChecklistRun[]
+  checklistSchedules  ChecklistSchedule[]
 }
 
 model OrganizationSupplier {
@@ -1241,6 +1243,8 @@ model UserEstablishment {
   checklistTemplatesCreated     ChecklistTemplate[]         @relation("ChecklistTemplateCreatedBy")
   checklistVersionsCreated      ChecklistTemplateVersion[]  @relation("ChecklistTemplateVersionCreatedBy")
   checklistVersionsPublished    ChecklistTemplateVersion[]  @relation("ChecklistTemplateVersionPublishedBy")
+  checklistSchedulesAssigned    ChecklistSchedule[]         @relation("ChecklistScheduleAssignedTo")
+  checklistSchedulesCreated     ChecklistSchedule[]         @relation("ChecklistScheduleCreatedBy")
   checklistRunsAssigned         ChecklistRun[]              @relation("ChecklistRunAssignedTo")
   checklistRunsCreated          ChecklistRun[]              @relation("ChecklistRunCreatedBy")
   checklistAssignmentsPrevious  ChecklistRunAssignment[]    @relation("ChecklistAssignmentPrevious")
@@ -1700,6 +1704,12 @@ enum ChecklistRunStatus {
   CANCELLED
 }
 
+enum ChecklistScheduleStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
 enum ChecklistAssignmentType {
   INITIAL
   REASSIGNMENT
@@ -1788,6 +1798,7 @@ model ChecklistTemplateVersion {
   publishedBy     UserEstablishment?         @relation("ChecklistTemplateVersionPublishedBy", fields: [publishedByMembershipId], references: [id], onDelete: Restrict)
   sections        ChecklistTemplateSection[]
   runs            ChecklistRun[]
+  schedules       ChecklistSchedule[]
 
   @@unique([templateId, version])
   @@index([templateId, status, createdAt])
@@ -1851,6 +1862,8 @@ model ChecklistRun {
   templateVersionId     String             @db.Uuid
   assignedMembershipId  String             @db.Uuid
   createdByMembershipId String             @db.Uuid
+  scheduleId            String?            @db.Uuid
+  scheduledFor          DateTime?
   dueAt                 DateTime
   status                ChecklistRunStatus @default(ASSIGNED)
   version               Int                @default(1)
@@ -1863,16 +1876,54 @@ model ChecklistRun {
   templateVersion ChecklistTemplateVersion    @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
   assignedTo      UserEstablishment           @relation("ChecklistRunAssignedTo", fields: [assignedMembershipId], references: [id], onDelete: Restrict)
   createdBy       UserEstablishment           @relation("ChecklistRunCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  schedule        ChecklistSchedule?          @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
   assignments     ChecklistRunAssignment[]
   events          ChecklistRunEvent[]
   attempts        ChecklistExecutionAttempt[]
 
   @@unique([organizationId, clientRequestId])
+  @@unique([scheduleId, scheduledFor])
   @@index([establishmentId, status, dueAt])
   @@index([establishmentId, dueAt])
   @@index([assignedMembershipId, status, dueAt])
   @@index([templateVersionId, createdAt])
   @@map("checklist_runs")
+}
+
+model ChecklistSchedule {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  organizationId        String
+  establishmentId       String                  @db.Uuid
+  templateVersionId     String                  @db.Uuid
+  assignedMembershipId  String                  @db.Uuid
+  createdByMembershipId String                  @db.Uuid
+  weekday               Int
+  localTime             String                  @db.VarChar(5)
+  timeZone              String                  @default("America/Sao_Paulo") @db.VarChar(64)
+  dueAfterMinutes       Int                     @default(1440)
+  startsOn              DateTime                @db.Date
+  endsOn                DateTime?               @db.Date
+  nextRunAt             DateTime
+  status                ChecklistScheduleStatus @default(ACTIVE)
+  version               Int                     @default(1)
+  lastAttemptAt         DateTime?
+  lastGeneratedAt       DateTime?
+  lastError             String?                 @db.VarChar(500)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  organization    Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  establishment   establishments           @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  templateVersion ChecklistTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  assignedTo      UserEstablishment        @relation("ChecklistScheduleAssignedTo", fields: [assignedMembershipId], references: [id], onDelete: Restrict)
+  createdBy       UserEstablishment        @relation("ChecklistScheduleCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  runs            ChecklistRun[]
+
+  @@index([status, nextRunAt])
+  @@index([establishmentId, status, nextRunAt])
+  @@index([assignedMembershipId, status])
+  @@index([templateVersionId, status])
+  @@map("checklist_schedules")
 }
 
 model ChecklistRunAssignment {

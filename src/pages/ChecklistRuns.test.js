@@ -11,7 +11,8 @@ jest.mock('../services/checklistRunService', () => ({
   default: {
     capabilities: jest.fn(), listMine: jest.fn(), start: jest.fn(), getAttempt: jest.fn(),
     list: jest.fn(), publishedTemplates: jest.fn(), eligibleAssignees: jest.fn(),
-    create: jest.fn(), reassign: jest.fn(),
+    create: jest.fn(), reassign: jest.fn(), listSchedules: jest.fn(),
+    createSchedule: jest.fn(), setScheduleStatus: jest.fn(),
   },
 }));
 
@@ -76,6 +77,9 @@ beforeEach(() => {
   checklistRunService.eligibleAssignees.mockResolvedValue(assignees);
   checklistRunService.create.mockResolvedValue(run);
   checklistRunService.reassign.mockResolvedValue({ ...run, version: 2, assignedTo: { membershipId: 'membership-b', name: 'Pessoa B' } });
+  checklistRunService.listSchedules.mockResolvedValue([]);
+  checklistRunService.createSchedule.mockResolvedValue({ id: 'schedule-a' });
+  checklistRunService.setScheduleStatus.mockResolvedValue({ id: 'schedule-a', status: 'PAUSED', version: 2 });
 });
 afterEach(async () => {
   if (root) await act(async () => root.unmount());
@@ -143,6 +147,24 @@ test('reatribui somente para outra pessoa e exige justificativa', async () => {
   expect(checklistRunService.reassign).toHaveBeenCalledWith('run-a', {
     assignedMembershipId: 'membership-b', reason: 'Cobertura do turno', version: 1,
   });
+});
+
+test('cria agendamento semanal com responsável, horário e prazo', async () => {
+  await renderPage();
+  await click(button('Agendar semanal'));
+  const modelFields = [...document.body.querySelectorAll('label')].filter(label => label.textContent.includes('Modelo publicado'));
+  const responsibleFields = [...document.body.querySelectorAll('label')].filter(label => label.textContent.includes('Responsável'));
+  await change(modelFields.at(-1).querySelector('select'), 'version-a');
+  await change(responsibleFields.at(-1).querySelector('select'), 'membership-a');
+  await change(field('Dia da semana'), '1');
+  await change(field('Horário de geração'), '08:30');
+  await change(field('Prazo após geração'), '12');
+  const form = field('Dia da semana').closest('form');
+  await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flush(); });
+  expect(checklistRunService.createSchedule).toHaveBeenCalledWith(expect.objectContaining({
+    templateVersionId: 'version-a', assignedMembershipId: 'membership-a',
+    weekday: 1, localTime: '08:30', dueAfterMinutes: 720,
+  }));
 });
 
 test('informa quando não existem modelos ou responsáveis elegíveis', async () => {

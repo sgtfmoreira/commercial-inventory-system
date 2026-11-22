@@ -34,6 +34,9 @@ router.get('/runs/:runId/history', validateParams(runSchemas.runIdParamSchema), 
 router.get('/reports', canApprove, validateQuery(runSchemas.reportQuerySchema), runController.report);
 router.get('/published-templates', canManageRuns, runController.publishedTemplates);
 router.get('/eligible-assignees', canManageRuns, runController.eligibleAssignees);
+router.get('/schedules', canManageRuns, runController.listSchedules);
+router.post('/schedules', canManageRuns, validate(runSchemas.createScheduleSchema), runController.createSchedule);
+router.patch('/schedules/:scheduleId/status', validateParams(runSchemas.scheduleIdParamSchema), canManageRuns, validate(runSchemas.scheduleStatusSchema), runController.setScheduleStatus);
 router.get('/runs', canManageRuns, runController.list);
 router.post('/runs', canManageRuns, validate(runSchemas.createRunSchema), runController.create);
 router.get('/runs/:runId', validateParams(runSchemas.runIdParamSchema), canManageRuns, runController.get);
