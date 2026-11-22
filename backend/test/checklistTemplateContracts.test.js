@@ -94,6 +94,22 @@ test('publishable template accepts all MVP response types', () => {
     ]);
 });
 
+test('publishable template reports actionable errors for missing sections and questions', () => {
+    const withoutSections = validVersion();
+    withoutSections.sections = [];
+    assert.throws(
+        () => validatePublishableChecklistTemplateVersion(withoutSections),
+        error => error.issues.some(issue => issue.message === 'Adicione pelo menos uma seção antes de publicar.')
+    );
+
+    const withoutQuestions = validVersion();
+    withoutQuestions.sections[0].items = [];
+    assert.throws(
+        () => validatePublishableChecklistTemplateVersion(withoutQuestions),
+        error => error.issues.some(issue => issue.message === 'Adicione pelo menos uma pergunta nesta seção antes de publicar.')
+    );
+});
+
 test('publishable template rejects duplicate keys, positions and malformed scoring configs', () => {
     const duplicate = validVersion();
     duplicate.sections[0].items[1] = choiceItem({

@@ -131,6 +131,21 @@ const payloadFrom = (form, draft) => ({
   })),
 });
 
+const publicationIssue = form => {
+  if (!form?.sections?.length) return 'Adicione pelo menos uma seção antes de publicar.';
+  const emptySectionIndex = form.sections.findIndex(section => !section.items?.length);
+  if (emptySectionIndex >= 0) {
+    return `Adicione pelo menos uma pergunta na seção ${emptySectionIndex + 1} antes de publicar.`;
+  }
+  const invalidChoice = form.sections.flatMap((section, sectionIndex) =>
+    section.items.map((item, itemIndex) => ({ item, sectionIndex, itemIndex })))
+    .find(({ item }) => item.responseType === 'CHOICE' && (item.answerConfigJson?.options?.length || 0) < 2);
+  if (invalidChoice) {
+    return `Adicione pelo menos duas opções à pergunta ${invalidChoice.itemIndex + 1} da seção ${invalidChoice.sectionIndex + 1} antes de publicar.`;
+  }
+  return null;
+};
+
 const latestStatus = template => template.versions?.[0]?.status || 'DRAFT';
 const statusLabel = status => ({ DRAFT: 'Rascunho', PUBLISHED: 'Publicada', RETIRED: 'Retirada' }[status] || status);
 
@@ -224,6 +239,11 @@ export default function ChecklistTemplates() {
   };
 
   const publish = async () => {
+    const issue = publicationIssue(form);
+    if (issue) {
+      toast.error(issue);
+      return;
+    }
     const saved = await save();
     const savedDraft = saved?.versions?.find(version => version.status === 'DRAFT');
     if (!savedDraft) return;

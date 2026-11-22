@@ -116,7 +116,9 @@ const checklistTemplateSectionSchema = z.object({
     title: z.string().trim().min(1).max(200),
     description: z.string().trim().max(500).nullable().optional(),
     position: positivePositionSchema,
-    items: z.array(checklistTemplateItemSchema).min(1).max(200)
+    items: z.array(checklistTemplateItemSchema)
+        .min(1, 'Adicione pelo menos uma pergunta nesta seção antes de publicar.')
+        .max(200)
 }).strict();
 
 const publishableChecklistTemplateVersionSchema = z.object({
@@ -124,7 +126,9 @@ const publishableChecklistTemplateVersionSchema = z.object({
     approvalRequired: z.boolean().default(true),
     passingScore: z.number().finite().min(0).max(100),
     scoringAlgorithmVersion: z.literal(CHECKLIST_SCORING_ALGORITHM_VERSION),
-    sections: z.array(checklistTemplateSectionSchema).min(1).max(100)
+    sections: z.array(checklistTemplateSectionSchema)
+        .min(1, 'Adicione pelo menos uma seção antes de publicar.')
+        .max(100)
 }).strict().superRefine((version, ctx) => {
     const sectionKeys = new Set();
     const sectionPositions = new Set();

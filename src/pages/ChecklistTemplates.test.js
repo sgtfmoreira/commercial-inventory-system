@@ -138,6 +138,22 @@ test('edita o DRAFT, configura tipo e salva posições determinísticas', async 
   expect(toast.success).toHaveBeenCalledWith('Rascunho salvo.');
 });
 
+test('orienta o usuário antes de publicar um modelo sem perguntas', async () => {
+  mockParams = { templateId: 'template-a' };
+  const incompleteDraft = {
+    ...draftVersion,
+    sections: [{ ...draftVersion.sections[0], items: [] }],
+  };
+  checklistTemplateService.get.mockResolvedValue(template([incompleteDraft]));
+  await renderPage();
+
+  await click(button('Publicar'));
+
+  expect(toast.error).toHaveBeenCalledWith('Adicione pelo menos uma pergunta na seção 1 antes de publicar.');
+  expect(checklistTemplateService.saveDraft).not.toHaveBeenCalled();
+  expect(checklistTemplateService.publish).not.toHaveBeenCalled();
+});
+
 test('remove metadados persistidos ao salvar um rascunho recarregado ou clonado', async () => {
   mockParams = { templateId: 'template-a' };
   const persistedDraft = {
