@@ -62,6 +62,12 @@ const OptionRow = styled.div`display: grid; grid-template-columns: minmax(0, 1fr
 const PreviewSection = styled.div`display: grid; gap: 8px; padding: 16px 0; border-bottom: 1px solid ${({ theme }) => theme.colors.border};`;
 const EmptyEditor = styled(Card)`text-align: center; display: grid; gap: 16px; justify-items: center;`;
 const ReadOnlyVersion = styled(Card)`display: grid; gap: ${({ theme }) => theme.spacing.md};`;
+const VersionGuide = styled.div`
+  display: grid; gap: 10px; padding: 12px; border-radius: ${({ theme }) => theme.radii.md};
+  background: ${({ theme }) => theme.colors.bgHover};
+`;
+const GuideItem = styled.div`display: grid; gap: 4px;`;
+const VersionMeta = styled.div`display: flex; gap: 8px 16px; flex-wrap: wrap;`;
 
 const createKey = prefix => {
   const value = window.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -148,6 +154,12 @@ const publicationIssue = form => {
 
 const latestStatus = template => template.versions?.[0]?.status || 'DRAFT';
 const statusLabel = status => ({ DRAFT: 'Rascunho', PUBLISHED: 'Publicada', RETIRED: 'Retirada' }[status] || status);
+const statusDescription = status => ({
+  DRAFT: 'Versão de trabalho. Pode ser alterada e ainda não aparece em novas execuções.',
+  PUBLISHED: 'Versão liberada para uso. Fica protegida para preservar rotinas e resultados.',
+  RETIRED: 'Versão fora de circulação. Continua disponível para histórico e consulta.',
+}[status] || '');
+const formatVersionDate = value => value ? new Date(value).toLocaleString('pt-BR') : null;
 
 export default function ChecklistTemplates() {
   const { templateId } = useParams();
@@ -265,6 +277,25 @@ export default function ChecklistTemplates() {
     } catch (error) { toast.error(error.message); } finally { setSaving(false); }
   };
 
+  const openDraft = () => {
+    if (!draft) return;
+    setSelectedVersionId(draft.id);
+    setForm(toForm(template, draft));
+  };
+
+  const editVersion = version => {
+    if (version.status === 'DRAFT') {
+      openDraft();
+      return;
+    }
+    if (draft) {
+      openDraft();
+      toast.success(`A versão ${draft.version} já está em edição como rascunho.`);
+      return;
+    }
+    clone(version.id);
+  };
+
   const retire = async version => {
     if (!window.confirm(`Retirar a versão ${version.version} de circulação?`)) return;
     setSaving(true);
@@ -316,7 +347,7 @@ export default function ChecklistTemplates() {
   return (
     <Page>
       <PageHeader>
-        <PageHeading><Button variant="ghost" onClick={() => navigate('/checklists/templates')}><MdArrowBack /> Voltar</Button><PageTitle>{template.name}</PageTitle><PageSubtitle>Crie perguntas claras, revise a prévia e publique quando estiver pronto.</PageSubtitle></PageHeading>
+        <PageHeading><Button variant="ghost" onClick={() => navigate('/checklists/templates')}><MdArrowBack /> Voltar</Button><PageTitle>{template.name}</PageTitle><PageSubtitle>Edite rascunhos e crie novas versões sem alterar o histórico das execuções anteriores.</PageSubtitle></PageHeading>
         {editingDraft && <PageActions><Button variant="outlined" onClick={() => setPreviewOpen(true)}><MdPreview /> Prévia</Button><Button variant="outlined" onClick={save} loading={saving}><MdSave /> Salvar</Button><Button onClick={publish} loading={saving}><MdPublish /> Publicar</Button></PageActions>}
       </PageHeader>
       <EditorLayout>
@@ -363,16 +394,33 @@ export default function ChecklistTemplates() {
             <Button variant="outlined" onClick={() => setForm(current => ({ ...current, sections: [...current.sections, defaultSection()] }))}><MdAdd /> Adicionar seção</Button>
           </> : selectedVersion ? <ReadOnlyVersion>
             <CardTop><div><h2>Versão {selectedVersion.version}</h2><Muted>{template.description || 'Sem descrição.'}</Muted></div><Status $status={selectedVersion.status}>{statusLabel(selectedVersion.status)}</Status></CardTop>
-            <Muted>Conteúdo protegido e disponível somente para consulta.</Muted>
+            <Muted>{statusDescription(selectedVersion.status)}</Muted>
+            <VersionMeta>
+              <Muted>Criada em {formatVersionDate(selectedVersion.createdAt) || 'data não informada'}</Muted>
+              {selectedVersion.publishedAt && <Muted>Publicada em {formatVersionDate(selectedVersion.publishedAt)}</Muted>}
+              {selectedVersion.retiredAt && <Muted>Retirada em {formatVersionDate(selectedVersion.retiredAt)}</Muted>}
+              {selectedVersion.sourceVersionId && <Muted>Baseada na versão {template.versions.find(version => version.id === selectedVersion.sourceVersionId)?.version || 'anterior'}</Muted>}
+            </VersionMeta>
             {sorted(selectedVersion.sections).map((section, sectionIndex) => <PreviewSection key={section.id || section.stableKey}>
               <h3>{sectionIndex + 1}. {section.title}</h3>
               {section.description && <Muted>{section.description}</Muted>}
               {sorted(section.items).map((item, itemIndex) => <div key={item.id || item.stableKey}><strong>{itemIndex + 1}. {item.title}</strong><Muted>{RESPONSE_LABELS[item.responseType]} · {Number(item.maxPoints)} ponto(s){item.required ? ' · obrigatória' : ''}{item.critical ? ' · crítica' : ''}{item.evidenceRequired ? ' · foto obrigatória' : ''}</Muted></div>)}
             </PreviewSection>)}
-            {['PUBLISHED', 'RETIRED'].includes(selectedVersion.status) && <Button onClick={() => clone(selectedVersion.id)} disabled={Boolean(draft)}><MdContentCopy /> Criar nova versão</Button>}
+            {['PUBLISHED', 'RETIRED'].includes(selectedVersion.status) && <Button onClick={() => editVersion(selectedVersion)} disabled={saving}><MdContentCopy /> {draft ? `Abrir rascunho V${draft.version}` : 'Criar versão editável a partir desta'}</Button>}
           </ReadOnlyVersion> : <EmptyEditor><MdChecklist size={48} /><h3>Nenhuma versão disponível</h3></EmptyEditor>}
         </Editor>
-        <VersionRail><h3>Histórico de versões</h3>{template.versions.map(version => <Grid key={version.id}><VersionButton variant={selectedVersion?.id === version.id ? 'primary' : 'ghost'} onClick={() => setSelectedVersionId(version.id)}>Versão {version.version}<Status $status={version.status}>{statusLabel(version.status)}</Status></VersionButton>{version.status === 'PUBLISHED' && <Button size="sm" variant="ghost" onClick={() => retire(version)}>Retirar de circulação</Button>}</Grid>)}</VersionRail>
+        <VersionRail>
+          <h3>Para que serve cada versão?</h3>
+          <VersionGuide>
+            {['DRAFT', 'PUBLISHED', 'RETIRED'].map(status => <GuideItem key={status}><Status $status={status}>{statusLabel(status)}</Status><Muted>{statusDescription(status)}</Muted></GuideItem>)}
+          </VersionGuide>
+          <h3>Histórico de versões</h3>
+          {template.versions.map(version => <Grid key={version.id}>
+            <VersionButton variant={selectedVersion?.id === version.id ? 'primary' : 'ghost'} onClick={() => setSelectedVersionId(version.id)}>Versão {version.version}<Status $status={version.status}>{statusLabel(version.status)}</Status></VersionButton>
+            {version.status === 'DRAFT' && <Button size="sm" variant="outlined" onClick={() => editVersion(version)}>Editar versão {version.version}</Button>}
+            {version.status === 'PUBLISHED' && <Button size="sm" variant="ghost" onClick={() => retire(version)}>Retirar de circulação</Button>}
+          </Grid>)}
+        </VersionRail>
       </EditorLayout>
       <Modal isOpen={previewOpen} onClose={() => setPreviewOpen(false)} title="Prévia do checklist" footer={<Button onClick={() => setPreviewOpen(false)}>Fechar prévia</Button>}>
         <Grid><h2>{form?.name}</h2><Muted>{form?.description}</Muted>{form?.sections.map((section, sectionIndex) => <PreviewSection key={section.stableKey}><h3>{sectionIndex + 1}. {section.title || 'Seção sem título'}</h3>{section.items.map((item, itemIndex) => <div key={item.stableKey}><strong>{itemIndex + 1}. {item.title || 'Pergunta sem título'}</strong><Muted>{RESPONSE_LABELS[item.responseType]} · {item.maxPoints} ponto(s){item.required ? ' · obrigatória' : ''}{item.critical ? ' · crítica' : ''}{item.evidenceRequired ? ' · foto obrigatória' : ''}</Muted></div>)}</PreviewSection>)}</Grid>

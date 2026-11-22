@@ -30,6 +30,7 @@ global.IS_REACT_ACT_ENVIRONMENT = true;
 
 const draftVersion = {
   id: 'draft-a', version: 1, status: 'DRAFT', approvalRequired: true, passingScore: 80,
+  createdAt: '2026-11-17T17:00:00.000Z',
   updatedAt: '2026-11-17T18:00:00.000Z',
   sections: [{
     id: 'section-a', stableKey: 'opening', title: 'Abertura', description: '', position: 1,
@@ -200,9 +201,26 @@ test('versão publicada é consultável, protegida e pode originar N+1', async (
   checklistTemplateService.get.mockResolvedValue(template([publishedVersion]));
   checklistTemplateService.cloneVersion.mockResolvedValue(template([{ ...draftVersion, id: 'draft-b', version: 2 }, publishedVersion]));
   await renderPage();
-  expect(document.body.textContent).toContain('Conteúdo protegido');
+  expect(document.body.textContent).toContain('Fica protegida para preservar rotinas e resultados');
+  expect(document.body.textContent).toContain('Para que serve cada versão?');
   expect(document.body.textContent).toContain('Temperatura correta?');
   expect(button('Salvar')).toBeFalsy();
-  await click(button('Criar nova versão'));
+  await click(button('Criar versão editável a partir desta'));
   expect(checklistTemplateService.cloneVersion).toHaveBeenCalledWith('template-a', 'published-a');
+});
+
+test('abre o rascunho existente ao tentar editar uma versão publicada', async () => {
+  mockParams = { templateId: 'template-a' };
+  const nextDraft = { ...draftVersion, id: 'draft-b', version: 2, sourceVersionId: 'published-a' };
+  checklistTemplateService.get.mockResolvedValue(template([nextDraft, publishedVersion]));
+  await renderPage();
+
+  await click(button('Versão 1'));
+  expect(document.body.textContent).toContain('Abrir rascunho V2');
+  await click(button('Abrir rascunho V2'));
+
+  expect(field('Pergunta 1').value).toBe('Temperatura correta?');
+  expect(button('Salvar')).toBeTruthy();
+  expect(checklistTemplateService.cloneVersion).not.toHaveBeenCalled();
+  expect(toast.success).toHaveBeenCalledWith('A versão 2 já está em edição como rascunho.');
 });
