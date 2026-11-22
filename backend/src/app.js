@@ -108,6 +108,7 @@ const app = express();
 // 🛡️ Configuração de CORS (Segurança)
 const DEFAULT_ALLOWED_ORIGINS = Object.freeze([
     'http://localhost:3000', // Ambiente de desenvolvimento (React padrão)
+    'http://127.0.0.1:3000', // Ambiente de desenvolvimento local por IP
     'https://commercial-inventory-system.vercel.app' // ⚠️ IMPORTANTE: Atualize este link quando tiver a URL final da Vercel
 ]);
 

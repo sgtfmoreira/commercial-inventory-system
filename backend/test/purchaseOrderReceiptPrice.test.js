@@ -124,3 +124,35 @@ test('recebimento inclui produto extra e não movimenta item ausente', async () 
     await assert.rejects(completeOrder('order', 'tenant', [{ id: 'another-order-item', adjustedQuantity: 1, unitPrice: 10 }], invoice), /não pertence/);
     await assert.rejects(completeOrder('order', 'tenant', [{ productId: 'extra', adjustedQuantity: -1, unitPrice: 10 }], invoice), /não negativos/);
 });
+
+test('recebimento preserva cotação compartilhada quando produto e fornecedor são centrais', async () => {
+    mockModule('../src/repositories/purchaseOrderRepository', {});
+    mockModule('../src/repositories/auditLogRepository', {});
+    mockModule('../src/utils/prisma', {});
+    mockModule('../src/services/stockMovementService', {});
+    mockModule('../src/services/commercialAgreementService', {});
+    delete require.cache[require.resolve('../src/services/purchaseOrderService')];
+    const { shouldPreserveSharedSupplierPrice } = require('../src/services/purchaseOrderService');
+    let supplierQueries = 0;
+    let catalogExists = true;
+    const tx = {
+        supplier: {
+            findFirst: async () => {
+                supplierQueries += 1;
+                return { organizationSupplierId: 'central-supplier' };
+            }
+        },
+        supplierCatalogItem: { findUnique: async () => catalogExists ? ({ id: 'catalog-item' }) : null }
+    };
+    assert.equal(await shouldPreserveSharedSupplierPrice(
+        { organizationProductId: 'central-product' }, 'supplier', 'establishment', tx
+    ), true);
+    assert.equal(await shouldPreserveSharedSupplierPrice(
+        { organizationProductId: null }, 'supplier', 'establishment', tx
+    ), false);
+    catalogExists = false;
+    assert.equal(await shouldPreserveSharedSupplierPrice(
+        { organizationProductId: 'central-product' }, 'supplier', 'establishment', tx
+    ), false);
+    assert.equal(supplierQueries, 2);
+});

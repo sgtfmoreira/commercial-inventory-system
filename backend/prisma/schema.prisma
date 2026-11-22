@@ -151,6 +151,7 @@ model Supplier {
   commercialAgreements CommercialAgreement[]
   purchaseInvoices     PurchaseInvoice[]
   bonusReceipts        BonusReceipt[]
+  cashbackSettlements  CommercialAgreementCashbackSettlement[]
   inventoryLots        InventoryLot[]
 
   @@unique([establishmentId, organizationSupplierId])
@@ -271,8 +272,8 @@ model PurchaseOrderItem {
 
   createdAt DateTime @default(now())
 
-  receivedStockQuantity Decimal? @db.Decimal(12, 3)
-  receivedUnitCost      Decimal? @db.Decimal(12, 4)
+  receivedStockQuantity Decimal?         @db.Decimal(12, 3)
+  receivedUnitCost      Decimal?         @db.Decimal(12, 4)
   receivedUnit          String?
   returns               PurchaseReturn[]
   inventoryLot          InventoryLot?
@@ -286,22 +287,22 @@ model PurchaseOrderItem {
 }
 
 model PurchaseReturn {
-  id                  String @id @default(uuid()) @db.Uuid
-  establishmentId     String @db.Uuid
-  requestId           String @db.Uuid
-  purchaseOrderItemId  String @db.Uuid
-  purchaseOrderItem    PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
-  stockMovementId     String @unique @db.Uuid
-  stockMovement       StockMovement @relation(fields: [stockMovementId], references: [id], onDelete: Restrict)
-  quantity            Decimal @db.Decimal(12, 3)
-  purchaseQuantity    Decimal @db.Decimal(18, 9)
-  unitCost            Decimal @db.Decimal(12, 4)
-  totalCost           Decimal @db.Decimal(14, 4)
+  id                  String            @id @default(uuid()) @db.Uuid
+  establishmentId     String            @db.Uuid
+  requestId           String            @db.Uuid
+  purchaseOrderItemId String            @db.Uuid
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  stockMovementId     String            @unique @db.Uuid
+  stockMovement       StockMovement     @relation(fields: [stockMovementId], references: [id], onDelete: Restrict)
+  quantity            Decimal           @db.Decimal(12, 3)
+  purchaseQuantity    Decimal           @db.Decimal(18, 9)
+  unitCost            Decimal           @db.Decimal(12, 4)
+  totalCost           Decimal           @db.Decimal(14, 4)
   returnedAt          DateTime
-  createdAt           DateTime @default(now())
-  recordedByUserId    String @db.Uuid
+  createdAt           DateTime          @default(now())
+  recordedByUserId    String            @db.Uuid
   reason              String
-  financialTreatment  String @default("PENDING")
+  financialTreatment  String            @default("PENDING")
   notes               String?
 
   @@unique([establishmentId, requestId])
@@ -345,7 +346,7 @@ model StockMovement {
   periodFrom             DateTime?
   periodTo               DateTime?
   recordedByUserId       String?                 @db.Uuid
-  purchaseReturn        PurchaseReturn?
+  purchaseReturn         PurchaseReturn?
 
   @@index([establishmentId])
   @@index([productId])
@@ -397,10 +398,10 @@ model establishments {
   organizationId String?
   organization   Organization?       @relation(fields: [organizationId], references: [id])
 
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @default(now()) @updatedAt
-  transfersFrom        StockTransfer[]       @relation("TransferFrom")
-  transfersTo          StockTransfer[]       @relation("TransferTo")
+  createdAt            DateTime                                @default(now())
+  updatedAt            DateTime                                @default(now()) @updatedAt
+  transfersFrom        StockTransfer[]                         @relation("TransferFrom")
+  transfersTo          StockTransfer[]                         @relation("TransferTo")
   stockMovements       StockMovement[]
   purchaseOrders       PurchaseOrder[]
   consumptionEvents    ConsumptionEvent[]
@@ -414,6 +415,7 @@ model establishments {
   commercialAgreements CommercialAgreement[]
   purchaseInvoices     PurchaseInvoice[]
   bonusReceipts        BonusReceipt[]
+  cashbackSettlements  CommercialAgreementCashbackSettlement[]
   inventoryLots        InventoryLot[]
   tableReservations    TableReservation[]
   tableOccupancies     TableOccupancy[]
@@ -434,7 +436,7 @@ model users {
   purchase_orders             PurchaseOrder[]
   productionOrders            ProductionOrder[]
   portioningOrders            PortioningOrder[]
-  responsibleCommercialEvents CommercialEvent[]      @relation("CommercialEventResponsible")
+  responsibleCommercialEvents CommercialEvent[]       @relation("CommercialEventResponsible")
   eventBudgetsCreated         EventBudget[]           @relation("EventBudgetCreatedBy")
   eventBudgetsApproved        EventBudget[]           @relation("EventBudgetApprovedBy")
   tableReservationsCreated    TableReservation[]      @relation("TableReservationCreatedBy")
@@ -455,29 +457,29 @@ enum TableReservationStatus {
 }
 
 model TableReservation {
-  id              String                 @id @default(uuid()) @db.Uuid
-  establishmentId String                 @db.Uuid
-  establishment   establishments         @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
-  tableNumber     Int
-  reservationDate DateTime               @db.Date
-  reservationTime DateTime               @db.Time(0)
-  customerName    String                 @db.VarChar(160)
-  phone           String?                @db.VarChar(30)
-  partySize       Int
-  reservationGroupId String?             @db.Uuid
-  notes           String?
-  status          TableReservationStatus @default(CONFIRMED)
-  version         Int                    @default(1)
-  createdByUserId String                 @db.Uuid
-  createdByUser   users                  @relation("TableReservationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  updatedByUserId String                 @db.Uuid
-  updatedByUser   users                  @relation("TableReservationUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
-  checkedInAt       DateTime?
-  checkedInByUserId String?                @db.Uuid
-  checkedInByUser   users?                 @relation("TableReservationCheckedInBy", fields: [checkedInByUserId], references: [id], onDelete: Restrict)
-  occupancy         TableOccupancy?
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
+  id                 String                 @id @default(uuid()) @db.Uuid
+  establishmentId    String                 @db.Uuid
+  establishment      establishments         @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  tableNumber        Int
+  reservationDate    DateTime               @db.Date
+  reservationTime    DateTime               @db.Time(0)
+  customerName       String                 @db.VarChar(160)
+  phone              String?                @db.VarChar(30)
+  partySize          Int
+  reservationGroupId String?                @db.Uuid
+  notes              String?
+  status             TableReservationStatus @default(CONFIRMED)
+  version            Int                    @default(1)
+  createdByUserId    String                 @db.Uuid
+  createdByUser      users                  @relation("TableReservationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedByUserId    String                 @db.Uuid
+  updatedByUser      users                  @relation("TableReservationUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  checkedInAt        DateTime?
+  checkedInByUserId  String?                @db.Uuid
+  checkedInByUser    users?                 @relation("TableReservationCheckedInBy", fields: [checkedInByUserId], references: [id], onDelete: Restrict)
+  occupancy          TableOccupancy?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   @@index([establishmentId, reservationDate])
   @@index([establishmentId, reservationDate, status])
@@ -656,7 +658,7 @@ model EventBudgetItem {
   sourceSnapshot             Json?
   sortOrder                  Int                  @default(0)
   createdAt                  DateTime             @default(now())
-  updatedAt                  DateTime              @updatedAt
+  updatedAt                  DateTime             @updatedAt
 
   @@index([budgetId, sortOrder])
   @@index([sourceId])
@@ -710,33 +712,46 @@ enum CommercialAgreementStatus {
   CLOSED
 }
 
+enum CommercialAgreementBenefitType {
+  PRODUCT_BONUS
+  CASHBACK_FIXED_PER_UNIT
+}
+
 enum BonusReceiptStatus {
   RECEIVED
   CANCELLED
 }
 
+enum CashbackSettlementStatus {
+  RECEIVED
+  CANCELLED
+}
+
 model CommercialAgreement {
-  id                 String                       @id @default(uuid()) @db.Uuid
-  establishmentId    String                       @db.Uuid
-  establishment      establishments               @relation(fields: [establishmentId], references: [id])
-  supplierId         String                       @db.Uuid
-  supplier           Supplier                     @relation(fields: [supplierId], references: [id])
-  name               String
-  brand              String?
-  buyQuantity        Decimal                      @db.Decimal(12, 3)
-  bonusQuantity      Decimal                      @db.Decimal(12, 3)
-  currentRemainder   Decimal                      @default(0) @db.Decimal(12, 3)
-  allowMixedProducts Boolean                      @default(true)
-  startsAt           DateTime
-  endsAt             DateTime?
-  status             CommercialAgreementStatus    @default(ACTIVE)
-  notes              String?
-  createdByUserId    String                       @db.Uuid
-  createdAt          DateTime                     @default(now())
-  updatedAt          DateTime                     @updatedAt
-  products           CommercialAgreementProduct[]
-  accruals           BonusAccrual[]
-  receipts           BonusReceipt[]
+  id                  String                                  @id @default(uuid()) @db.Uuid
+  establishmentId     String                                  @db.Uuid
+  establishment       establishments                          @relation(fields: [establishmentId], references: [id])
+  supplierId          String                                  @db.Uuid
+  supplier            Supplier                                @relation(fields: [supplierId], references: [id])
+  name                String
+  brand               String?
+  benefitType         CommercialAgreementBenefitType          @default(PRODUCT_BONUS)
+  buyQuantity         Decimal                                 @db.Decimal(12, 3)
+  bonusQuantity       Decimal                                 @db.Decimal(12, 3)
+  cashbackPerUnit     Decimal?                                @db.Decimal(14, 2)
+  currentRemainder    Decimal                                 @default(0) @db.Decimal(12, 3)
+  allowMixedProducts  Boolean                                 @default(true)
+  startsAt            DateTime
+  endsAt              DateTime?
+  status              CommercialAgreementStatus               @default(ACTIVE)
+  notes               String?
+  createdByUserId     String                                  @db.Uuid
+  createdAt           DateTime                                @default(now())
+  updatedAt           DateTime                                @updatedAt
+  products            CommercialAgreementProduct[]
+  accruals            BonusAccrual[]
+  receipts            BonusReceipt[]
+  cashbackSettlements CommercialAgreementCashbackSettlement[]
 
   @@index([establishmentId, status])
   @@index([supplierId, status])
@@ -797,20 +812,61 @@ model PurchaseInvoiceItem {
 }
 
 model BonusAccrual {
-  id                  String              @id @default(uuid()) @db.Uuid
-  agreementId         String              @db.Uuid
-  agreement           CommercialAgreement @relation(fields: [agreementId], references: [id])
-  invoiceId           String              @db.Uuid
-  invoice             PurchaseInvoice     @relation(fields: [invoiceId], references: [id])
-  eligibleQuantity    Decimal             @db.Decimal(12, 3)
-  balanceBefore       Decimal             @db.Decimal(12, 3)
-  earnedBonusQuantity Decimal             @db.Decimal(12, 3)
-  balanceAfter        Decimal             @db.Decimal(12, 3)
-  createdAt           DateTime            @default(now())
+  id                   String                                  @id @default(uuid()) @db.Uuid
+  agreementId          String                                  @db.Uuid
+  agreement            CommercialAgreement                     @relation(fields: [agreementId], references: [id])
+  invoiceId            String                                  @db.Uuid
+  invoice              PurchaseInvoice                         @relation(fields: [invoiceId], references: [id])
+  eligibleQuantity     Decimal                                 @db.Decimal(12, 3)
+  balanceBefore        Decimal                                 @db.Decimal(12, 3)
+  earnedBonusQuantity  Decimal                                 @db.Decimal(12, 3)
+  earnedCashbackAmount Decimal                                 @default(0) @db.Decimal(14, 2)
+  balanceAfter         Decimal                                 @db.Decimal(12, 3)
+  createdAt            DateTime                                @default(now())
+  cashbackAllocations  CommercialAgreementCashbackAllocation[]
 
   @@unique([agreementId, invoiceId])
   @@index([agreementId, createdAt])
   @@map("bonus_accruals")
+}
+
+model CommercialAgreementCashbackSettlement {
+  id                String                                  @id @default(uuid()) @db.Uuid
+  establishmentId   String                                  @db.Uuid
+  establishment     establishments                          @relation(fields: [establishmentId], references: [id])
+  supplierId        String                                  @db.Uuid
+  supplier          Supplier                                @relation(fields: [supplierId], references: [id])
+  agreementId       String                                  @db.Uuid
+  agreement         CommercialAgreement                     @relation(fields: [agreementId], references: [id])
+  amount            Decimal                                 @db.Decimal(14, 2)
+  receivedAt        DateTime
+  method            String
+  reference         String?
+  notes             String?
+  status            CashbackSettlementStatus                @default(RECEIVED)
+  createdByUserId   String                                  @db.Uuid
+  cancelledAt       DateTime?
+  cancelledByUserId String?                                 @db.Uuid
+  createdAt         DateTime                                @default(now())
+  allocations       CommercialAgreementCashbackAllocation[]
+
+  @@index([agreementId, receivedAt])
+  @@index([establishmentId, status])
+  @@map("commercial_agreement_cashback_settlements")
+}
+
+model CommercialAgreementCashbackAllocation {
+  id           String                                @id @default(uuid()) @db.Uuid
+  settlementId String                                @db.Uuid
+  settlement   CommercialAgreementCashbackSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  accrualId    String                                @db.Uuid
+  accrual      BonusAccrual                          @relation(fields: [accrualId], references: [id], onDelete: Restrict)
+  amount       Decimal                               @db.Decimal(14, 2)
+  createdAt    DateTime                              @default(now())
+
+  @@unique([settlementId, accrualId])
+  @@index([accrualId])
+  @@map("commercial_agreement_cashback_allocations")
 }
 
 model BonusReceipt {
@@ -1138,15 +1194,15 @@ model OrganizationProductReview {
 model StockTransfer {
   id String @id @default(uuid()) @db.Uuid
 
-  productId            String  @db.Uuid
-  destinationProductId String? @db.Uuid
-  quantity             Float
-  destinationQuantity  Float?
-  sourceUnit            String?
-  destinationUnit       String?
-  sourcePackQuantity    Float?
+  productId               String  @db.Uuid
+  destinationProductId    String? @db.Uuid
+  quantity                Float
+  destinationQuantity     Float?
+  sourceUnit              String?
+  destinationUnit         String?
+  sourcePackQuantity      Float?
   destinationPackQuantity Float?
-  conversionFactor      Float?
+  conversionFactor        Float?
 
   fromEstablishmentId String @db.Uuid
   toEstablishmentId   String @db.Uuid
@@ -1175,16 +1231,16 @@ model UserEstablishment {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  user          users          @relation(fields: [userId], references: [id])
-  establishment establishments @relation(fields: [establishmentId], references: [id])
-  access                      UserEstablishmentAccess?
-  accessConfigurationsCreated   AccessConfiguration[] @relation("AccessConfigurationCreatedBy")
-  accessConfigurationsActivated AccessConfiguration[] @relation("AccessConfigurationActivatedBy")
-  securityAuditEventsAsActor    SecurityAuditEvent[]   @relation("SecurityAuditActorMembership")
-  securityAuditEventsAsTarget   SecurityAuditEvent[]   @relation("SecurityAuditTargetMembership")
-  checklistTemplatesCreated     ChecklistTemplate[]        @relation("ChecklistTemplateCreatedBy")
-  checklistVersionsCreated      ChecklistTemplateVersion[] @relation("ChecklistTemplateVersionCreatedBy")
-  checklistVersionsPublished    ChecklistTemplateVersion[] @relation("ChecklistTemplateVersionPublishedBy")
+  user                          users                       @relation(fields: [userId], references: [id])
+  establishment                 establishments              @relation(fields: [establishmentId], references: [id])
+  access                        UserEstablishmentAccess?
+  accessConfigurationsCreated   AccessConfiguration[]       @relation("AccessConfigurationCreatedBy")
+  accessConfigurationsActivated AccessConfiguration[]       @relation("AccessConfigurationActivatedBy")
+  securityAuditEventsAsActor    SecurityAuditEvent[]        @relation("SecurityAuditActorMembership")
+  securityAuditEventsAsTarget   SecurityAuditEvent[]        @relation("SecurityAuditTargetMembership")
+  checklistTemplatesCreated     ChecklistTemplate[]         @relation("ChecklistTemplateCreatedBy")
+  checklistVersionsCreated      ChecklistTemplateVersion[]  @relation("ChecklistTemplateVersionCreatedBy")
+  checklistVersionsPublished    ChecklistTemplateVersion[]  @relation("ChecklistTemplateVersionPublishedBy")
   checklistRunsAssigned         ChecklistRun[]              @relation("ChecklistRunAssignedTo")
   checklistRunsCreated          ChecklistRun[]              @relation("ChecklistRunCreatedBy")
   checklistAssignmentsPrevious  ChecklistRunAssignment[]    @relation("ChecklistAssignmentPrevious")
@@ -1512,7 +1568,7 @@ model UserEstablishmentAccess {
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
-  userEstablishment UserEstablishment    @relation(fields: [userEstablishmentId], references: [id], onDelete: Restrict)
+  userEstablishment UserEstablishment     @relation(fields: [userEstablishmentId], references: [id], onDelete: Restrict)
   configurations    AccessConfiguration[]
 
   @@index([mode])
@@ -1699,8 +1755,8 @@ model ChecklistTemplate {
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
 
-  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  createdBy    UserEstablishment   @relation("ChecklistTemplateCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    UserEstablishment          @relation("ChecklistTemplateCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
   versions     ChecklistTemplateVersion[]
 
   @@unique([organizationId, code])
@@ -1725,13 +1781,13 @@ model ChecklistTemplateVersion {
   publishedAt             DateTime?
   retiredAt               DateTime?
 
-  template      ChecklistTemplate          @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  sourceVersion ChecklistTemplateVersion?  @relation("ChecklistTemplateVersionSource", fields: [sourceVersionId], references: [id], onDelete: Restrict)
+  template        ChecklistTemplate          @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  sourceVersion   ChecklistTemplateVersion?  @relation("ChecklistTemplateVersionSource", fields: [sourceVersionId], references: [id], onDelete: Restrict)
   derivedVersions ChecklistTemplateVersion[] @relation("ChecklistTemplateVersionSource")
-  createdBy     UserEstablishment          @relation("ChecklistTemplateVersionCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
-  publishedBy   UserEstablishment?         @relation("ChecklistTemplateVersionPublishedBy", fields: [publishedByMembershipId], references: [id], onDelete: Restrict)
-  sections      ChecklistTemplateSection[]
-  runs          ChecklistRun[]
+  createdBy       UserEstablishment          @relation("ChecklistTemplateVersionCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  publishedBy     UserEstablishment?         @relation("ChecklistTemplateVersionPublishedBy", fields: [publishedByMembershipId], references: [id], onDelete: Restrict)
+  sections        ChecklistTemplateSection[]
+  runs            ChecklistRun[]
 
   @@unique([templateId, version])
   @@index([templateId, status, createdAt])
@@ -1759,25 +1815,25 @@ model ChecklistTemplateSection {
 }
 
 model ChecklistTemplateItem {
-  id                     String                @id @default(uuid()) @db.Uuid
-  templateVersionId      String                @db.Uuid
-  sectionId              String                @db.Uuid
-  stableKey              String                @db.VarChar(80)
-  title                  String                @db.VarChar(200)
-  instructions           String?               @db.Text
-  position               Int
-  responseType           ChecklistResponseType
-  required               Boolean               @default(true)
-  allowNotApplicable     Boolean               @default(false)
-  critical               Boolean               @default(false)
-  evidenceRequired       Boolean               @default(false)
-  maxPoints              Decimal               @default(1) @db.Decimal(10, 2)
-  answerConfigJson       Json?
-  scoringConfigJson      Json?
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  id                 String                @id @default(uuid()) @db.Uuid
+  templateVersionId  String                @db.Uuid
+  sectionId          String                @db.Uuid
+  stableKey          String                @db.VarChar(80)
+  title              String                @db.VarChar(200)
+  instructions       String?               @db.Text
+  position           Int
+  responseType       ChecklistResponseType
+  required           Boolean               @default(true)
+  allowNotApplicable Boolean               @default(false)
+  critical           Boolean               @default(false)
+  evidenceRequired   Boolean               @default(false)
+  maxPoints          Decimal               @default(1) @db.Decimal(10, 2)
+  answerConfigJson   Json?
+  scoringConfigJson  Json?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
-  section ChecklistTemplateSection @relation(fields: [sectionId, templateVersionId], references: [id, templateVersionId], onDelete: Restrict)
+  section   ChecklistTemplateSection @relation(fields: [sectionId, templateVersionId], references: [id, templateVersionId], onDelete: Restrict)
   responses ChecklistResponse[]
 
   @@unique([templateVersionId, stableKey])
@@ -1802,11 +1858,11 @@ model ChecklistRun {
   updatedAt             DateTime           @updatedAt
   completedAt           DateTime?
 
-  organization    Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  establishment   establishments           @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
-  templateVersion ChecklistTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
-  assignedTo      UserEstablishment        @relation("ChecklistRunAssignedTo", fields: [assignedMembershipId], references: [id], onDelete: Restrict)
-  createdBy       UserEstablishment        @relation("ChecklistRunCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  organization    Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  establishment   establishments              @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  templateVersion ChecklistTemplateVersion    @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  assignedTo      UserEstablishment           @relation("ChecklistRunAssignedTo", fields: [assignedMembershipId], references: [id], onDelete: Restrict)
+  createdBy       UserEstablishment           @relation("ChecklistRunCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
   assignments     ChecklistRunAssignment[]
   events          ChecklistRunEvent[]
   attempts        ChecklistExecutionAttempt[]
@@ -1842,13 +1898,13 @@ model ChecklistRunAssignment {
 }
 
 model ChecklistRunEvent {
-  id                String                    @id @default(uuid()) @db.Uuid
-  runId             String                    @db.Uuid
+  id                String                @id @default(uuid()) @db.Uuid
+  runId             String                @db.Uuid
   sequence          Int
   eventType         ChecklistRunEventType
-  actorMembershipId String?                   @db.Uuid
+  actorMembershipId String?               @db.Uuid
   metadataJson      Json?
-  occurredAt        DateTime                  @default(now())
+  occurredAt        DateTime              @default(now())
 
   run   ChecklistRun       @relation(fields: [runId], references: [id], onDelete: Restrict)
   actor UserEstablishment? @relation("ChecklistRunEventActor", fields: [actorMembershipId], references: [id], onDelete: Restrict)
@@ -1874,8 +1930,8 @@ model ChecklistExecutionAttempt {
   submittedAt          DateTime?
   decidedAt            DateTime?
 
-  run       ChecklistRun              @relation(fields: [runId], references: [id], onDelete: Restrict)
-  executor  UserEstablishment         @relation("ChecklistAttemptExecutor", fields: [executorMembershipId], references: [id], onDelete: Restrict)
+  run       ChecklistRun        @relation(fields: [runId], references: [id], onDelete: Restrict)
+  executor  UserEstablishment   @relation("ChecklistAttemptExecutor", fields: [executorMembershipId], references: [id], onDelete: Restrict)
   responses ChecklistResponse[]
   approvals ChecklistApproval[]
 
@@ -1886,23 +1942,23 @@ model ChecklistExecutionAttempt {
 }
 
 model ChecklistResponse {
-  id                       String                   @id @default(uuid()) @db.Uuid
-  attemptId                String                   @db.Uuid
-  templateItemId           String                   @db.Uuid
-  valueJson                Json?
-  outcome                  ChecklistResponseOutcome @default(UNASSESSED)
-  note                     String?                  @db.VarChar(1000)
-  earnedPoints             Decimal?                 @db.Decimal(12, 2)
-  maxPointsSnapshot        Decimal                  @db.Decimal(12, 2)
-  answeredByMembershipId   String                   @db.Uuid
-  answeredAt               DateTime                 @default(now())
-  updatedAt                DateTime                 @updatedAt
-  version                  Int                      @default(1)
+  id                     String                   @id @default(uuid()) @db.Uuid
+  attemptId              String                   @db.Uuid
+  templateItemId         String                   @db.Uuid
+  valueJson              Json?
+  outcome                ChecklistResponseOutcome @default(UNASSESSED)
+  note                   String?                  @db.VarChar(1000)
+  earnedPoints           Decimal?                 @db.Decimal(12, 2)
+  maxPointsSnapshot      Decimal                  @db.Decimal(12, 2)
+  answeredByMembershipId String                   @db.Uuid
+  answeredAt             DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  version                Int                      @default(1)
 
-  attempt   ChecklistExecutionAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
-  item      ChecklistTemplateItem     @relation(fields: [templateItemId], references: [id], onDelete: Restrict)
-  answeredBy UserEstablishment        @relation("ChecklistResponseAnsweredBy", fields: [answeredByMembershipId], references: [id], onDelete: Restrict)
-  evidences ChecklistEvidence[]
+  attempt    ChecklistExecutionAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  item       ChecklistTemplateItem     @relation(fields: [templateItemId], references: [id], onDelete: Restrict)
+  answeredBy UserEstablishment         @relation("ChecklistResponseAnsweredBy", fields: [answeredByMembershipId], references: [id], onDelete: Restrict)
+  evidences  ChecklistEvidence[]
 
   @@unique([attemptId, templateItemId])
   @@index([templateItemId, outcome])
@@ -1933,12 +1989,12 @@ model ChecklistEvidence {
 }
 
 model ChecklistApproval {
-  id                   String                      @id @default(uuid()) @db.Uuid
-  attemptId            String                      @db.Uuid
+  id                   String                    @id @default(uuid()) @db.Uuid
+  attemptId            String                    @db.Uuid
   decision             ChecklistApprovalDecision
-  reason               String?                     @db.VarChar(1000)
-  approverMembershipId String                      @db.Uuid
-  createdAt            DateTime                    @default(now())
+  reason               String?                   @db.VarChar(1000)
+  approverMembershipId String                    @db.Uuid
+  createdAt            DateTime                  @default(now())
 
   attempt  ChecklistExecutionAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
   approver UserEstablishment         @relation("ChecklistApprovalApprover", fields: [approverMembershipId], references: [id], onDelete: Restrict)

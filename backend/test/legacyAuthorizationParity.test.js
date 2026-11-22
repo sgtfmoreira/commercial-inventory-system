@@ -217,7 +217,7 @@ test('inventário B1 cobre todas as rotas Express montadas atualmente', () => {
     const legacyRoutes = routes.filter(route => !DIRECT_CAPABILITY_ROUTE_FILES.has(route.sourceFile));
     const phaseB2Routes = routes.filter(route => route.sourceFile === 'userAccessRoutes.js');
     const checklistRoutes = routes.filter(route => route.sourceFile === 'checklistTemplateRoutes.js');
-    assert.equal(legacyRoutes.length, 195, 'Mudança nas 195 rotas legadas reconciliadas exige revisar o inventário B1');
+    assert.equal(legacyRoutes.length, 197, 'Mudança nas 197 rotas legadas reconciliadas exige revisar o inventário B1');
     assert.equal(phaseB2Routes.length, 12, 'Mudança nas APIs B2 exige revisão explícita do inventário');
     assert.equal(checklistRoutes.length, 28, 'Mudança nas APIs de checklist exige revisão explícita do inventário');
 
@@ -246,12 +246,12 @@ test('listas de papéis do inventário reproduzem requireRole para todos os pap�
     }
 });
 
-test('resolvedor B2 cobre as 185 rotas internas legadas reconciliadas com decisão idêntica', () => {
+test('resolvedor B2 cobre as 187 rotas internas legadas reconciliadas com decisão idêntica', () => {
     const internal = discoverRoutes().filter(route => (
         !DIRECT_CAPABILITY_ROUTE_FILES.has(route.sourceFile)
         && !['PUBLIC', 'SUPPLIER_PORTAL'].includes(currentPolicy(route).kind)
     ));
-    assert.equal(internal.length, 185);
+    assert.equal(internal.length, 187);
 
     for (const route of internal) {
         const previous = currentPolicy(route);

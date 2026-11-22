@@ -57,18 +57,56 @@ const catalog = async (organizationSupplierId, establishmentId) => {
         orderBy: { organizationProduct: { name: 'asc' } }
     });
 };
-const localLinks = async (catalogItem, db = prisma) => {
-    const rows = await db.productSupplier.findMany({
-        where: {
-            product: { organizationProductId: catalogItem.organizationProductId },
-            supplier: { organizationSupplierId: catalogItem.organizationSupplierId }
-        },
-        include: {
-            product: { select: { id: true, name: true, establishmentId: true, establishment: { select: { name: true } } } },
-            supplier: { select: { id: true, name: true, establishmentId: true } }
-        }
+const localTargets = async (catalogItem, db = prisma) => {
+    const [products, suppliers, links] = await Promise.all([
+        db.product.findMany({
+            where: { organizationProductId: catalogItem.organizationProductId, isActive: true },
+            select: { id: true, name: true, establishmentId: true, establishment: { select: { name: true } } }
+        }),
+        db.supplier.findMany({
+            where: { organizationSupplierId: catalogItem.organizationSupplierId },
+            select: { id: true, name: true, establishmentId: true }
+        }),
+        db.productSupplier.findMany({
+            where: {
+                product: { organizationProductId: catalogItem.organizationProductId },
+                supplier: { organizationSupplierId: catalogItem.organizationSupplierId }
+            },
+            include: {
+                product: { select: { id: true, name: true, establishmentId: true, establishment: { select: { name: true } } } },
+                supplier: { select: { id: true, name: true, establishmentId: true } }
+            }
+        })
+    ]);
+    const supplierByEstablishment = new Map(suppliers.map(item => [item.establishmentId, item]));
+    const linkByPair = new Map(links.map(item => [`${item.product.id}:${item.supplier.id}`, item]));
+    return products.flatMap(product => {
+        const supplier = supplierByEstablishment.get(product.establishmentId);
+        if (!supplier) return [];
+        const link = linkByPair.get(`${product.id}:${supplier.id}`);
+        return [{
+            id: link?.id || null,
+            price: link?.price ?? null,
+            product,
+            supplier,
+            willCreate: !link
+        }];
     });
-    return rows.filter(row => row.product.establishmentId === row.supplier.establishmentId);
+};
+const localLinks = async (catalogItem, db = prisma) => (await localTargets(catalogItem, db)).filter(item => item.id);
+const applyCatalogPrice = async (catalogItem, packagePrice, db = prisma) => {
+    const targets = await localTargets(catalogItem, db);
+    for (const target of targets) {
+        await db.productSupplier.upsert({
+            where: { productId_supplierId: { productId: target.product.id, supplierId: target.supplier.id } },
+            update: { price: packagePrice },
+            create: { productId: target.product.id, supplierId: target.supplier.id, price: packagePrice }
+        });
+        await db.supplierPriceHistory.create({
+            data: { productId: target.product.id, supplierId: target.supplier.id, price: packagePrice }
+        });
+    }
+    return targets;
 };
 const create = (input, establishmentId, userId) => prisma.$transaction(async tx => {
     const organizationId = await scope(establishmentId, tx);
@@ -82,7 +120,7 @@ const create = (input, establishmentId, userId) => prisma.$transaction(async tx 
         const nextNormalized = normalizedPrice(item.packagePrice, item.unitsPerPackage);
         let catalogItem = await tx.supplierCatalogItem.findUnique({ where: { organizationSupplierId_organizationProductId: { organizationSupplierId: input.organizationSupplierId, organizationProductId: item.organizationProductId } } });
         if (!catalogItem) catalogItem = await tx.supplierCatalogItem.create({ data: { organizationSupplierId: input.organizationSupplierId, organizationProductId: item.organizationProductId, supplierCode: item.supplierCode || null, commercialUnit: item.commercialUnit, unitsPerPackage: item.unitsPerPackage, packagePrice: item.packagePrice, normalizedUnitPrice: nextNormalized, available: item.available, minimumOrder: item.minimumOrder || null, deliveryLeadDays: item.deliveryLeadDays ?? null, validUntil: item.validUntil ? new Date(item.validUntil) : null, status: 'PENDING', lastSubmittedAt: new Date() } });
-        const links = await localLinks(catalogItem, tx);
+        const links = await localTargets(catalogItem, tx);
         await tx.supplierPriceUpdateItem.create({ data: { supplierPriceUpdateId: update.id, supplierCatalogItemId: catalogItem.id, previousPackagePrice: catalogItem.packagePrice, newPackagePrice: item.packagePrice, previousNormalizedPrice: catalogItem.normalizedUnitPrice, newNormalizedPrice: nextNormalized, commercialUnit: item.commercialUnit, unitsPerPackage: item.unitsPerPackage, available: item.available, deliveryLeadDays: item.deliveryLeadDays ?? null, affectedEstablishments: links.length } });
     }
     await tx.auditLog.create({ data: { actionType: 'SUBMIT', entityType: 'SUPPLIER_PRICE_UPDATE', entityId: update.id, description: `Lote com ${input.items.length} preço(s) enviado por ${userId}.`, establishmentId } });
@@ -98,10 +136,10 @@ const preview = async (id, establishmentId) => {
     const update = await getById(id, establishmentId);
     const items = [];
     for (const item of update.items) {
-        const links = await localLinks(item.catalogItem);
+        const links = await localTargets(item.catalogItem);
         const previous = Number(item.previousNormalizedPrice);
         const next = Number(item.newNormalizedPrice);
-        items.push({ id: item.id, product: item.catalogItem.organizationProduct, previousPackagePrice: Number(item.previousPackagePrice), newPackagePrice: Number(item.newPackagePrice), previousNormalizedPrice: previous, newNormalizedPrice: next, percentageVariation: previous > 0 ? ((next - previous) / previous) * 100 : null, affectedLinks: links.map(link => ({ productSupplierId: link.id, establishment: link.product.establishment.name, product: link.product.name, supplier: link.supplier.name, currentPrice: Number(link.price) })) });
+        items.push({ id: item.id, product: item.catalogItem.organizationProduct, previousPackagePrice: Number(item.previousPackagePrice), newPackagePrice: Number(item.newPackagePrice), previousNormalizedPrice: previous, newNormalizedPrice: next, percentageVariation: previous > 0 ? ((next - previous) / previous) * 100 : null, affectedLinks: links.map(link => ({ productSupplierId: link.id, establishment: link.product.establishment.name, product: link.product.name, supplier: link.supplier.name, currentPrice: link.price === null ? null : Number(link.price), willCreate: link.willCreate })) });
     }
     return { id: update.id, status: update.status, supplier: update.organizationSupplier, items };
 };
@@ -111,12 +149,8 @@ const apply = (id, establishmentId, userId) => prisma.$transaction(async tx => {
     if (update.status !== 'SUBMITTED') throw new AppError('Somente lotes enviados podem ser aplicados.', 409);
     let affected = 0;
     for (const item of update.items) {
-        const links = await localLinks(item.catalogItem, tx);
-        for (const link of links) {
-            await tx.productSupplier.update({ where: { id: link.id }, data: { price: item.newPackagePrice } });
-            await tx.supplierPriceHistory.create({ data: { productId: link.product.id, supplierId: link.supplier.id, price: item.newPackagePrice } });
-            affected += 1;
-        }
+        const links = await applyCatalogPrice(item.catalogItem, item.newPackagePrice, tx);
+        affected += links.length;
         await tx.supplierCatalogItem.update({ where: { id: item.catalogItem.id }, data: { commercialUnit: item.commercialUnit, unitsPerPackage: item.unitsPerPackage, packagePrice: item.newPackagePrice, normalizedUnitPrice: item.newNormalizedPrice, available: item.available, deliveryLeadDays: item.deliveryLeadDays, status: 'ACTIVE' } });
         await tx.supplierPriceUpdateItem.update({ where: { id: item.id }, data: { status: 'APPROVED', affectedEstablishments: links.length } });
     }
@@ -133,4 +167,4 @@ const reject = (id, reason, establishmentId, userId) => prisma.$transaction(asyn
     return rejected;
 }, TRANSACTION_OPTIONS);
 
-module.exports = { TRANSACTION_OPTIONS, normalizedPrice, list, catalog, getById, create, preview, apply, reject, localLinks };
+module.exports = { TRANSACTION_OPTIONS, normalizedPrice, list, catalog, getById, create, preview, apply, reject, localTargets, localLinks, applyCatalogPrice };
