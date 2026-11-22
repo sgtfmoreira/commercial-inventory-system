@@ -25,7 +25,8 @@ const calendarDateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value =
 const createScheduleSchema = z.object({
     templateVersionId: uuid,
     assignedMembershipId: uuid,
-    weekday: z.number().int().min(0).max(6),
+    weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7)
+        .refine(days => new Set(days).size === days.length, 'Não repita dias da semana.'),
     localTime: z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/),
     dueAfterMinutes: z.number().int().min(15).max(10080),
     startsOn: calendarDateInput,

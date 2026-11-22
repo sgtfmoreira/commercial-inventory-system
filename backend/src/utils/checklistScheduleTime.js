@@ -48,20 +48,31 @@ function normalizeDateInput(value) {
 }
 
 function nextWeeklyOccurrence({ weekday, localTime, startsOn, endsOn, from = new Date(), timeZone = BUSINESS_TIME_ZONE }) {
+    return nextSelectedOccurrence({ weekdays: [weekday], localTime, startsOn, endsOn, from, timeZone });
+}
+
+function nextDailyOccurrence({ localTime, startsOn, endsOn, from = new Date(), timeZone = BUSINESS_TIME_ZONE }) {
+    return nextSelectedOccurrence({ weekdays: [0, 1, 2, 3, 4, 5, 6], localTime, startsOn, endsOn, from, timeZone });
+}
+
+function nextSelectedOccurrence({ weekdays, localTime, startsOn, endsOn, from = new Date(), timeZone = BUSINESS_TIME_ZONE }) {
     const fromDate = new Date(from);
     const startKey = normalizeDateInput(startsOn);
     const todayKey = dateKey(fromDate, timeZone);
-    let candidateKey = startKey > todayKey ? startKey : todayKey;
-    candidateKey = addDays(candidateKey, (weekday - weekdayOf(candidateKey) + 7) % 7);
-    let candidate = zonedDateTimeToUtc(candidateKey, localTime, timeZone);
-    if (candidate <= fromDate) {
-        candidateKey = addDays(candidateKey, 7);
-        candidate = zonedDateTimeToUtc(candidateKey, localTime, timeZone);
-    }
+    const firstKey = startKey > todayKey ? startKey : todayKey;
+    const selected = new Set(weekdays);
     const endKey = endsOn ? normalizeDateInput(endsOn) : null;
-    return endKey && candidateKey > endKey ? null : candidate;
+    for (let offset = 0; offset <= 7; offset += 1) {
+        const candidateKey = addDays(firstKey, offset);
+        if (endKey && candidateKey > endKey) return null;
+        if (!selected.has(weekdayOf(candidateKey))) continue;
+        const candidate = zonedDateTimeToUtc(candidateKey, localTime, timeZone);
+        if (candidate > fromDate) return candidate;
+    }
+    return null;
 }
 
 module.exports = {
-    BUSINESS_TIME_ZONE, dateKey, addDays, weekdayOf, zonedDateTimeToUtc, nextWeeklyOccurrence
+    BUSINESS_TIME_ZONE, dateKey, addDays, weekdayOf, zonedDateTimeToUtc,
+    nextDailyOccurrence, nextWeeklyOccurrence, nextSelectedOccurrence
 };

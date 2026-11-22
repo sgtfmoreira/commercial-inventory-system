@@ -17,7 +17,7 @@ function startChecklistScheduleWorker(options = {}) {
     const configured = Number(process.env.CHECKLIST_SCHEDULER_INTERVAL_MS || 60_000);
     const intervalMs = Number.isFinite(configured) ? Math.max(15_000, configured) : 60_000;
     const execute = () => runChecklistScheduleCycle(options).catch(error => {
-        console.error('[CHECKLIST_SCHEDULER] Falha ao gerar ocorrências semanais:', error);
+        console.error('[CHECKLIST_SCHEDULER] Falha ao gerar ocorrências recorrentes:', error);
     });
     execute();
     const timer = setInterval(execute, intervalMs);

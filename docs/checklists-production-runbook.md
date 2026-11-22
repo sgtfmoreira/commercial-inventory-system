@@ -48,7 +48,8 @@ O `build` e o `start` do backend não executam migrations. Isso evita duas inst�
 - submeter, revisar com outro usuário e aprovar ou rejeitar;
 - abrir histórico e relatório, conferindo organização e estabelecimento;
 - confirmar `403` para usuário sem capability e isolamento entre tenants.
-- criar uma agenda semanal de teste com horário próximo e confirmar geração única;
+- criar uma agenda diária de teste com horário próximo e confirmar geração única para o responsável;
+- criar uma agenda semanal e confirmar que a frequência anterior continua funcionando;
 - pausar a agenda e confirmar que nenhuma nova ocorrência é materializada;
 
 ## Recuo seguro

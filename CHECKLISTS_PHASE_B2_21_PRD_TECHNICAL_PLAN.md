@@ -4,9 +4,9 @@
 > Worktree de referência: `C:\Users\Moreira\Desktop\commercial\.tools\integration-bastidor-permissions-b2`  
 > Branch: `integration/bastidor-permissions-b2`  
 > HEAD/base: `251d45bee486fc1af41e6ba2cff5ccc896dafc56`  
-> Estado em 22 de novembro de 2026: **Entregas 1–6 em produção; extensão B2.21.7 de agendamento semanal implementada e validada localmente, aguardando migration 68 e gate de produção**
+> Estado em 22 de novembro de 2026: **Entregas 1–6 em produção; extensões B2.21.7–8 de agendamento semanal e diário implementadas localmente, aguardando migrations 68–69 e gate de produção**
 
-> Nota de evolução: este documento preserva o plano e as decisões originais de 17 de novembro. O estado executado está detalhado nos relatórios B2.21.1–B2.21.7, incluindo [atribuição manual](./CHECKLISTS_PHASE_B2_21_3_MANUAL_ASSIGNMENT_REPORT.md) e [agendamento semanal](./CHECKLISTS_PHASE_B2_21_7_WEEKLY_SCHEDULING_REPORT.md). Menções posteriores a “proposta”, “nenhuma migration” ou recorrência fora do escopo devem ser lidas como gates históricos anteriores às autorizações já concluídas.
+> Nota de evolução: este documento preserva o plano e as decisões originais de 17 de novembro. O estado executado está detalhado nos relatórios B2.21.1–B2.21.8, incluindo [atribuição manual](./CHECKLISTS_PHASE_B2_21_3_MANUAL_ASSIGNMENT_REPORT.md), [agendamento semanal](./CHECKLISTS_PHASE_B2_21_7_WEEKLY_SCHEDULING_REPORT.md) e [agendamento diário](./CHECKLISTS_PHASE_B2_21_8_DAILY_SCHEDULING_REPORT.md). Menções posteriores a “proposta”, “nenhuma migration” ou recorrência fora do escopo devem ser lidas como gates históricos anteriores às autorizações já concluídas.
 
 ## 1. Resultado executivo
 

@@ -24,6 +24,8 @@ const History = styled.div`display:grid;gap:10px;margin-top:8px;`;
 const HistoryRow = styled.div`padding:10px;border-left:3px solid ${({ theme }) => theme.colors.primary};background:${({ theme }) => theme.colors.bgHover};border-radius:0 8px 8px 0;font-size:.88rem;strong{display:block;}small{color:${({ theme }) => theme.colors.textMuted};}`;
 const SectionTitle = styled.h2`margin:28px 0 14px;color:${({ theme }) => theme.colors.textPrimary};font-size:1.25rem;`;
 const ScheduleCard = styled(Card)`display:flex;flex-direction:column;gap:12px;border-left:4px solid ${({ theme }) => theme.colors.primary};`;
+const DayPicker = styled.div`display:grid;gap:8px;span{font-size:.9rem;font-weight:600;color:${({ theme }) => theme.colors.textSecondary};}`;
+const DayOptions = styled.div`display:grid;grid-template-columns:repeat(7,minmax(42px,1fr));gap:6px;button{padding:9px 5px;}@media(max-width:640px){grid-template-columns:repeat(4,1fr);}`;
 
 const statusLabel = { ASSIGNED: 'Atribuído', IN_PROGRESS: 'Em andamento', SUBMITTED: 'Enviado', APPROVED: 'Aprovado', REJECTED: 'Rejeitado', CANCELLED: 'Cancelado' };
 const scheduleStatusLabel = { ACTIVE: 'Ativo', PAUSED: 'Pausado', ENDED: 'Encerrado' };
@@ -57,7 +59,7 @@ export default function ChecklistRuns() {
   const [scheduling, setScheduling] = useState(false);
   const [reassigning, setReassigning] = useState(null);
   const [form, setForm] = useState({ templateVersionId: '', assignedMembershipId: '', dueAt: '' });
-  const [scheduleForm, setScheduleForm] = useState({ templateVersionId: '', assignedMembershipId: '', weekday: '1', localTime: '09:00', dueAfterHours: 24, startsOn: '', endsOn: '' });
+  const [scheduleForm, setScheduleForm] = useState({ templateVersionId: '', assignedMembershipId: '', weekdays: [0, 1, 2, 3, 4, 5, 6], localTime: '09:00', dueAfterHours: 24, startsOn: '', endsOn: '' });
   const [reassignForm, setReassignForm] = useState({ assignedMembershipId: '', reason: '' });
   const [saving, setSaving] = useState(false);
 
@@ -104,7 +106,7 @@ export default function ChecklistRuns() {
   const openSchedule = () => {
     const now = new Date();
     setScheduleForm({
-      templateVersionId: '', assignedMembershipId: '', weekday: String(now.getDay()),
+      templateVersionId: '', assignedMembershipId: '', weekdays: [0, 1, 2, 3, 4, 5, 6],
       localTime: '09:00', dueAfterHours: 24, startsOn: localDateKey(now), endsOn: '',
     });
     setError(''); setScheduling(true);
@@ -116,7 +118,7 @@ export default function ChecklistRuns() {
       await checklistRunService.createSchedule({
         templateVersionId: scheduleForm.templateVersionId,
         assignedMembershipId: scheduleForm.assignedMembershipId,
-        weekday: Number(scheduleForm.weekday),
+        weekdays: [...scheduleForm.weekdays].sort((a, b) => a - b),
         localTime: scheduleForm.localTime,
         dueAfterMinutes: Number(scheduleForm.dueAfterHours) * 60,
         startsOn: scheduleForm.startsOn,
@@ -168,7 +170,7 @@ export default function ChecklistRuns() {
     <Header>
       <Title><h1>Checklists operacionais</h1><p>Execute suas rotinas e, quando autorizado, distribua novas ocorrências.</p></Title>
       {capabilities['checklists.runs.manage'] && <HeaderActions>
-        <Button variant="outlined" onClick={openSchedule} disabled={!templates.length || !assignees.length}><MdSchedule /> Agendar semanal</Button>
+        <Button variant="outlined" onClick={openSchedule} disabled={!templates.length || !assignees.length}><MdSchedule /> Agendar rotina</Button>
         <Button onClick={openCreate} disabled={!templates.length || !assignees.length}><MdAddTask /> Nova execução</Button>
       </HeaderActions>}
     </Header>
@@ -188,10 +190,10 @@ export default function ChecklistRuns() {
         <Actions><Button variant="ghost" onClick={() => openReassign(run)} disabled={run.status !== 'ASSIGNED'}><MdAssignmentInd /> Reatribuir</Button></Actions>
       </RunCard>)}</Grid>}</>}
 
-    {capabilities['checklists.runs.manage'] && <><SectionTitle>Agendamentos semanais</SectionTitle>
-      {!schedules.length ? <EmptyState icon={<MdSchedule />} title="Nenhum agendamento semanal" subtitle="Crie uma rotina para gerar ocorrências automaticamente toda semana." /> :
+    {capabilities['checklists.runs.manage'] && <><SectionTitle>Agendamentos recorrentes</SectionTitle>
+      {!schedules.length ? <EmptyState icon={<MdSchedule />} title="Nenhum agendamento recorrente" subtitle="Crie uma rotina para gerar ocorrências automaticamente todos os dias ou toda semana." /> :
         <Grid>{schedules.map(schedule => <ScheduleCard key={schedule.id}>
-          <RunTop><div><h3>{schedule.template?.name}</h3><small>Versão {schedule.template?.version} · {weekdayOptions.find(day => day.value === String(schedule.weekday))?.label}, {schedule.localTime}</small></div><Badge>{scheduleStatusLabel[schedule.status] || schedule.status}</Badge></RunTop>
+          <RunTop><div><h3>{schedule.template?.name}</h3><small>Versão {schedule.template?.version} · {schedule.weekdays?.length === 7 ? 'Todos os dias' : schedule.weekdays?.map(day => weekdayOptions.find(option => option.value === String(day))?.label).join(', ')}, {schedule.localTime}</small></div><Badge>{scheduleStatusLabel[schedule.status] || schedule.status}</Badge></RunTop>
           <Meta><dt>Responsável</dt><dd>{schedule.assignedTo?.name}</dd><dt>Prazo</dt><dd>{schedule.dueAfterMinutes / 60} hora(s) após a geração</dd><dt>Próxima geração</dt><dd>{schedule.status === 'ACTIVE' ? new Date(schedule.nextRunAt).toLocaleString('pt-BR') : '—'}</dd>{schedule.endsOn && <><dt>Até</dt><dd>{new Date(`${schedule.endsOn}T12:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</dd></>}</Meta>
           {schedule.lastError && <ErrorBox>{schedule.lastError}</ErrorBox>}
           <Actions>{schedule.status !== 'ENDED' && <Button variant="ghost" onClick={() => toggleSchedule(schedule)} disabled={saving}>{schedule.status === 'ACTIVE' ? <><MdPause /> Pausar</> : <><MdPlayArrow /> Reativar</>}</Button>}</Actions>
@@ -208,17 +210,26 @@ export default function ChecklistRuns() {
       </Form>
     </Modal>
 
-    <Modal isOpen={scheduling} onClose={() => !saving && setScheduling(false)} title="Novo agendamento semanal">
+    <Modal isOpen={scheduling} onClose={() => !saving && setScheduling(false)} title="Novo agendamento recorrente">
       <Form onSubmit={submitSchedule}>
         {error && <ErrorBox role="alert">{error}</ErrorBox>}
         <Select label="Modelo publicado" required options={templateOptions} value={scheduleForm.templateVersionId} onChange={value => setScheduleForm(current => ({ ...current, templateVersionId: value }))} />
         <Select label="Responsável" required options={assigneeOptions} value={scheduleForm.assignedMembershipId} onChange={value => setScheduleForm(current => ({ ...current, assignedMembershipId: value }))} />
-        <Select label="Dia da semana" required options={weekdayOptions} value={scheduleForm.weekday} onChange={value => setScheduleForm(current => ({ ...current, weekday: value }))} />
+        <DayPicker><span>Dias em que o checklist aparecerá *</span><DayOptions>
+          {weekdayOptions.map(day => {
+            const value = Number(day.value);
+            const selected = scheduleForm.weekdays.includes(value);
+            return <Button key={day.value} type="button" variant={selected ? 'primary' : 'outlined'} aria-pressed={selected} onClick={() => setScheduleForm(current => ({
+              ...current,
+              weekdays: selected ? current.weekdays.filter(item => item !== value) : [...current.weekdays, value],
+            }))}>{day.label.slice(0, 3)}</Button>;
+          })}
+        </DayOptions></DayPicker>
         <Input label="Horário de geração" type="time" required value={scheduleForm.localTime} onChange={event => setScheduleForm(current => ({ ...current, localTime: event.target.value }))} />
         <Input label="Prazo após geração (horas)" type="number" min="0.25" max="168" step="0.25" required value={scheduleForm.dueAfterHours} onChange={event => setScheduleForm(current => ({ ...current, dueAfterHours: event.target.value }))} />
         <Input label="Início" type="date" required value={scheduleForm.startsOn} onChange={event => setScheduleForm(current => ({ ...current, startsOn: event.target.value }))} />
         <Input label="Término (opcional)" type="date" min={scheduleForm.startsOn} value={scheduleForm.endsOn} onChange={event => setScheduleForm(current => ({ ...current, endsOn: event.target.value }))} />
-        <Button type="submit" disabled={saving || !scheduleForm.templateVersionId || !scheduleForm.assignedMembershipId || !scheduleForm.startsOn}>{saving ? 'Agendando…' : 'Criar agendamento semanal'}</Button>
+        <Button type="submit" disabled={saving || !scheduleForm.templateVersionId || !scheduleForm.assignedMembershipId || !scheduleForm.weekdays.length || !scheduleForm.startsOn}>{saving ? 'Agendando…' : 'Criar agendamento'}</Button>
       </Form>
     </Modal>
 

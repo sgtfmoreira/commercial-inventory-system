@@ -149,21 +149,22 @@ test('reatribui somente para outra pessoa e exige justificativa', async () => {
   });
 });
 
-test('cria agendamento semanal com responsável, horário e prazo', async () => {
+test('cria agendamento nos dias marcados vinculado ao responsável, horário e prazo', async () => {
   await renderPage();
-  await click(button('Agendar semanal'));
+  await click(button('Agendar rotina'));
   const modelFields = [...document.body.querySelectorAll('label')].filter(label => label.textContent.includes('Modelo publicado'));
   const responsibleFields = [...document.body.querySelectorAll('label')].filter(label => label.textContent.includes('Responsável'));
   await change(modelFields.at(-1).querySelector('select'), 'version-a');
   await change(responsibleFields.at(-1).querySelector('select'), 'membership-a');
-  await change(field('Dia da semana'), '1');
+  await click(button('Dom'));
+  await click(button('Sáb'));
   await change(field('Horário de geração'), '08:30');
   await change(field('Prazo após geração'), '12');
-  const form = field('Dia da semana').closest('form');
+  const form = field('Horário de geração').closest('form');
   await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flush(); });
   expect(checklistRunService.createSchedule).toHaveBeenCalledWith(expect.objectContaining({
     templateVersionId: 'version-a', assignedMembershipId: 'membership-a',
-    weekday: 1, localTime: '08:30', dueAfterMinutes: 720,
+    weekdays: [1, 2, 3, 4, 5], localTime: '08:30', dueAfterMinutes: 720,
   }));
 });
 

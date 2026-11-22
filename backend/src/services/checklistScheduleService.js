@@ -3,7 +3,7 @@ const prisma = require('../utils/prisma');
 const AppError = require('../utils/AppError');
 const auditRepository = require('../repositories/securityAuditRepository');
 const runService = require('./checklistRunService');
-const { BUSINESS_TIME_ZONE, nextWeeklyOccurrence } = require('../utils/checklistScheduleTime');
+const { BUSINESS_TIME_ZONE, nextSelectedOccurrence } = require('../utils/checklistScheduleTime');
 
 const scheduleInclude = Object.freeze({
     templateVersion: { select: { id: true, version: true, status: true, template: { select: { id: true, name: true, category: true, status: true } } } },
@@ -30,7 +30,7 @@ function scheduleDto(schedule) {
         } : undefined,
         assignedTo: personDto(schedule.assignedTo),
         createdBy: personDto(schedule.createdBy),
-        weekday: schedule.weekday,
+        weekdays: schedule.weekdays,
         localTime: schedule.localTime,
         timeZone: schedule.timeZone,
         dueAfterMinutes: schedule.dueAfterMinutes,
@@ -76,11 +76,11 @@ async function validateReferences(context, input, db, options = {}) {
 
 async function create(context, input, options = {}) {
     const db = options.db || prisma;
-    const nextRunAt = nextWeeklyOccurrence({
-        weekday: input.weekday, localTime: input.localTime, startsOn: input.startsOn,
+    const nextRunAt = nextSelectedOccurrence({
+        weekdays: input.weekdays, localTime: input.localTime, startsOn: input.startsOn,
         endsOn: input.endsOn, from: options.now || new Date(), timeZone: BUSINESS_TIME_ZONE
     });
-    if (!nextRunAt) throw new AppError('O período informado não possui uma próxima execução semanal.', 422);
+    if (!nextRunAt) throw new AppError('O período informado não possui uma próxima execução.', 422);
     const schedule = await db.$transaction(async tx => {
         await validateReferences(context, input, tx, options);
         const created = await tx.checklistSchedule.create({
@@ -90,7 +90,7 @@ async function create(context, input, options = {}) {
                 templateVersionId: input.templateVersionId,
                 assignedMembershipId: input.assignedMembershipId,
                 createdByMembershipId: context.membershipId,
-                weekday: input.weekday,
+                weekdays: input.weekdays,
                 localTime: input.localTime,
                 timeZone: BUSINESS_TIME_ZONE,
                 dueAfterMinutes: input.dueAfterMinutes,
@@ -112,7 +112,7 @@ async function create(context, input, options = {}) {
             afterJson: {
                 templateVersionId: input.templateVersionId,
                 assignedMembershipId: input.assignedMembershipId,
-                weekday: input.weekday,
+                weekdays: input.weekdays,
                 localTime: input.localTime,
                 dueAfterMinutes: input.dueAfterMinutes,
                 startsOn: input.startsOn,
@@ -131,13 +131,13 @@ async function setStatus(context, scheduleId, input, options = {}) {
             where: { id: scheduleId, organizationId: context.organizationId, establishmentId: context.establishmentId },
             include: scheduleInclude
         });
-        if (!schedule) throw new AppError('Agendamento semanal não encontrado.', 404);
+        if (!schedule) throw new AppError('Agendamento não encontrado.', 404);
         if (schedule.version !== input.version) throw new AppError('O agendamento foi alterado em outra sessão.', 409);
         let nextRunAt = schedule.nextRunAt;
         if (input.status === 'ACTIVE') {
             await validateReferences(context, schedule, tx, options);
-            nextRunAt = nextWeeklyOccurrence({
-                weekday: schedule.weekday, localTime: schedule.localTime,
+            nextRunAt = nextSelectedOccurrence({
+                weekdays: schedule.weekdays, localTime: schedule.localTime,
                 startsOn: schedule.startsOn, endsOn: schedule.endsOn,
                 from: options.now || new Date(), timeZone: schedule.timeZone
             });
@@ -178,8 +178,8 @@ async function processOne(scheduleId, now, db, options = {}) {
             });
             if (!schedule || schedule.status !== 'ACTIVE' || schedule.nextRunAt > now) return { skipped: true };
             const scheduledFor = schedule.nextRunAt;
-            const nextRunAt = nextWeeklyOccurrence({
-                weekday: schedule.weekday, localTime: schedule.localTime,
+            const nextRunAt = nextSelectedOccurrence({
+                weekdays: schedule.weekdays, localTime: schedule.localTime,
                 startsOn: schedule.startsOn, endsOn: schedule.endsOn,
                 from: new Date(scheduledFor.getTime() + 1), timeZone: schedule.timeZone
             });

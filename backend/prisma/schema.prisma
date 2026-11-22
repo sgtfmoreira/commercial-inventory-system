@@ -1897,7 +1897,7 @@ model ChecklistSchedule {
   templateVersionId     String                  @db.Uuid
   assignedMembershipId  String                  @db.Uuid
   createdByMembershipId String                  @db.Uuid
-  weekday               Int
+  weekdays              Int[]
   localTime             String                  @db.VarChar(5)
   timeZone              String                  @default("America/Sao_Paulo") @db.VarChar(64)
   dueAfterMinutes       Int                     @default(1440)
