@@ -27,6 +27,7 @@ const create = asyncHandler(async (req, res) => res.status(201).json(await servi
 const reassign = asyncHandler(async (req, res) => res.json(await service.reassign(context(req), req.params.runId, req.body)));
 const listSchedules = asyncHandler(async (req, res) => res.json({ schedules: await scheduleService.list(context(req)) }));
 const createSchedule = asyncHandler(async (req, res) => res.status(201).json(await scheduleService.create(context(req), req.body)));
+const updateSchedule = asyncHandler(async (req, res) => res.json(await scheduleService.update(context(req), req.params.scheduleId, req.body)));
 const setScheduleStatus = asyncHandler(async (req, res) => res.json(await scheduleService.setStatus(context(req), req.params.scheduleId, req.body)));
 const listMine = asyncHandler(async (req, res) => res.json({ runs: await executionService.listMine(context(req)) }));
 const start = asyncHandler(async (req, res) => res.status(201).json(await executionService.start(context(req), req.params.runId)));
@@ -55,7 +56,7 @@ const report = asyncHandler(async (req, res) => res.json(await reportService.get
 
 module.exports = {
     context, capabilities, publishedTemplates, eligibleAssignees, list, get, create, reassign,
-    listSchedules, createSchedule, setScheduleStatus,
+    listSchedules, createSchedule, updateSchedule, setScheduleStatus,
     listMine, start, getAttempt, saveResponse, addEvidence, evidenceContent, submit,
     pendingApprovals, approvalAttempt, approve, reject, approvalEvidenceContent, history, report
 };

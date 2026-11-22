@@ -124,6 +124,80 @@ async function create(context, input, options = {}) {
     return scheduleDto(schedule);
 }
 
+async function update(context, scheduleId, input, options = {}) {
+    const db = options.db || prisma;
+    const updatedId = await db.$transaction(async tx => {
+        const schedule = await tx.checklistSchedule.findFirst({
+            where: { id: scheduleId, organizationId: context.organizationId, establishmentId: context.establishmentId },
+            include: scheduleInclude
+        });
+        if (!schedule) throw new AppError('Agendamento não encontrado.', 404);
+        if (schedule.version !== input.version) throw new AppError('O agendamento foi alterado em outra sessão.', 409);
+        if (schedule.status === 'ENDED') throw new AppError('Agendamentos encerrados não podem ser editados.', 409);
+
+        await validateReferences(context, input, tx, options);
+        const nextRunAt = nextSelectedOccurrence({
+            weekdays: input.weekdays, localTime: input.localTime, startsOn: input.startsOn,
+            endsOn: input.endsOn, from: options.now || new Date(), timeZone: schedule.timeZone
+        });
+        if (!nextRunAt) throw new AppError('O período informado não possui uma próxima execução.', 422);
+
+        const changed = await tx.checklistSchedule.updateMany({
+            where: { id: schedule.id, version: input.version, status: { in: ['ACTIVE', 'PAUSED'] } },
+            data: {
+                templateVersionId: input.templateVersionId,
+                assignedMembershipId: input.assignedMembershipId,
+                weekdays: input.weekdays,
+                localTime: input.localTime,
+                dueAfterMinutes: input.dueAfterMinutes,
+                startsOn: new Date(`${input.startsOn}T00:00:00.000Z`),
+                endsOn: input.endsOn ? new Date(`${input.endsOn}T00:00:00.000Z`) : null,
+                nextRunAt,
+                lastError: null,
+                version: { increment: 1 }
+            }
+        });
+        if (changed.count !== 1) throw new AppError('O agendamento foi alterado em outra sessão.', 409);
+
+        await (options.audit || auditRepository).create({
+            organizationId: context.organizationId,
+            establishmentId: context.establishmentId,
+            actorUserId: context.userId,
+            actorMembershipId: context.membershipId,
+            targetMembershipId: input.assignedMembershipId,
+            eventType: 'CHECKLIST_SCHEDULE_UPDATED',
+            entityType: 'ChecklistSchedule',
+            entityId: schedule.id,
+            beforeJson: {
+                templateVersionId: schedule.templateVersionId,
+                assignedMembershipId: schedule.assignedMembershipId,
+                weekdays: schedule.weekdays,
+                localTime: schedule.localTime,
+                dueAfterMinutes: schedule.dueAfterMinutes,
+                startsOn: dateOnly(schedule.startsOn),
+                endsOn: dateOnly(schedule.endsOn),
+                nextRunAt: iso(schedule.nextRunAt),
+                version: schedule.version
+            },
+            afterJson: {
+                templateVersionId: input.templateVersionId,
+                assignedMembershipId: input.assignedMembershipId,
+                weekdays: input.weekdays,
+                localTime: input.localTime,
+                dueAfterMinutes: input.dueAfterMinutes,
+                startsOn: input.startsOn,
+                endsOn: input.endsOn || null,
+                nextRunAt: nextRunAt.toISOString(),
+                version: schedule.version + 1
+            }
+        }, tx);
+        return schedule.id;
+    }, { isolationLevel: 'Serializable' });
+
+    const updated = await db.checklistSchedule.findUnique({ where: { id: updatedId }, include: scheduleInclude });
+    return scheduleDto(updated);
+}
+
 async function setStatus(context, scheduleId, input, options = {}) {
     const db = options.db || prisma;
     const updatedId = await db.$transaction(async tx => {
@@ -286,5 +360,5 @@ async function processDue(options = {}) {
 }
 
 module.exports = {
-    scheduleDto, deterministicRequestId, list, create, setStatus, processDue
+    scheduleDto, deterministicRequestId, list, create, update, setStatus, processDue
 };

@@ -12,7 +12,7 @@ jest.mock('../services/checklistRunService', () => ({
     capabilities: jest.fn(), listMine: jest.fn(), start: jest.fn(), getAttempt: jest.fn(),
     list: jest.fn(), publishedTemplates: jest.fn(), eligibleAssignees: jest.fn(),
     create: jest.fn(), reassign: jest.fn(), listSchedules: jest.fn(),
-    createSchedule: jest.fn(), setScheduleStatus: jest.fn(),
+    createSchedule: jest.fn(), updateSchedule: jest.fn(), setScheduleStatus: jest.fn(),
   },
 }));
 
@@ -79,6 +79,7 @@ beforeEach(() => {
   checklistRunService.reassign.mockResolvedValue({ ...run, version: 2, assignedTo: { membershipId: 'membership-b', name: 'Pessoa B' } });
   checklistRunService.listSchedules.mockResolvedValue([]);
   checklistRunService.createSchedule.mockResolvedValue({ id: 'schedule-a' });
+  checklistRunService.updateSchedule.mockResolvedValue({ id: 'schedule-a', version: 2 });
   checklistRunService.setScheduleStatus.mockResolvedValue({ id: 'schedule-a', status: 'PAUSED', version: 2 });
 });
 afterEach(async () => {
@@ -166,6 +167,32 @@ test('cria agendamento nos dias marcados vinculado ao responsável, horário e p
     templateVersionId: 'version-a', assignedMembershipId: 'membership-a',
     weekdays: [1, 2, 3, 4, 5], localTime: '08:30', dueAfterMinutes: 720,
   }));
+});
+
+test('edita uma rotina existente sem alterar ocorrências já geradas', async () => {
+  checklistRunService.listSchedules.mockResolvedValue([{
+    id: 'schedule-a', templateVersionId: 'version-a', version: 4, status: 'ACTIVE',
+    weekdays: [1, 3, 5], localTime: '08:00', dueAfterMinutes: 1440,
+    startsOn: '2026-11-23', endsOn: null, nextRunAt: '2026-11-23T11:00:00.000Z',
+    template: { id: 'template-a', name: 'Abertura segura', version: 1 },
+    assignedTo: { membershipId: 'membership-a', name: 'Pessoa A' },
+  }]);
+  await renderPage();
+  await click(button('Editar'));
+  expect(document.body.textContent).toContain('somente às próximas ocorrências');
+  expect(field('Horário de geração').value).toBe('08:00');
+  await change(field('Responsável'), 'membership-b');
+  await click(button('Ter'));
+  await change(field('Horário de geração'), '10:30');
+  await change(field('Prazo após geração'), '8');
+  const form = field('Horário de geração').closest('form');
+  await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flush(); });
+  expect(checklistRunService.updateSchedule).toHaveBeenCalledWith('schedule-a', {
+    templateVersionId: 'version-a', assignedMembershipId: 'membership-b',
+    weekdays: [1, 2, 3, 5], localTime: '10:30', dueAfterMinutes: 480,
+    startsOn: '2026-11-23', endsOn: null, version: 4,
+  });
+  expect(checklistRunService.createSchedule).not.toHaveBeenCalled();
 });
 
 test('informa quando não existem modelos ou responsáveis elegíveis', async () => {

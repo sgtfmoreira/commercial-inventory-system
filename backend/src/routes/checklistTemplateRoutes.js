@@ -36,6 +36,7 @@ router.get('/published-templates', canManageRuns, runController.publishedTemplat
 router.get('/eligible-assignees', canManageRuns, runController.eligibleAssignees);
 router.get('/schedules', canManageRuns, runController.listSchedules);
 router.post('/schedules', canManageRuns, validate(runSchemas.createScheduleSchema), runController.createSchedule);
+router.patch('/schedules/:scheduleId', validateParams(runSchemas.scheduleIdParamSchema), canManageRuns, validate(runSchemas.updateScheduleSchema), runController.updateSchedule);
 router.patch('/schedules/:scheduleId/status', validateParams(runSchemas.scheduleIdParamSchema), canManageRuns, validate(runSchemas.scheduleStatusSchema), runController.setScheduleStatus);
 router.get('/runs', canManageRuns, runController.list);
 router.post('/runs', canManageRuns, validate(runSchemas.createRunSchema), runController.create);

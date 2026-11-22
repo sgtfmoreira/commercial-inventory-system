@@ -219,7 +219,7 @@ test('inventário B1 cobre todas as rotas Express montadas atualmente', () => {
     const checklistRoutes = routes.filter(route => route.sourceFile === 'checklistTemplateRoutes.js');
     assert.equal(legacyRoutes.length, 197, 'Mudança nas 197 rotas legadas reconciliadas exige revisar o inventário B1');
     assert.equal(phaseB2Routes.length, 12, 'Mudança nas APIs B2 exige revisão explícita do inventário');
-    assert.equal(checklistRoutes.length, 31, 'Mudança nas APIs de checklist exige revisão explícita do inventário');
+    assert.equal(checklistRoutes.length, 32, 'Mudança nas APIs de checklist exige revisão explícita do inventário');
 
     for (const route of legacyRoutes) {
         const policy = currentPolicy(route);

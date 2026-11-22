@@ -30,6 +30,9 @@ const checklistRunService = {
   createSchedule(payload) {
     return api.post('/checklists/schedules', payload);
   },
+  updateSchedule(scheduleId, payload) {
+    return api.patch(`/checklists/schedules/${scheduleId}`, payload);
+  },
   setScheduleStatus(scheduleId, payload) {
     return api.patch(`/checklists/schedules/${scheduleId}/status`, payload);
   },

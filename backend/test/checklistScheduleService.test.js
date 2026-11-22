@@ -56,6 +56,9 @@ test('contrato recorrente aceita de um a sete dias distintos com datas e prazo s
     assert.equal(schemas.createScheduleSchema.safeParse({ ...valid, localTime: '25:00' }).success, false);
     assert.equal(schemas.createScheduleSchema.safeParse({ ...valid, startsOn: '2026-02-31' }).success, false);
     assert.equal(schemas.createScheduleSchema.safeParse({ ...valid, endsOn: '2026-11-22' }).success, false);
+    assert.equal(schemas.updateScheduleSchema.safeParse({ ...valid, version: 2 }).success, true);
+    assert.equal(schemas.updateScheduleSchema.safeParse(valid).success, false);
+    assert.equal(schemas.updateScheduleSchema.safeParse({ ...valid, version: 2, establishmentId: 'forged' }).success, false);
 });
 
 test('criação deriva tenant e ator do contexto e registra auditoria', async t => {
@@ -102,6 +105,77 @@ test('criação deriva tenant e ator do contexto e registra auditoria', async t 
     assert.equal(auditEvent.eventType, 'CHECKLIST_SCHEDULE_CREATED');
     assert.equal(auditEvent.actorUserId, context.userId);
     assert.equal(result.nextRunAt, '2026-11-23T12:00:00.000Z');
+});
+
+test('edição altera somente a rotina futura com lock otimista e auditoria', async t => {
+    const originalAssertEligible = runService.assertEligible;
+    t.after(() => { runService.assertEligible = originalAssertEligible; });
+    let eligibleMembershipId;
+    runService.assertEligible = async (_context, membershipId) => { eligibleMembershipId = membershipId; };
+
+    const context = {
+        userId: '10000000-0000-4000-8000-000000000001',
+        membershipId: '20000000-0000-4000-8000-000000000001',
+        establishmentId: '30000000-0000-4000-8000-000000000001',
+        organizationId: 'org-a', role: 'ADMIN'
+    };
+    const schedule = {
+        id: '70000000-0000-4000-8000-000000000001',
+        organizationId: context.organizationId,
+        establishmentId: context.establishmentId,
+        templateVersionId: '50000000-0000-4000-8000-000000000001',
+        assignedMembershipId: '60000000-0000-4000-8000-000000000001',
+        createdByMembershipId: context.membershipId,
+        weekdays: [1], localTime: '09:00', timeZone: 'America/Sao_Paulo', dueAfterMinutes: 1440,
+        startsOn: new Date('2026-11-23T00:00:00.000Z'), endsOn: null,
+        nextRunAt: new Date('2026-11-23T12:00:00.000Z'), status: 'ACTIVE', version: 3,
+        createdAt: new Date('2026-11-20T12:00:00.000Z'), updatedAt: new Date('2026-11-20T12:00:00.000Z'),
+        templateVersion: { version: 1, status: 'PUBLISHED', template: { id: 'template-a', name: 'Abertura', category: null, status: 'ACTIVE' } },
+        assignedTo: { id: '60000000-0000-4000-8000-000000000001', role: 'STAFF', isActive: true, user: { id: 'user-a', name: 'Pessoa A' } },
+        createdBy: { id: context.membershipId, user: { id: context.userId, name: 'Gestor' } }
+    };
+    const input = {
+        templateVersionId: '50000000-0000-4000-8000-000000000002',
+        assignedMembershipId: '60000000-0000-4000-8000-000000000002',
+        weekdays: [2, 4], localTime: '10:00', dueAfterMinutes: 720,
+        startsOn: '2026-11-23', endsOn: '2026-12-31', version: 3
+    };
+    let updateWhere;
+    let updateData;
+    let auditEvent;
+    const tx = {
+        checklistSchedule: {
+            findFirst: async () => schedule,
+            updateMany: async ({ where, data }) => { updateWhere = where; updateData = data; return { count: 1 }; }
+        },
+        checklistTemplateVersion: { findFirst: async () => ({ id: input.templateVersionId }) }
+    };
+    const db = {
+        $transaction: callback => callback(tx),
+        checklistSchedule: { findUnique: async () => ({
+            ...schedule,
+            ...updateData,
+            version: schedule.version + 1,
+            assignedTo: { id: input.assignedMembershipId, role: 'STAFF', isActive: true, user: { id: 'user-b', name: 'Pessoa B' } },
+            templateVersion: { version: 2, status: 'PUBLISHED', template: { id: 'template-a', name: 'Abertura', category: null, status: 'ACTIVE' } }
+        }) }
+    };
+    const audit = { create: async event => { auditEvent = event; } };
+
+    const result = await service.update(context, schedule.id, input, {
+        db, audit, now: new Date('2026-11-22T20:00:00.000Z')
+    });
+
+    assert.equal(updateWhere.version, 3);
+    assert.deepEqual(updateWhere.status, { in: ['ACTIVE', 'PAUSED'] });
+    assert.deepEqual(updateData.weekdays, [2, 4]);
+    assert.equal(updateData.nextRunAt.toISOString(), '2026-11-24T13:00:00.000Z');
+    assert.equal(eligibleMembershipId, input.assignedMembershipId);
+    assert.equal(auditEvent.eventType, 'CHECKLIST_SCHEDULE_UPDATED');
+    assert.equal(auditEvent.beforeJson.version, 3);
+    assert.equal(auditEvent.afterJson.version, 4);
+    assert.equal(result.version, 4);
+    assert.equal(result.assignedTo.name, 'Pessoa B');
 });
 
 test('gerador diário cria uma única ocorrência e avança para o dia seguinte', async () => {

@@ -22,7 +22,7 @@ const calendarDateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value =
     const parsed = new Date(`${value}T12:00:00.000Z`);
     return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }, 'Informe uma data real no formato YYYY-MM-DD.');
-const createScheduleSchema = z.object({
+const scheduleFields = {
     templateVersionId: uuid,
     assignedMembershipId: uuid,
     weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7)
@@ -31,11 +31,17 @@ const createScheduleSchema = z.object({
     dueAfterMinutes: z.number().int().min(15).max(10080),
     startsOn: calendarDateInput,
     endsOn: calendarDateInput.nullable().optional()
-}).strict().superRefine((value, ctx) => {
+};
+const validateSchedulePeriod = (value, ctx) => {
     if (value.endsOn && value.endsOn < value.startsOn) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['endsOn'], message: 'A data final deve ser igual ou posterior à inicial.' });
     }
-});
+};
+const createScheduleSchema = z.object(scheduleFields).strict().superRefine(validateSchedulePeriod);
+const updateScheduleSchema = z.object({
+    ...scheduleFields,
+    version: z.number().int().positive()
+}).strict().superRefine(validateSchedulePeriod);
 const scheduleStatusSchema = z.object({
     status: z.enum(['ACTIVE', 'PAUSED']),
     version: z.number().int().positive()
@@ -94,7 +100,7 @@ const reportQuerySchema = z.object({
 
 module.exports = {
     runIdParamSchema, scheduleIdParamSchema, createRunSchema, reassignRunSchema,
-    createScheduleSchema, scheduleStatusSchema, attemptIdParamSchema,
+    createScheduleSchema, updateScheduleSchema, scheduleStatusSchema, attemptIdParamSchema,
     responseIdParamSchema, evidenceIdParamSchema, responseParamsSchema,
     saveResponseSchema, submitAttemptSchema, approveAttemptSchema, rejectAttemptSchema,
     reportQuerySchema

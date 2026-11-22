@@ -118,6 +118,7 @@ test('router expõe templates, distribuição e agendamentos com políticas dire
         { path: '/eligible-assignees', methods: ['get'] },
         { path: '/schedules', methods: ['get'] },
         { path: '/schedules', methods: ['post'] },
+        { path: '/schedules/:scheduleId', methods: ['patch'] },
         { path: '/schedules/:scheduleId/status', methods: ['patch'] },
         { path: '/runs', methods: ['get'] },
         { path: '/runs', methods: ['post'] },
