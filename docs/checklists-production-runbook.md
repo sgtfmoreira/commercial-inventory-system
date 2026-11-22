@@ -29,14 +29,14 @@ Fora de produção, a ausência de `CHECKLIST_EVIDENCE_STORAGE_PROVIDER` mantém
 
 1. congelar o artefato de release e registrar o commit;
 2. confirmar backup/PITR e validar a conexão de produção;
-3. executar `npm run db:deploy` uma única vez como job controlado;
+3. executar `npm run db:deploy` como job controlado ou, na ausência de Shell no Render, permitir que o comando de start execute `prisma migrate deploy` antes do servidor;
 4. conferir `prisma migrate status` e os índices/constraints esperados;
 5. publicar o backend com as variáveis de storage e scheduler já configuradas;
 6. validar health check, autenticação e as rotas de checklist;
 7. publicar o frontend apontando para o backend validado;
 8. executar smoke test com uma organização e unidade de teste.
 
-O `build` e o `start` do backend não executam migrations. Isso evita duas instâncias concorrendo para alterar o schema durante um deploy.
+Nesta release, o `start` do backend executa `prisma migrate deploy` antes de iniciar o servidor. O Prisma aplica somente migrations pendentes sob lock; se a migration falhar, a nova instância não inicia e não deve receber tráfego. O comando não executa seed nem altera migrations já aplicadas.
 
 ## Smoke test
 
