@@ -1,6 +1,32 @@
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
+function resolveMigrationDatabaseUrl(environment) {
+    if (environment.DIRECT_URL?.trim()) return environment.DIRECT_URL.trim();
+
+    const runtimeUrl = environment.DATABASE_URL?.trim();
+    if (!runtimeUrl) {
+        throw new Error('DIRECT_URL ou DATABASE_URL deve estar configurada para aplicar migrations.');
+    }
+
+    let parsed;
+    try {
+        parsed = new URL(runtimeUrl);
+    } catch {
+        throw new Error('DATABASE_URL inválida; migrations não foram iniciadas.');
+    }
+
+    const isSupabasePooler = parsed.hostname.endsWith('.pooler.supabase.com');
+    if (isSupabasePooler && parsed.port === '6543') {
+        parsed.port = '5432';
+        parsed.searchParams.delete('pgbouncer');
+        parsed.searchParams.delete('connection_limit');
+        return parsed.toString();
+    }
+
+    return runtimeUrl;
+}
+
 function runPendingMigrations(options = {}) {
     const environment = options.environment || process.env;
     const logger = options.logger || console;
@@ -12,9 +38,15 @@ function runPendingMigrations(options = {}) {
 
     const prismaCli = options.prismaCli || require.resolve('prisma/build/index.js');
     const spawn = options.spawn || spawnSync;
+    const migrationDatabaseUrl = resolveMigrationDatabaseUrl(environment);
+    const migrationEnvironment = {
+        ...environment,
+        DATABASE_URL: migrationDatabaseUrl,
+        DIRECT_URL: migrationDatabaseUrl
+    };
     const result = spawn(process.execPath, [prismaCli, 'migrate', 'deploy'], {
         cwd: path.resolve(__dirname, '../..'),
-        env: environment,
+        env: migrationEnvironment,
         stdio: options.stdio || 'inherit'
     });
 
@@ -28,3 +60,4 @@ function runPendingMigrations(options = {}) {
 }
 
 module.exports = runPendingMigrations;
+module.exports.resolveMigrationDatabaseUrl = resolveMigrationDatabaseUrl;
