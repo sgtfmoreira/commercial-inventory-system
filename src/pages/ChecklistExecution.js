@@ -97,7 +97,17 @@ export default function ChecklistExecution() {
       if (!responseId) responseId = (await save(item)).id;
       const evidence = await checklistRunService.uploadEvidence(responseId, file);
       update(item.id, { evidences: [...(answers[item.id]?.evidences || []), evidence], responseId });
-    } catch (err) { setError(message(err)); }
+    } catch (err) {
+      URL.revokeObjectURL(preview);
+      previewUrls.current.delete(preview);
+      setPreviews(current => {
+        if (current[item.id] !== preview) return current;
+        const next = { ...current };
+        delete next[item.id];
+        return next;
+      });
+      setError(message(err));
+    }
     finally { setBusy(''); }
   };
 
@@ -145,7 +155,7 @@ export default function ChecklistExecution() {
           {item.responseType === 'TEXT' && <Textarea label="Resposta" value={answer.value} disabled={disabled} onChange={event => update(item.id, { value: event.target.value })} />}
           {item.allowNotApplicable && <Row><CheckboxControl checked={Boolean(answer.notApplicable)} onChange={event => update(item.id, { notApplicable: event.target.checked })} /><span>Não se aplica</span></Row>}
           <Textarea label="Observação" value={answer.note} onChange={event => update(item.id, { note: event.target.value })} />
-          {(item.evidenceRequired || answer.responseId) && <div><label><Button as="span" variant="ghost"><MdCameraAlt /> {busy === `photo-${item.id}` ? 'Enviando…' : 'Adicionar foto'}</Button><Input aria-label="Selecionar foto" hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event => upload(item, event.target.files?.[0])} /></label><p>{answer.evidences?.length || 0} foto(s) confirmada(s)</p>{previews[item.id] && <PhotoPreview src={previews[item.id]} alt="Prévia da evidência" />}</div>}
+          {(item.evidenceRequired || answer.responseId) && <div><label><Button as="span" variant="ghost"><MdCameraAlt /> {busy === `photo-${item.id}` ? 'Enviando…' : 'Adicionar foto'}</Button><Input aria-label="Selecionar foto" hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; upload(item, file); }} /></label><p>{answer.evidences?.length || 0} foto(s) confirmada(s)</p>{previews[item.id] && <PhotoPreview src={previews[item.id]} alt="Prévia da evidência confirmada" />}</div>}
           <Actions><span>{answer.responseId ? 'Progresso salvo' : 'Ainda não salvo'}</span><Button onClick={() => save(item)} disabled={busy === item.id}><MdSave /> {busy === item.id ? 'Salvando…' : 'Salvar item'}</Button></Actions>
         </Item>;
       })}

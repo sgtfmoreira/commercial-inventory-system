@@ -10,7 +10,11 @@ const OBJECT_KEY_PATTERN = /^[0-9a-f-]{36}\.(jpg|png|webp)$/;
 const SUPABASE_PROVIDER = 'SUPABASE';
 const LOCAL_PROVIDER = 'LOCAL_FS';
 
-function normalizeProvider(value = process.env.CHECKLIST_EVIDENCE_PROVIDER) {
+function configuredProvider(environment = process.env) {
+    return environment.CHECKLIST_EVIDENCE_STORAGE_PROVIDER || environment.CHECKLIST_EVIDENCE_PROVIDER;
+}
+
+function normalizeProvider(value = configuredProvider()) {
     const candidate = String(value || '').trim().toUpperCase();
     if (!candidate) {
         if (process.env.NODE_ENV === 'production') {
@@ -201,6 +205,6 @@ async function remove(objectKey, provider) {
 
 module.exports = {
     MAX_BYTES, LOCAL_PROVIDER, SUPABASE_PROVIDER,
-    detect, sanitize, normalizeProvider, supabaseConfig, createSupabaseStorage,
+    detect, sanitize, configuredProvider, normalizeProvider, supabaseConfig, createSupabaseStorage,
     save, read, remove
 };

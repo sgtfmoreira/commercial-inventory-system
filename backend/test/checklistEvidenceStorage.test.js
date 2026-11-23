@@ -54,8 +54,10 @@ test('storage local rejeita conteúdo arbitrário e chaves não opacas', async (
 test('produção falha fechada sem provider explícito', () => {
     const previousNodeEnv = process.env.NODE_ENV;
     const previousProvider = process.env.CHECKLIST_EVIDENCE_PROVIDER;
+    const previousStorageProvider = process.env.CHECKLIST_EVIDENCE_STORAGE_PROVIDER;
     process.env.NODE_ENV = 'production';
     delete process.env.CHECKLIST_EVIDENCE_PROVIDER;
+    delete process.env.CHECKLIST_EVIDENCE_STORAGE_PROVIDER;
     try {
         assert.throws(() => storage.normalizeProvider(), error => error.statusCode === 503);
     } finally {
@@ -63,7 +65,20 @@ test('produção falha fechada sem provider explícito', () => {
         else process.env.NODE_ENV = previousNodeEnv;
         if (previousProvider === undefined) delete process.env.CHECKLIST_EVIDENCE_PROVIDER;
         else process.env.CHECKLIST_EVIDENCE_PROVIDER = previousProvider;
+        if (previousStorageProvider === undefined) delete process.env.CHECKLIST_EVIDENCE_STORAGE_PROVIDER;
+        else process.env.CHECKLIST_EVIDENCE_STORAGE_PROVIDER = previousStorageProvider;
     }
+});
+
+test('provider documentado prevalece e nome legado continua compatível', () => {
+    assert.equal(storage.configuredProvider({
+        CHECKLIST_EVIDENCE_STORAGE_PROVIDER: 'SUPABASE',
+        CHECKLIST_EVIDENCE_PROVIDER: 'LOCAL_FS'
+    }), 'SUPABASE');
+    assert.equal(storage.configuredProvider({ CHECKLIST_EVIDENCE_PROVIDER: 'SUPABASE' }), 'SUPABASE');
+    assert.equal(storage.normalizeProvider(storage.configuredProvider({
+        CHECKLIST_EVIDENCE_STORAGE_PROVIDER: 'SUPABASE'
+    })), 'SUPABASE');
 });
 
 test('storage Supabase usa bucket privado, confirma checksum e remove objeto', async () => {

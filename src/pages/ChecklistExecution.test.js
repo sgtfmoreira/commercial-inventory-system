@@ -49,6 +49,7 @@ const button = label => [...document.body.querySelectorAll('button')].find(eleme
 
 beforeEach(() => {
   jest.clearAllMocks();
+  URL.createObjectURL.mockReturnValue('blob:preview');
   checklistRunService.getAttempt.mockResolvedValue(attempt);
   checklistRunService.saveResponse.mockResolvedValue({
     id: 'response-a', templateItemId: 'item-a', version: 1, outcome: 'PASS', evidences: [],
@@ -85,11 +86,33 @@ test('salva resposta incremental, envia foto e submete a tentativa', async () =>
     await flush();
   });
   expect(checklistRunService.uploadEvidence).toHaveBeenCalledWith('response-a', file);
+  expect(document.body.textContent).toContain('1 foto(s) confirmada(s)');
 
   await act(async () => { button('Enviar checklist').dispatchEvent(new MouseEvent('click', { bubbles: true })); await flush(); });
   expect(checklistRunService.submit).toHaveBeenCalledWith('attempt-a', 1);
   expect(document.body.textContent).toContain('Pontuação:');
   expect(document.body.textContent).toContain('100%');
+});
+
+test('remove a prévia local quando o storage rejeita o upload e permite nova tentativa', async () => {
+  checklistRunService.uploadEvidence.mockRejectedValue(new Error('Storage de evidências não configurado para produção.'));
+  await renderPage();
+
+  const input = document.body.querySelector('input[type="file"]');
+  const file = new File(['png'], 'evidence.png', { type: 'image/png' });
+  await act(async () => {
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+    await flush();
+  });
+
+  expect(checklistRunService.uploadEvidence).toHaveBeenCalledWith('response-a', file);
+  expect(document.body.textContent).toContain('Storage de evidências não configurado para produção.');
+  expect(document.body.textContent).toContain('0 foto(s) confirmada(s)');
+  expect(document.body.querySelector('img[alt="Prévia da evidência confirmada"]')).toBeNull();
+  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview');
+  expect(input.value).toBe('');
 });
 
 test('exibe decisão final imutável e o motivo de rejeição', async () => {

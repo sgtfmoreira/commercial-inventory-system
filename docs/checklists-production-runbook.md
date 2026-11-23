@@ -21,6 +21,10 @@ CHECKLIST_SCHEDULER_ENABLED=true
 CHECKLIST_SCHEDULER_INTERVAL_MS=60000
 ```
 
+`CHECKLIST_EVIDENCE_STORAGE_PROVIDER` é o nome canônico. O backend também aceita
+`CHECKLIST_EVIDENCE_PROVIDER` temporariamente para compatibilidade com ambientes
+configurados antes desta correção, mas novas configurações devem usar o nome canônico.
+
 O bucket deve permanecer privado. A `SUPABASE_SERVICE_ROLE_KEY` não pode usar prefixo `REACT_APP_`, ser enviada ao navegador ou ser registrada em logs.
 
 Fora de produção, a ausência de `CHECKLIST_EVIDENCE_STORAGE_PROVIDER` mantém o adapter local. Em produção, a ausência ou configuração inválida provoca falha fechada nas operações de evidência.
