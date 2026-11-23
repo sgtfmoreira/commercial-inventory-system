@@ -117,11 +117,42 @@ test('storage Supabase usa bucket privado, confirma checksum e remove objeto', a
     await assert.rejects(remote.read(saved.objectKey), error => error.statusCode === 404);
 });
 
+test('storage Supabase envia a secret key atual somente como apikey', async () => {
+    const requests = [];
+    const remote = storage.createSupabaseStorage({
+        url: 'https://example.supabase.co', apiKey: 'sb_secret_example', bucket: 'checklist-evidence'
+    }, async (url, options) => {
+        requests.push({ url, options });
+        return { ok: true, status: 200, arrayBuffer: async () => samplePng() };
+    });
+
+    await remote.read('00000000-0000-4000-8000-000000000000.png');
+    assert.equal(requests[0].options.headers.apikey, 'sb_secret_example');
+    assert.equal(requests[0].options.headers.Authorization, undefined);
+});
+
+test('configuração Supabase prioriza secret key atual e aceita service role legada', () => {
+    const current = storage.supabaseConfig({
+        SUPABASE_URL: 'https://example.supabase.co',
+        SUPABASE_SECRET_KEY: 'sb_secret_current',
+        SUPABASE_SERVICE_ROLE_KEY: 'legacy',
+        CHECKLIST_EVIDENCE_BUCKET: 'checklist-evidence'
+    });
+    assert.equal(current.apiKey, 'sb_secret_current');
+
+    const legacy = storage.supabaseConfig({
+        SUPABASE_URL: 'https://example.supabase.co',
+        SUPABASE_SERVICE_ROLE_KEY: 'legacy',
+        CHECKLIST_EVIDENCE_BUCKET: 'checklist-evidence'
+    });
+    assert.equal(legacy.apiKey, 'legacy');
+});
+
 test('configuração Supabase rejeita segredo, URL ou bucket ausente', () => {
     assert.throws(() => storage.supabaseConfig({
         SUPABASE_URL: 'https://example.supabase.co', CHECKLIST_EVIDENCE_BUCKET: 'checklist-evidence'
     }), error => error.statusCode === 503);
     assert.throws(() => storage.supabaseConfig({
-        SUPABASE_URL: 'http://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'secret', CHECKLIST_EVIDENCE_BUCKET: 'checklist-evidence'
+        SUPABASE_URL: 'http://example.supabase.co', SUPABASE_SECRET_KEY: 'sb_secret_example', CHECKLIST_EVIDENCE_BUCKET: 'checklist-evidence'
     }), error => error.statusCode === 503);
 });

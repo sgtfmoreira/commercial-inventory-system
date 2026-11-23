@@ -15,7 +15,7 @@ Este procedimento publica o módulo de checklists sem depender do filesystem ef�
 ```text
 CHECKLIST_EVIDENCE_STORAGE_PROVIDER=SUPABASE
 SUPABASE_URL=https://<projeto>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<segredo somente do backend>
+SUPABASE_SECRET_KEY=<chave sb_secret_ somente do backend>
 CHECKLIST_EVIDENCE_BUCKET=checklist-evidence
 CHECKLIST_SCHEDULER_ENABLED=true
 CHECKLIST_SCHEDULER_INTERVAL_MS=60000
@@ -25,7 +25,10 @@ CHECKLIST_SCHEDULER_INTERVAL_MS=60000
 `CHECKLIST_EVIDENCE_PROVIDER` temporariamente para compatibilidade com ambientes
 configurados antes desta correção, mas novas configurações devem usar o nome canônico.
 
-O bucket deve permanecer privado. A `SUPABASE_SERVICE_ROLE_KEY` não pode usar prefixo `REACT_APP_`, ser enviada ao navegador ou ser registrada em logs.
+`SUPABASE_SECRET_KEY` é o nome canônico para a chave atual `sb_secret_`. O backend
+também aceita temporariamente a chave JWT legada em `SUPABASE_SERVICE_ROLE_KEY`.
+O bucket deve permanecer privado. Nenhuma dessas chaves pode usar prefixo
+`REACT_APP_`, ser enviada ao navegador ou ser registrada em logs.
 
 Fora de produção, a ausência de `CHECKLIST_EVIDENCE_STORAGE_PROVIDER` mantém o adapter local. Em produção, a ausência ou configuração inválida provoca falha fechada nas operações de evidência.
 

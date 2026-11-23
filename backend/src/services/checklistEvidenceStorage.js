@@ -30,9 +30,9 @@ function normalizeProvider(value = configuredProvider()) {
 
 function supabaseConfig(environment = process.env) {
     const url = String(environment.SUPABASE_URL || '').trim().replace(/\/$/, '');
-    const serviceRoleKey = String(environment.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+    const apiKey = String(environment.SUPABASE_SECRET_KEY || environment.SUPABASE_SERVICE_ROLE_KEY || '').trim();
     const bucket = String(environment.CHECKLIST_EVIDENCE_BUCKET || '').trim();
-    if (!url || !serviceRoleKey || !bucket) {
+    if (!url || !apiKey || !bucket) {
         throw new AppError('Storage privado de evidências não configurado.', 503);
     }
     let parsed;
@@ -43,7 +43,7 @@ function supabaseConfig(environment = process.env) {
     if (!/^[a-z0-9][a-z0-9._-]{1,62}$/i.test(bucket)) {
         throw new AppError('Bucket de evidências inválido.', 503);
     }
-    return { url, serviceRoleKey, bucket };
+    return { url, apiKey, bucket };
 }
 
 function detect(buffer) {
@@ -129,9 +129,10 @@ async function saveLocal(buffer, type) {
 
 function createSupabaseStorage(config = supabaseConfig(), fetchImpl = global.fetch) {
     if (typeof fetchImpl !== 'function') throw new AppError('Cliente do storage de evidências indisponível.', 503);
+    const apiKey = config.apiKey || config.serviceRoleKey;
     const headers = contentType => ({
-        apikey: config.serviceRoleKey,
-        Authorization: `Bearer ${config.serviceRoleKey}`,
+        apikey: apiKey,
+        ...(!apiKey.startsWith('sb_') ? { Authorization: `Bearer ${apiKey}` } : {}),
         ...(contentType ? { 'Content-Type': contentType, 'x-upsert': 'false' } : {})
     });
     const endpoint = objectKey => `${config.url}/storage/v1/object/${encodeURIComponent(config.bucket)}/${encodeURIComponent(validateObjectKey(objectKey))}`;
