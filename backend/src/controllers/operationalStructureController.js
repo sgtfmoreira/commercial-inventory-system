@@ -25,9 +25,14 @@ const getRole = asyncHandler(async (req, res) => res.json(await service.getRole(
 const createRole = asyncHandler(async (req, res) => res.status(201).json(await service.createRole(context(req), req.body)));
 const updateRole = asyncHandler(async (req, res) => res.json(await service.updateRole(context(req), req.params.id, req.body)));
 const setRoleStatus = asyncHandler(async (req, res) => res.json(await service.setRoleStatus(context(req), req.params.id, req.body)));
+const listMemberships = asyncHandler(async (req, res) => res.json({ memberships: await service.listMemberships(context(req), req.query) }));
+const listMembershipRoles = asyncHandler(async (req, res) => res.json({ assignments: await service.listMembershipRoles(context(req), req.params.membershipId) }));
+const createMembershipRole = asyncHandler(async (req, res) => res.status(201).json(await service.createMembershipRole(context(req), req.params.membershipId, req.body)));
+const endMembershipRole = asyncHandler(async (req, res) => res.json(await service.endMembershipRole(context(req), req.params.id, req.body)));
 
 module.exports = {
     context, capabilities,
     listSectors, getSector, createSector, updateSector, setSectorStatus,
-    listRoles, getRole, createRole, updateRole, setRoleStatus
+    listRoles, getRole, createRole, updateRole, setRoleStatus,
+    listMemberships, listMembershipRoles, createMembershipRole, endMembershipRole
 };

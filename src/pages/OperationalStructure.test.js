@@ -8,7 +8,7 @@ import { lightTheme } from '../styles/theme';
 jest.mock('../context/AppContext', () => ({
   useApp: () => ({
     state: { capabilitiesLoaded: true },
-    hasCapability: code => ['operational_structure.read', 'operational_sectors.manage', 'operational_functions.manage'].includes(code),
+    hasCapability: code => ['operational_structure.read', 'operational_sectors.manage', 'operational_functions.manage', 'operational_assignments.manage'].includes(code),
   }),
 }));
 jest.mock('../services/operationalStructureService', () => ({
@@ -16,6 +16,7 @@ jest.mock('../services/operationalStructureService', () => ({
   default: {
     listSectors: jest.fn(), listRoles: jest.fn(), createSector: jest.fn(), updateSector: jest.fn(),
     setSectorStatus: jest.fn(), createRole: jest.fn(), updateRole: jest.fn(), setRoleStatus: jest.fn(),
+    listMemberships: jest.fn(), assignMembershipRole: jest.fn(), endMembershipRole: jest.fn(),
   },
 }));
 
@@ -32,6 +33,9 @@ beforeEach(() => {
   ]);
   operationalStructureService.listRoles.mockResolvedValue([
     { id: 'role-a', sectorId: 'sector-a', name: 'Cozinheiro', description: null, isActive: true, version: 1, sector: { id: 'sector-a', name: 'Cozinha', isActive: true } },
+  ]);
+  operationalStructureService.listMemberships.mockResolvedValue([
+    { id: 'membership-a', name: 'Juliana', email: 'juliana@local.test', legacyRole: 'STAFF', isActive: true, assignments: [] },
   ]);
 });
 
@@ -54,4 +58,16 @@ test('lista setores e funções sem misturar cadastro operacional com usuários'
   expect(document.body.textContent).toContain('Cozinheiro');
   expect(operationalStructureService.listSectors).toHaveBeenCalledWith({ active: 'all' });
   expect(operationalStructureService.listRoles).toHaveBeenCalledWith({ active: 'all' });
+  expect(operationalStructureService.listMemberships).toHaveBeenCalledWith({ active: 'all' });
+});
+
+test('segrega vínculos operacionais das permissões do funcionário', async () => {
+  container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
+  await act(async () => { root.render(<ThemeProvider theme={lightTheme}><OperationalStructure /></ThemeProvider>); });
+  await act(async () => { await flush(350); });
+  const peopleTab = [...document.body.querySelectorAll('button')].find(item => item.textContent === 'Pessoas e funções');
+  await click(peopleTab);
+  expect(document.body.textContent).toContain('Juliana');
+  expect(document.body.textContent).toContain('não concedem permissões');
+  expect(document.body.textContent).toContain('Vincular função');
 });

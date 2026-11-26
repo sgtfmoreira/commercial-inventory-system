@@ -398,32 +398,33 @@ model establishments {
   organizationId String?
   organization   Organization?       @relation(fields: [organizationId], references: [id])
 
-  createdAt            DateTime                                @default(now())
-  updatedAt            DateTime                                @default(now()) @updatedAt
-  transfersFrom        StockTransfer[]                         @relation("TransferFrom")
-  transfersTo          StockTransfer[]                         @relation("TransferTo")
-  stockMovements       StockMovement[]
-  purchaseOrders       PurchaseOrder[]
-  consumptionEvents    ConsumptionEvent[]
-  productionOrders     ProductionOrder[]
-  stockLocations       StockLocation[]
-  portioningRecipes    PortioningRecipe[]
-  portioningOrders     PortioningOrder[]
-  sales                Sale[]
-  eventCustomers       EventCustomer[]
-  commercialEvents     CommercialEvent[]
-  commercialAgreements CommercialAgreement[]
-  purchaseInvoices     PurchaseInvoice[]
-  bonusReceipts        BonusReceipt[]
-  cashbackSettlements  CommercialAgreementCashbackSettlement[]
-  inventoryLots        InventoryLot[]
-  tableReservations    TableReservation[]
-  tableOccupancies     TableOccupancy[]
-  securityAuditEvents  SecurityAuditEvent[]
-  checklistRuns        ChecklistRun[]
-  checklistSchedules   ChecklistSchedule[]
-  operationalSectors   OperationalSector[]
-  operationalRoles     OperationalRole[]
+  createdAt                  DateTime                                @default(now())
+  updatedAt                  DateTime                                @default(now()) @updatedAt
+  transfersFrom              StockTransfer[]                         @relation("TransferFrom")
+  transfersTo                StockTransfer[]                         @relation("TransferTo")
+  stockMovements             StockMovement[]
+  purchaseOrders             PurchaseOrder[]
+  consumptionEvents          ConsumptionEvent[]
+  productionOrders           ProductionOrder[]
+  stockLocations             StockLocation[]
+  portioningRecipes          PortioningRecipe[]
+  portioningOrders           PortioningOrder[]
+  sales                      Sale[]
+  eventCustomers             EventCustomer[]
+  commercialEvents           CommercialEvent[]
+  commercialAgreements       CommercialAgreement[]
+  purchaseInvoices           PurchaseInvoice[]
+  bonusReceipts              BonusReceipt[]
+  cashbackSettlements        CommercialAgreementCashbackSettlement[]
+  inventoryLots              InventoryLot[]
+  tableReservations          TableReservation[]
+  tableOccupancies           TableOccupancy[]
+  securityAuditEvents        SecurityAuditEvent[]
+  checklistRuns              ChecklistRun[]
+  checklistSchedules         ChecklistSchedule[]
+  operationalSectors         OperationalSector[]
+  operationalRoles           OperationalRole[]
+  membershipOperationalRoles MembershipOperationalRole[]
 }
 
 model users {
@@ -990,20 +991,21 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
 
-  establishments      establishments[]
-  products            OrganizationProduct[]
-  productCodeSequence OrganizationProductSequence?
-  productReviews      OrganizationProductReview[]
-  suppliers           OrganizationSupplier[]
-  supplierReviews     OrganizationSupplierReview[]
-  subscription        OrganizationSubscription?
-  authorities         OrganizationAuthority[]
-  securityAuditEvents SecurityAuditEvent[]
-  checklistTemplates  ChecklistTemplate[]
-  checklistRuns       ChecklistRun[]
-  checklistSchedules  ChecklistSchedule[]
-  operationalSectors  OperationalSector[]
-  operationalRoles    OperationalRole[]
+  establishments             establishments[]
+  products                   OrganizationProduct[]
+  productCodeSequence        OrganizationProductSequence?
+  productReviews             OrganizationProductReview[]
+  suppliers                  OrganizationSupplier[]
+  supplierReviews            OrganizationSupplierReview[]
+  subscription               OrganizationSubscription?
+  authorities                OrganizationAuthority[]
+  securityAuditEvents        SecurityAuditEvent[]
+  checklistTemplates         ChecklistTemplate[]
+  checklistRuns              ChecklistRun[]
+  checklistSchedules         ChecklistSchedule[]
+  operationalSectors         OperationalSector[]
+  operationalRoles           OperationalRole[]
+  membershipOperationalRoles MembershipOperationalRole[]
 }
 
 model OrganizationSupplier {
@@ -1237,32 +1239,35 @@ model UserEstablishment {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  user                          users                       @relation(fields: [userId], references: [id])
-  establishment                 establishments              @relation(fields: [establishmentId], references: [id])
-  access                        UserEstablishmentAccess?
-  accessConfigurationsCreated   AccessConfiguration[]       @relation("AccessConfigurationCreatedBy")
-  accessConfigurationsActivated AccessConfiguration[]       @relation("AccessConfigurationActivatedBy")
-  securityAuditEventsAsActor    SecurityAuditEvent[]        @relation("SecurityAuditActorMembership")
-  securityAuditEventsAsTarget   SecurityAuditEvent[]        @relation("SecurityAuditTargetMembership")
-  checklistTemplatesCreated     ChecklistTemplate[]         @relation("ChecklistTemplateCreatedBy")
-  checklistVersionsCreated      ChecklistTemplateVersion[]  @relation("ChecklistTemplateVersionCreatedBy")
-  checklistVersionsPublished    ChecklistTemplateVersion[]  @relation("ChecklistTemplateVersionPublishedBy")
-  checklistSchedulesAssigned    ChecklistSchedule[]         @relation("ChecklistScheduleAssignedTo")
-  checklistSchedulesCreated     ChecklistSchedule[]         @relation("ChecklistScheduleCreatedBy")
-  checklistRunsAssigned         ChecklistRun[]              @relation("ChecklistRunAssignedTo")
-  checklistRunsCreated          ChecklistRun[]              @relation("ChecklistRunCreatedBy")
-  checklistAssignmentsPrevious  ChecklistRunAssignment[]    @relation("ChecklistAssignmentPrevious")
-  checklistAssignmentsAssigned  ChecklistRunAssignment[]    @relation("ChecklistAssignmentAssigned")
-  checklistAssignmentsChanged   ChecklistRunAssignment[]    @relation("ChecklistAssignmentChangedBy")
-  checklistRunEvents            ChecklistRunEvent[]         @relation("ChecklistRunEventActor")
-  checklistAttemptsExecuted     ChecklistExecutionAttempt[] @relation("ChecklistAttemptExecutor")
-  checklistResponsesAnswered    ChecklistResponse[]         @relation("ChecklistResponseAnsweredBy")
-  checklistEvidencesUploaded    ChecklistEvidence[]         @relation("ChecklistEvidenceUploadedBy")
-  checklistApprovalsDecided     ChecklistApproval[]         @relation("ChecklistApprovalApprover")
-  operationalSectorsCreated     OperationalSector[]         @relation("OperationalSectorCreatedBy")
-  operationalSectorsUpdated     OperationalSector[]         @relation("OperationalSectorUpdatedBy")
-  operationalRolesCreated       OperationalRole[]           @relation("OperationalRoleCreatedBy")
-  operationalRolesUpdated       OperationalRole[]           @relation("OperationalRoleUpdatedBy")
+  user                              users                       @relation(fields: [userId], references: [id])
+  establishment                     establishments              @relation(fields: [establishmentId], references: [id])
+  access                            UserEstablishmentAccess?
+  accessConfigurationsCreated       AccessConfiguration[]       @relation("AccessConfigurationCreatedBy")
+  accessConfigurationsActivated     AccessConfiguration[]       @relation("AccessConfigurationActivatedBy")
+  securityAuditEventsAsActor        SecurityAuditEvent[]        @relation("SecurityAuditActorMembership")
+  securityAuditEventsAsTarget       SecurityAuditEvent[]        @relation("SecurityAuditTargetMembership")
+  checklistTemplatesCreated         ChecklistTemplate[]         @relation("ChecklistTemplateCreatedBy")
+  checklistVersionsCreated          ChecklistTemplateVersion[]  @relation("ChecklistTemplateVersionCreatedBy")
+  checklistVersionsPublished        ChecklistTemplateVersion[]  @relation("ChecklistTemplateVersionPublishedBy")
+  checklistSchedulesAssigned        ChecklistSchedule[]         @relation("ChecklistScheduleAssignedTo")
+  checklistSchedulesCreated         ChecklistSchedule[]         @relation("ChecklistScheduleCreatedBy")
+  checklistRunsAssigned             ChecklistRun[]              @relation("ChecklistRunAssignedTo")
+  checklistRunsCreated              ChecklistRun[]              @relation("ChecklistRunCreatedBy")
+  checklistAssignmentsPrevious      ChecklistRunAssignment[]    @relation("ChecklistAssignmentPrevious")
+  checklistAssignmentsAssigned      ChecklistRunAssignment[]    @relation("ChecklistAssignmentAssigned")
+  checklistAssignmentsChanged       ChecklistRunAssignment[]    @relation("ChecklistAssignmentChangedBy")
+  checklistRunEvents                ChecklistRunEvent[]         @relation("ChecklistRunEventActor")
+  checklistAttemptsExecuted         ChecklistExecutionAttempt[] @relation("ChecklistAttemptExecutor")
+  checklistResponsesAnswered        ChecklistResponse[]         @relation("ChecklistResponseAnsweredBy")
+  checklistEvidencesUploaded        ChecklistEvidence[]         @relation("ChecklistEvidenceUploadedBy")
+  checklistApprovalsDecided         ChecklistApproval[]         @relation("ChecklistApprovalApprover")
+  operationalSectorsCreated         OperationalSector[]         @relation("OperationalSectorCreatedBy")
+  operationalSectorsUpdated         OperationalSector[]         @relation("OperationalSectorUpdatedBy")
+  operationalRolesCreated           OperationalRole[]           @relation("OperationalRoleCreatedBy")
+  operationalRolesUpdated           OperationalRole[]           @relation("OperationalRoleUpdatedBy")
+  operationalRoleAssignments        MembershipOperationalRole[] @relation("MembershipOperationalRoleMembership")
+  operationalRoleAssignmentsCreated MembershipOperationalRole[] @relation("MembershipOperationalRoleCreatedBy")
+  operationalRoleAssignmentsEnded   MembershipOperationalRole[] @relation("MembershipOperationalRoleEndedBy")
 
   @@unique([userId, establishmentId])
 }
@@ -1311,16 +1316,52 @@ model OperationalRole {
   updatedAt             DateTime  @updatedAt
   deactivatedAt         DateTime?
 
-  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  establishment establishments    @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
-  sector        OperationalSector @relation(fields: [sectorId, establishmentId], references: [id, establishmentId], onDelete: Restrict)
-  createdBy     UserEstablishment @relation("OperationalRoleCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
-  updatedBy     UserEstablishment @relation("OperationalRoleUpdatedBy", fields: [updatedByMembershipId], references: [id], onDelete: Restrict)
+  organization  Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  establishment establishments              @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  sector        OperationalSector           @relation(fields: [sectorId, establishmentId], references: [id, establishmentId], onDelete: Restrict)
+  createdBy     UserEstablishment           @relation("OperationalRoleCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  updatedBy     UserEstablishment           @relation("OperationalRoleUpdatedBy", fields: [updatedByMembershipId], references: [id], onDelete: Restrict)
+  assignments   MembershipOperationalRole[]
 
   @@unique([establishmentId, normalizedName])
   @@index([organizationId, establishmentId, isActive])
   @@index([sectorId, isActive, name])
   @@map("operational_roles")
+}
+
+enum MembershipOperationalRoleStatus {
+  ACTIVE
+  ENDED
+}
+
+model MembershipOperationalRole {
+  id                    String                          @id @default(uuid()) @db.Uuid
+  organizationId        String
+  establishmentId       String                          @db.Uuid
+  membershipId          String                          @db.Uuid
+  operationalRoleId     String                          @db.Uuid
+  validFrom             DateTime                        @default(now())
+  validUntil            DateTime?
+  isPrimary             Boolean                         @default(false)
+  status                MembershipOperationalRoleStatus @default(ACTIVE)
+  version               Int                             @default(1)
+  reason                String?                         @db.VarChar(500)
+  createdByMembershipId String                          @db.Uuid
+  endedByMembershipId   String?                         @db.Uuid
+  createdAt             DateTime                        @default(now())
+  endedAt               DateTime?
+
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  establishment   establishments     @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  membership      UserEstablishment  @relation("MembershipOperationalRoleMembership", fields: [membershipId], references: [id], onDelete: Restrict)
+  operationalRole OperationalRole    @relation(fields: [operationalRoleId], references: [id], onDelete: Restrict)
+  createdBy       UserEstablishment  @relation("MembershipOperationalRoleCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  endedBy         UserEstablishment? @relation("MembershipOperationalRoleEndedBy", fields: [endedByMembershipId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, establishmentId, status])
+  @@index([membershipId, status])
+  @@index([operationalRoleId, status])
+  @@map("membership_operational_roles")
 }
 
 enum TransferStatus {

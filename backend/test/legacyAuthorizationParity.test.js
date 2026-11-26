@@ -225,7 +225,7 @@ test('inventário B1 cobre todas as rotas Express montadas atualmente', () => {
     assert.equal(legacyRoutes.length, 197, 'Mudança nas 197 rotas legadas reconciliadas exige revisar o inventário B1');
     assert.equal(phaseB2Routes.length, 12, 'Mudança nas APIs B2 exige revisão explícita do inventário');
     assert.equal(checklistRoutes.length, 32, 'Mudança nas APIs de checklist exige revisão explícita do inventário');
-    assert.equal(operationalStructureRoutes.length, 11, 'Mudança nas APIs de estrutura operacional exige revisão explícita do inventário');
+    assert.equal(operationalStructureRoutes.length, 15, 'Mudança nas APIs de estrutura operacional exige revisão explícita do inventário');
 
     for (const route of legacyRoutes) {
         const policy = currentPolicy(route);

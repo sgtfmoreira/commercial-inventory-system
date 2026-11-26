@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
-import { MdAdd, MdBusiness, MdEdit, MdRefresh, MdWork } from 'react-icons/md';
+import { MdAdd, MdBusiness, MdEdit, MdPerson, MdRefresh, MdWork } from 'react-icons/md';
 import { useApp } from '../context/AppContext';
 import operationalStructureService from '../services/operationalStructureService';
 import Badge from '../components/Badge';
@@ -9,7 +9,7 @@ import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
 import Loading from '../components/Loading';
 import Modal from '../components/Modal';
-import { Input, Select, Textarea } from '../components/FormFields';
+import { CheckboxControl, Input, Select, Textarea } from '../components/FormFields';
 import { Page, PageActions, PageHeader, PageHeading, PageSubtitle, PageTitle } from '../components/PageLayout';
 import { Tabs, Tab } from '../components/Tabs';
 import {
@@ -40,9 +40,12 @@ const MobileCard = styled.article`
 const CardTop = styled.div`display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;`;
 const Name = styled.strong`color: ${({ theme }) => theme.colors.textPrimary};`;
 const DesktopTable = styled.div`@media (max-width: 720px) { display: none; }`;
+const AssignmentList = styled.div`display: flex; gap: 6px; flex-wrap: wrap; align-items: center;`;
+const CheckLabel = styled.label`display: flex; gap: 9px; align-items: center; color: ${({ theme }) => theme.colors.textSecondary};`;
 
 const emptySector = { name: '', description: '' };
 const emptyRole = { sectorId: '', name: '', description: '' };
+const emptyAssignment = { operationalRoleId: '', isPrimary: false, reason: '' };
 const statusOptions = [
   { value: 'all', label: 'Todos os status' },
   { value: 'true', label: 'Ativos' },
@@ -60,16 +63,19 @@ export default function OperationalStructure() {
   const [tab, setTab] = useState('sectors');
   const [sectors, setSectors] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sectorFilters, setSectorFilters] = useState({ search: '', active: 'all' });
   const [roleFilters, setRoleFilters] = useState({ search: '', sectorId: '', active: 'all' });
+  const [membershipFilters, setMembershipFilters] = useState({ search: '', active: 'all' });
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptySector);
 
   const canRead = hasCapability('operational_structure.read');
   const canManageSectors = hasCapability('operational_sectors.manage');
   const canManageRoles = hasCapability('operational_functions.manage');
+  const canManageAssignments = hasCapability('operational_assignments.manage');
 
   const activeSectorOptions = useMemo(() => [
     { value: '', label: 'Selecione um setor' },
@@ -79,23 +85,29 @@ export default function OperationalStructure() {
     { value: '', label: 'Todos os setores' },
     ...sectors.map(item => ({ value: item.id, label: item.name })),
   ], [sectors]);
+  const activeRoleOptions = useMemo(() => [
+    { value: '', label: 'Selecione uma função' },
+    ...roles.filter(item => item.isActive).map(item => ({ value: item.id, label: `${item.name} — ${item.sector?.name || 'Sem setor'}` })),
+  ], [roles]);
 
   const load = useCallback(async () => {
     if (!canRead) return;
     setLoading(true);
     try {
-      const [sectorData, roleData] = await Promise.all([
+      const [sectorData, roleData, membershipData] = await Promise.all([
         operationalStructureService.listSectors(apiFilters(sectorFilters)),
         operationalStructureService.listRoles(apiFilters(roleFilters)),
+        operationalStructureService.listMemberships(apiFilters(membershipFilters)),
       ]);
       setSectors(sectorData);
       setRoles(roleData);
+      setMemberships(membershipData);
     } catch (error) {
       toast.error(messageFrom(error));
     } finally {
       setLoading(false);
     }
-  }, [canRead, sectorFilters, roleFilters]);
+  }, [canRead, sectorFilters, roleFilters, membershipFilters]);
 
   useEffect(() => {
     if (!state.capabilitiesLoaded) return;
@@ -112,13 +124,23 @@ export default function OperationalStructure() {
     setForm(item ? { sectorId: item.sectorId, name: item.name, description: item.description || '' } : emptyRole);
     setModal({ type: 'role', item });
   };
+  const openAssignment = membershipItem => {
+    setForm(emptyAssignment);
+    setModal({ type: 'assignment', membership: membershipItem });
+  };
   const closeModal = () => { if (!saving) setModal(null); };
 
   const submit = async event => {
     event.preventDefault();
     setSaving(true);
     try {
-      if (modal.type === 'sector') {
+      if (modal.type === 'assignment') {
+        await operationalStructureService.assignMembershipRole(modal.membership.id, {
+          operationalRoleId: form.operationalRoleId,
+          isPrimary: Boolean(form.isPrimary),
+          reason: form.reason || null,
+        });
+      } else if (modal.type === 'sector') {
         const payload = { name: form.name, description: form.description || null };
         if (modal.item) await operationalStructureService.updateSector(modal.item.id, { ...payload, version: modal.item.version });
         else await operationalStructureService.createSector(payload);
@@ -157,6 +179,17 @@ export default function OperationalStructure() {
     } catch (error) { toast.error(messageFrom(error)); }
   };
 
+  const endAssignment = async assignment => {
+    const reason = window.prompt(`Informe o motivo para encerrar a função “${assignment.operationalRole?.name || ''}”:`);
+    if (reason === null) return;
+    if (reason.trim().length < 3) { toast.error('Informe um motivo com ao menos 3 caracteres.'); return; }
+    try {
+      await operationalStructureService.endMembershipRole(assignment.id, { version: assignment.version, reason: reason.trim() });
+      toast.success('Vínculo encerrado.');
+      await load();
+    } catch (error) { toast.error(messageFrom(error)); }
+  };
+
   if (!state.capabilitiesLoaded || loading) return <Loading />;
   if (!canRead) return <EmptyState title="Acesso não autorizado" subtitle="Seu perfil não possui acesso à estrutura operacional desta unidade." />;
 
@@ -182,6 +215,7 @@ export default function OperationalStructure() {
     <Tabs aria-label="Estrutura operacional">
       <Tab active={tab === 'sectors'} onClick={() => setTab('sectors')}>Setores</Tab>
       <Tab active={tab === 'roles'} onClick={() => setTab('roles')}>Funções</Tab>
+      <Tab active={tab === 'people'} onClick={() => setTab('people')}>Pessoas e funções</Tab>
     </Tabs>
 
     {tab === 'sectors' ? <>
@@ -196,7 +230,7 @@ export default function OperationalStructure() {
         </TableBody></DataTable></TableSurface></DesktopTable>
         <MobileCards>{sectors.map(item => <MobileCard key={item.id}><CardTop><Name>{item.name}</Name>{renderStatus(item.isActive)}</CardTop><Hint>{item.description || 'Sem descrição'}</Hint><Hint>{item.roleCount} função(ões)</Hint>{renderSectorActions(item)}</MobileCard>)}</MobileCards>
       </>}
-    </> : <>
+    </> : tab === 'roles' ? <>
       <RoleToolbar>
         <Input label="Buscar função" value={roleFilters.search} placeholder="Ex.: Caixa" onChange={event => setRoleFilters(current => ({ ...current, search: event.target.value }))} />
         <Select label="Setor" value={roleFilters.sectorId} options={filterSectorOptions} onChange={value => setRoleFilters(current => ({ ...current, sectorId: value }))} />
@@ -209,13 +243,33 @@ export default function OperationalStructure() {
         </TableBody></DataTable></TableSurface></DesktopTable>
         <MobileCards>{roles.map(item => <MobileCard key={item.id}><CardTop><Name>{item.name}</Name>{renderStatus(item.isActive)}</CardTop><Hint>Setor: {item.sector?.name || '—'}</Hint><Hint>{item.description || 'Sem descrição'}</Hint>{renderRoleActions(item)}</MobileCard>)}</MobileCards>
       </>}
+    </> : <>
+      <Toolbar>
+        <Input label="Buscar funcionário" value={membershipFilters.search} placeholder="Nome ou e-mail" onChange={event => setMembershipFilters(current => ({ ...current, search: event.target.value }))} />
+        <Select label="Status" value={membershipFilters.active} options={statusOptions} onChange={value => setMembershipFilters(current => ({ ...current, active: value }))} />
+      </Toolbar>
+      <Hint>Funções operacionais organizam o trabalho e não concedem permissões, acesso ao sistema ou capacidade de executar checklists.</Hint>
+      {memberships.length === 0 ? <EmptyState title="Nenhum funcionário encontrado" subtitle="A busca considera somente vínculos desta unidade." icon={<MdPerson />} /> : <>
+        <DesktopTable><TableSurface><DataTable><TableHead><TableRow><TableHeaderCell>Funcionário</TableHeaderCell><TableHeaderCell>Perfil existente</TableHeaderCell><TableHeaderCell>Funções operacionais ativas</TableHeaderCell><TableHeaderCell>Status</TableHeaderCell><TableHeaderCell>Ações</TableHeaderCell></TableRow></TableHead><TableBody>
+          {memberships.map(item => {
+            const activeAssignments = (item.assignments || []).filter(assignment => assignment.status === 'ACTIVE');
+            return <TableRow key={item.id}><TableCell><Name>{item.name}</Name><Hint>{item.email}</Hint></TableCell><TableCell>{item.legacyRole}</TableCell><TableCell><AssignmentList>{activeAssignments.length ? activeAssignments.map(assignment => <span key={assignment.id}><Badge variant={assignment.isPrimary ? 'success' : 'neutral'}>{assignment.operationalRole?.name}{assignment.isPrimary ? ' · principal' : ''}</Badge>{canManageAssignments && <Button size="sm" variant="ghost" onClick={() => endAssignment(assignment)}>Encerrar</Button>}</span>) : 'Nenhuma'}</AssignmentList></TableCell><TableCell>{renderStatus(item.isActive)}</TableCell><TableCell>{canManageAssignments && <Button size="sm" onClick={() => openAssignment(item)} disabled={!item.isActive || activeRoleOptions.length <= 1}><MdAdd /> Vincular função</Button>}</TableCell></TableRow>;
+          })}
+        </TableBody></DataTable></TableSurface></DesktopTable>
+        <MobileCards>{memberships.map(item => <MobileCard key={item.id}><CardTop><div><Name>{item.name}</Name><Hint>{item.email}</Hint></div>{renderStatus(item.isActive)}</CardTop><Hint>Perfil existente: {item.legacyRole}</Hint><AssignmentList>{(item.assignments || []).filter(assignment => assignment.status === 'ACTIVE').map(assignment => <span key={assignment.id}><Badge variant={assignment.isPrimary ? 'success' : 'neutral'}>{assignment.operationalRole?.name}{assignment.isPrimary ? ' · principal' : ''}</Badge>{canManageAssignments && <Button size="sm" variant="ghost" onClick={() => endAssignment(assignment)}>Encerrar</Button>}</span>)}</AssignmentList>{canManageAssignments && <Button size="sm" onClick={() => openAssignment(item)} disabled={!item.isActive || activeRoleOptions.length <= 1}>Vincular função</Button>}</MobileCard>)}</MobileCards>
+      </>}
     </>}
 
-    <Modal isOpen={Boolean(modal)} onClose={closeModal} title={`${modal?.item ? 'Editar' : 'Novo'} ${modal?.type === 'role' ? 'função' : 'setor'}`} footer={<><Button variant="outlined" onClick={closeModal} disabled={saving}>Cancelar</Button><Button type="submit" form="operational-structure-form" loading={saving}>Salvar</Button></>}>
+    <Modal isOpen={Boolean(modal)} onClose={closeModal} title={modal?.type === 'assignment' ? `Vincular função a ${modal.membership?.name || ''}` : `${modal?.item ? 'Editar' : 'Novo'} ${modal?.type === 'role' ? 'função' : 'setor'}`} footer={<><Button variant="outlined" onClick={closeModal} disabled={saving}>Cancelar</Button><Button type="submit" form="operational-structure-form" loading={saving}>Salvar</Button></>}>
       <FormGrid as="form" id="operational-structure-form" onSubmit={submit}>
+        {modal?.type === 'assignment' && <>
+          <Select label="Função operacional" required value={form.operationalRoleId || ''} options={activeRoleOptions} onChange={value => setForm(current => ({ ...current, operationalRoleId: value }))} />
+          <CheckLabel><CheckboxControl checked={Boolean(form.isPrimary)} onChange={event => setForm(current => ({ ...current, isPrimary: event.target.checked }))} /> Função principal</CheckLabel>
+          <Textarea label="Observação inicial (opcional)" maxLength={500} value={form.reason || ''} onChange={event => setForm(current => ({ ...current, reason: event.target.value }))} />
+        </>}
         {modal?.type === 'role' && <Select label="Setor" required value={form.sectorId || ''} options={activeSectorOptions} onChange={value => setForm(current => ({ ...current, sectorId: value }))} />}
-        <Input label="Nome" required maxLength={120} value={form.name || ''} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} />
-        <Textarea label="Descrição" maxLength={modal?.type === 'role' ? 1000 : 500} value={form.description || ''} onChange={event => setForm(current => ({ ...current, description: event.target.value }))} />
+        {modal?.type !== 'assignment' && <Input label="Nome" required maxLength={120} value={form.name || ''} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} />}
+        {modal?.type !== 'assignment' && <Textarea label="Descrição" maxLength={modal?.type === 'role' ? 1000 : 500} value={form.description || ''} onChange={event => setForm(current => ({ ...current, description: event.target.value }))} />}
         <Hint>Este cadastro organiza a operação. Ele não concede permissões nem altera o usuário.</Hint>
       </FormGrid>
     </Modal>

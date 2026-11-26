@@ -23,7 +23,7 @@ const select = predicate => PERMISSION_CODES.filter(code => predicate(PERMISSION
 const without = (codes, denied) => codes.filter(code => !denied.has(code));
 
 const structural = new Set(['security.owner.manage', 'security.policy.manage']);
-const ownerDenied = new Set(['checklists.runs.manage']);
+const ownerDenied = new Set(['checklists.runs.manage', 'operational_assignments.manage']);
 const administratorDenied = new Set([
     ...structural,
     'organization.update',

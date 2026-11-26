@@ -26,8 +26,26 @@ const updateRoleSchema = z.object({
     message: 'Informe ao menos um campo para atualização.'
 });
 const statusSchema = z.object({ isActive: z.boolean(), version }).strict();
+const membershipParamSchema = z.object({ membershipId: uuid }).strict();
+const listMembershipSchema = z.object({
+    search: z.string().trim().max(160).optional(),
+    active: z.enum(['all', 'true', 'false']).default('all')
+}).strict();
+const assignmentReason = z.string().trim().min(3).max(500);
+const createAssignmentSchema = z.object({
+    operationalRoleId: uuid,
+    isPrimary: z.boolean().default(false),
+    validFrom: z.string().datetime({ offset: true }).optional(),
+    reason: assignmentReason.nullable().optional()
+}).strict();
+const endAssignmentSchema = z.object({
+    version,
+    endedAt: z.string().datetime({ offset: true }).optional(),
+    reason: assignmentReason
+}).strict();
 
 module.exports = {
     idParamSchema, listSectorSchema, listRoleSchema,
-    createSectorSchema, updateSectorSchema, createRoleSchema, updateRoleSchema, statusSchema
+    createSectorSchema, updateSectorSchema, createRoleSchema, updateRoleSchema, statusSchema,
+    membershipParamSchema, listMembershipSchema, createAssignmentSchema, endAssignmentSchema
 };

@@ -9,7 +9,8 @@ const { getAuthorizationFlags } = require('../config/authorization');
 const CAPABILITIES = Object.freeze({
     'operational_structure.read': ['ADMIN', 'MANAGER'],
     'operational_sectors.manage': ['ADMIN', 'MANAGER'],
-    'operational_functions.manage': ['ADMIN', 'MANAGER']
+    'operational_functions.manage': ['ADMIN', 'MANAGER'],
+    'operational_assignments.manage': ['ADMIN', 'MANAGER']
 });
 
 function cleanName(value) {
@@ -36,6 +37,27 @@ function roleDto(item) {
         id: item.id, sectorId: item.sectorId, name: item.name, description: item.description,
         isActive: item.isActive, version: item.version, sector: item.sector,
         createdAt: item.createdAt, updatedAt: item.updatedAt, deactivatedAt: item.deactivatedAt
+    };
+}
+
+function assignmentDto(item) {
+    return {
+        id: item.id, membershipId: item.membershipId, operationalRoleId: item.operationalRoleId,
+        operationalRole: item.operationalRole ? {
+            id: item.operationalRole.id, name: item.operationalRole.name, isActive: item.operationalRole.isActive,
+            sector: item.operationalRole.sector
+        } : undefined,
+        isPrimary: item.isPrimary, status: item.status, version: item.version,
+        validFrom: item.validFrom, validUntil: item.validUntil,
+        reason: item.reason, createdAt: item.createdAt, endedAt: item.endedAt
+    };
+}
+
+function membershipDto(item) {
+    return {
+        id: item.id, name: item.user.name, email: item.user.email,
+        legacyRole: item.role, isActive: item.isActive, createdAt: item.createdAt,
+        assignments: (item.operationalRoleAssignments || []).map(assignmentDto)
     };
 }
 
@@ -71,13 +93,14 @@ async function capabilities(context, options = {}) {
     return Object.fromEntries(entries);
 }
 
-function audit(context, eventType, entityType, entityId, beforeJson, afterJson) {
+function audit(context, eventType, entityType, entityId, beforeJson, afterJson, target = {}) {
     return {
         organizationId: context.organizationId,
         establishmentId: context.establishmentId,
         actorUserId: context.userId,
         actorMembershipId: context.membershipId,
-        eventType, entityType, entityId, beforeJson, afterJson
+        eventType, entityType, entityId, beforeJson, afterJson,
+        targetUserId: target.userId, targetMembershipId: target.membershipId
     };
 }
 
@@ -267,6 +290,9 @@ async function setRoleStatus(context, id, input, options = {}) {
             if (!existing) throw new AppError('Função operacional não encontrada.', 404);
             if (existing.isActive === input.isActive) return roleDto(existing);
             if (input.isActive) await assertActiveSector(context, existing.sectorId, source, tx);
+            if (!input.isActive && await source.countActiveAssignments(id, context, tx)) {
+                throw new AppError('Encerre os vínculos ativos desta função antes de desativá-la.', 409);
+            }
             const item = await source.updateRole(id, context, input.version, {
                 isActive: input.isActive,
                 deactivatedAt: input.isActive ? null : new Date(),
@@ -281,8 +307,102 @@ async function setRoleStatus(context, id, input, options = {}) {
     } catch (error) { return translate(error); }
 }
 
+async function listMemberships(context, query = {}, options = {}) {
+    const source = options.repository || repository;
+    await assertScope(context, options.db, source);
+    const rows = await source.listMemberships(context, {
+        search: query.search || undefined,
+        isActive: booleanFilter(query.active)
+    }, options.db);
+    return rows.map(membershipDto);
+}
+
+async function listMembershipRoles(context, membershipId, options = {}) {
+    const source = options.repository || repository;
+    await assertScope(context, options.db, source);
+    const target = await source.findMembership(membershipId, context, options.db);
+    if (!target) throw new AppError('Funcionário não encontrado nesta unidade.', 404);
+    return (await source.listMembershipRoles(membershipId, context, options.db)).map(assignmentDto);
+}
+
+function parseDate(value, fallback) {
+    const date = value ? new Date(value) : fallback;
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) throw new AppError('Data inválida.', 422);
+    return date;
+}
+
+async function createMembershipRole(context, membershipId, input, options = {}) {
+    const source = options.repository || repository;
+    try {
+        return await (options.db || prisma).$transaction(async tx => {
+            await assertScope(context, tx, source);
+            const target = await source.findMembership(membershipId, context, tx);
+            if (!target) throw new AppError('Funcionário não encontrado nesta unidade.', 404);
+            if (!target.isActive) throw new AppError('Não é possível vincular função a um funcionário inativo.', 409);
+            const role = await source.findRole(input.operationalRoleId, context, tx);
+            if (!role) throw new AppError('Função operacional não encontrada.', 404);
+            if (!role.isActive || !role.sector?.isActive) throw new AppError('A função e seu setor precisam estar ativos.', 409);
+            if (await source.findActiveAssignment(membershipId, role.id, context, tx)) {
+                throw new AppError('O funcionário já possui esta função ativa.', 409);
+            }
+            if (input.isPrimary && await source.findActivePrimary(membershipId, context, tx)) {
+                throw new AppError('O funcionário já possui uma função principal ativa.', 409);
+            }
+            const now = new Date();
+            const validFrom = parseDate(input.validFrom, now);
+            if (validFrom.getTime() > now.getTime() + 60000) {
+                throw new AppError('A vigência inicial não pode estar no futuro.', 422);
+            }
+            const item = await source.createAssignment({
+                organizationId: context.organizationId, establishmentId: context.establishmentId,
+                membershipId, operationalRoleId: role.id, validFrom,
+                isPrimary: Boolean(input.isPrimary), reason: nullableText(input.reason),
+                createdByMembershipId: context.membershipId
+            }, tx);
+            const dto = assignmentDto(item);
+            await auditRepository.create(audit(
+                context, 'MEMBERSHIP_OPERATIONAL_ROLE_ASSIGNED', 'MEMBERSHIP_OPERATIONAL_ROLE', item.id,
+                null, dto, { userId: target.userId, membershipId: target.id }
+            ), tx);
+            return dto;
+        });
+    } catch (error) { return translate(error); }
+}
+
+async function endMembershipRole(context, id, input, options = {}) {
+    const source = options.repository || repository;
+    try {
+        return await (options.db || prisma).$transaction(async tx => {
+            await assertScope(context, tx, source);
+            const existing = await source.findAssignment(id, context, tx);
+            if (!existing) throw new AppError('Vínculo operacional não encontrado.', 404);
+            if (existing.status === 'ENDED') {
+                if (existing.version !== input.version) throw new AppError('O vínculo foi alterado em outra sessão.', 409);
+                return assignmentDto(existing);
+            }
+            const endedAt = parseDate(input.endedAt, new Date());
+            if (endedAt.getTime() > Date.now() + 60000) throw new AppError('A data de encerramento não pode estar no futuro.', 422);
+            if (endedAt <= new Date(existing.validFrom)) throw new AppError('A data de encerramento deve ser posterior ao início.', 422);
+            const item = await source.endAssignment(id, context, input.version, {
+                status: 'ENDED', validUntil: endedAt, endedAt,
+                endedByMembershipId: context.membershipId, reason: input.reason.trim()
+            }, tx);
+            if (!item) throw new AppError('O vínculo foi alterado em outra sessão.', 409);
+            const before = assignmentDto(existing);
+            const after = assignmentDto(item);
+            const target = await source.findMembership(existing.membershipId, context, tx);
+            await auditRepository.create(audit(
+                context, 'MEMBERSHIP_OPERATIONAL_ROLE_ENDED', 'MEMBERSHIP_OPERATIONAL_ROLE', id,
+                before, after, { userId: target?.userId, membershipId: existing.membershipId }
+            ), tx);
+            return after;
+        });
+    } catch (error) { return translate(error); }
+}
+
 module.exports = {
-    CAPABILITIES, cleanName, normalizedName, sectorDto, roleDto, capabilities,
+    CAPABILITIES, cleanName, normalizedName, sectorDto, roleDto, assignmentDto, membershipDto, capabilities,
     listSectors, getSector, createSector, updateSector, setSectorStatus,
-    listRoles, getRole, createRole, updateRole, setRoleStatus
+    listRoles, getRole, createRole, updateRole, setRoleStatus,
+    listMemberships, listMembershipRoles, createMembershipRole, endMembershipRole
 };

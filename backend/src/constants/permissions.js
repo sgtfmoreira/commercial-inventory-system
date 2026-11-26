@@ -120,6 +120,10 @@ const definitions = [
     define('operational_structure.read', 'future_operations', 'read', { scope: 'establishment' }),
     define('operational_functions.manage', 'future_operations', 'manage'),
     define('operational_sectors.manage', 'future_operations', 'manage'),
+    define('operational_assignments.manage', 'future_operations', 'manage', {
+        delegable: false,
+        scope: 'establishment'
+    }),
     define('operational_stations.manage', 'future_operations', 'manage'),
     define('shifts.manage', 'future_operations', 'manage'),
     define('checklists.execute', 'future_checklists', 'execute'),

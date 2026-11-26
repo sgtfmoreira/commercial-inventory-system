@@ -21,6 +21,20 @@ const operationalStructureService = {
   createRole(payload) { return api.post('/operational-structure/roles', payload); },
   updateRole(id, payload) { return api.patch(`/operational-structure/roles/${id}`, payload); },
   setRoleStatus(id, payload) { return api.patch(`/operational-structure/roles/${id}/status`, payload); },
+  async listMemberships(params = {}) {
+    const result = await api.get('/operational-structure/memberships', { params });
+    return result?.memberships || [];
+  },
+  async listMembershipRoles(membershipId) {
+    const result = await api.get(`/operational-structure/memberships/${membershipId}/roles`);
+    return result?.assignments || [];
+  },
+  assignMembershipRole(membershipId, payload) {
+    return api.post(`/operational-structure/memberships/${membershipId}/roles`, payload);
+  },
+  endMembershipRole(id, payload) {
+    return api.post(`/operational-structure/membership-roles/${id}/end`, payload);
+  },
 };
 
 export default operationalStructureService;

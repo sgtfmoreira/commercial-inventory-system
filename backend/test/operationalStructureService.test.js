@@ -68,3 +68,45 @@ test('DTOs não expõem organização, estabelecimento nem memberships internos'
     ]);
     assert.equal(sector.roleCount, 2);
 });
+
+test('contratos de vínculo operacional rejeitam tenant, usuário e perfil enviados pelo cliente', () => {
+    const valid = { operationalRoleId: context.establishmentId, isPrimary: true, reason: 'Função principal' };
+    assert.equal(schemas.createAssignmentSchema.safeParse(valid).success, true);
+    assert.equal(schemas.createAssignmentSchema.safeParse({ ...valid, userId: context.userId }).success, false);
+    assert.equal(schemas.createAssignmentSchema.safeParse({ ...valid, role: 'ADMIN' }).success, false);
+    assert.equal(schemas.endAssignmentSchema.safeParse({ version: 1, reason: 'Mudança de função' }).success, true);
+    assert.equal(schemas.endAssignmentSchema.safeParse({ version: 1, reason: 'x' }).success, false);
+});
+
+test('vincular função deriva escopo e ator sem alterar o perfil existente', async () => {
+    const target = {
+        id: '20000000-0000-4000-8000-000000000002',
+        userId: '10000000-0000-4000-8000-000000000002', role: 'STAFF', isActive: true,
+        user: { id: '10000000-0000-4000-8000-000000000002', name: 'Juliana', email: 'juliana@local.test' }
+    };
+    const role = { id: context.establishmentId, name: 'Operador de caixa', isActive: true, sector: { id: 'sector-a', name: 'Caixa', isActive: true } };
+    let created;
+    const tx = { securityAuditEvent: { create: async ({ data }) => data } };
+    const fakeDb = { $transaction: callback => callback(tx) };
+    const fakeRepository = {
+        findScope: async () => scope,
+        findMembership: async () => target,
+        findRole: async () => role,
+        findActiveAssignment: async () => null,
+        findActivePrimary: async () => null,
+        createAssignment: async data => {
+            created = data;
+            return { id: 'assignment-a', ...data, status: 'ACTIVE', version: 1, validUntil: null, createdAt: new Date(), endedAt: null, operationalRole: role };
+        }
+    };
+    const result = await service.createMembershipRole(context, target.id, {
+        operationalRoleId: role.id, isPrimary: true, reason: 'Função principal'
+    }, { db: fakeDb, repository: fakeRepository });
+    assert.equal(result.operationalRole.name, 'Operador de caixa');
+    assert.equal(created.organizationId, context.organizationId);
+    assert.equal(created.establishmentId, context.establishmentId);
+    assert.equal(created.createdByMembershipId, context.membershipId);
+    assert.equal(target.role, 'STAFF');
+    assert.equal(Object.hasOwn(created, 'role'), false);
+    assert.equal(Object.hasOwn(created, 'userId'), false);
+});

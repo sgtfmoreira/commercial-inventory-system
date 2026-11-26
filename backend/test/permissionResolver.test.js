@@ -128,6 +128,25 @@ test('checklist run management is indelegable and restricted to ADMINISTRATOR/MA
     }
 });
 
+test('operational assignment management is indelegable and restricted to ADMINISTRATOR/MANAGER', () => {
+    for (const profileCode of ['OWNER', 'SUPERVISOR', 'COLLABORATOR', 'AUDITOR']) {
+        const effective = applyProfile({
+            profileCode, profileVersion: 1,
+            overrides: [{ permissionCode: 'operational_assignments.manage', effect: 'ALLOW' }]
+        });
+        assert.equal(effective.permissions.has('operational_assignments.manage'), false, profileCode);
+    }
+    for (const profileCode of ['ADMINISTRATOR', 'MANAGER']) {
+        const base = applyProfile({ profileCode, profileVersion: 1, overrides: [] });
+        assert.equal(base.permissions.has('operational_assignments.manage'), true, profileCode);
+        const denied = applyProfile({
+            profileCode, profileVersion: 1,
+            overrides: [{ permissionCode: 'operational_assignments.manage', effect: 'DENY' }]
+        });
+        assert.equal(denied.permissions.has('operational_assignments.manage'), false, profileCode);
+    }
+});
+
 test('relatórios de checklist seguem checklists.approve nos seis perfis base', async () => {
     const expected = {
         OWNER: true, ADMINISTRATOR: true, MANAGER: true,

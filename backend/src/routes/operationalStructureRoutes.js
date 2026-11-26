@@ -12,6 +12,7 @@ const legacyManagers = ['ADMIN', 'MANAGER'];
 const canRead = requireCapability('operational_structure.read', { legacyRoles: legacyManagers });
 const canManageSectors = requireCapability('operational_sectors.manage', { legacyRoles: legacyManagers });
 const canManageRoles = requireCapability('operational_functions.manage', { legacyRoles: legacyManagers });
+const canManageAssignments = requireCapability('operational_assignments.manage', { legacyRoles: legacyManagers });
 
 router.use(auth);
 router.get('/capabilities', controller.capabilities);
@@ -27,5 +28,10 @@ router.post('/roles', canManageRoles, validate(schemas.createRoleSchema), contro
 router.get('/roles/:id', validateParams(schemas.idParamSchema), canRead, controller.getRole);
 router.patch('/roles/:id', validateParams(schemas.idParamSchema), canManageRoles, validate(schemas.updateRoleSchema), controller.updateRole);
 router.patch('/roles/:id/status', validateParams(schemas.idParamSchema), canManageRoles, validate(schemas.statusSchema), controller.setRoleStatus);
+
+router.get('/memberships', canRead, validateQuery(schemas.listMembershipSchema), controller.listMemberships);
+router.get('/memberships/:membershipId/roles', validateParams(schemas.membershipParamSchema), canRead, controller.listMembershipRoles);
+router.post('/memberships/:membershipId/roles', validateParams(schemas.membershipParamSchema), canManageAssignments, validate(schemas.createAssignmentSchema), controller.createMembershipRole);
+router.post('/membership-roles/:id/end', validateParams(schemas.idParamSchema), canManageAssignments, validate(schemas.endAssignmentSchema), controller.endMembershipRole);
 
 module.exports = router;
