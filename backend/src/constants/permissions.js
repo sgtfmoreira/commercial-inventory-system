@@ -117,6 +117,7 @@ const definitions = [
     define('dashboard.read', 'dashboard', 'read'),
     define('reports.operations.read', 'reports', 'read'),
     define('reports.financial.read', 'reports', 'read', { financial: true }),
+    define('operational_structure.read', 'future_operations', 'read', { scope: 'establishment' }),
     define('operational_functions.manage', 'future_operations', 'manage'),
     define('operational_sectors.manage', 'future_operations', 'manage'),
     define('operational_stations.manage', 'future_operations', 'manage'),

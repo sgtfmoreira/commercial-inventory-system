@@ -66,7 +66,9 @@ integrationTest('API de templates preserva autorização, tenant, publicação c
     assert.equal((await request('/api/checklists/templates', { bearer: staffToken })).status, 403);
     assert.deepEqual((await request('/api/checklists/capabilities', { bearer: staffToken })).body.capabilities, {
         'checklists.templates.manage': false,
-        'checklists.runs.manage': false
+        'checklists.runs.manage': false,
+        'checklists.execute': true,
+        'checklists.approve': false
     });
 
     const adminAccess = await prisma.userEstablishmentAccess.create({
@@ -91,7 +93,15 @@ integrationTest('API de templates preserva autorização, tenant, publicação c
     process.env.USER_PERMISSIONS_KILL_SWITCH = 'false';
     assert.deepEqual((await request('/api/checklists/capabilities')).body.capabilities, {
         'checklists.templates.manage': true,
-        'checklists.runs.manage': true
+        'checklists.runs.manage': true,
+        'checklists.execute': true,
+        'checklists.approve': true
+    });
+    assert.deepEqual((await request('/api/checklists/capabilities', { bearer: staffToken })).body.capabilities, {
+        'checklists.templates.manage': false,
+        'checklists.runs.manage': false,
+        'checklists.execute': true,
+        'checklists.approve': true
     });
     assert.equal((await request('/api/checklists/templates', { bearer: staffToken })).status, 403);
     process.env.USER_PERMISSIONS_ENABLED = 'false';

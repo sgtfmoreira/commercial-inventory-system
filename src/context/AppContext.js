@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import checklistTemplateService from '../services/checklistTemplateService';
+import operationalStructureService from '../services/operationalStructureService';
 
 // ─── Initial State ───────────────────────────────────────────────────────────
 const initialState = {
@@ -210,7 +211,11 @@ export const AppProvider = ({ children }) => {
             const res = await api.get("/auth/context", {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const capabilities = await checklistTemplateService.capabilities().catch(() => ({}));
+            const [checklistCapabilities, operationalCapabilities] = await Promise.all([
+                checklistTemplateService.capabilities().catch(() => ({})),
+                operationalStructureService.capabilities().catch(() => ({})),
+            ]);
+            const capabilities = { ...checklistCapabilities, ...operationalCapabilities };
 
             const data = res.data || res;
 
@@ -317,7 +322,11 @@ export const AppProvider = ({ children }) => {
     async function reloadContext() {
         try {
             const res = await api.get("/auth/context");
-            const capabilities = await checklistTemplateService.capabilities().catch(() => ({}));
+            const [checklistCapabilities, operationalCapabilities] = await Promise.all([
+                checklistTemplateService.capabilities().catch(() => ({})),
+                operationalStructureService.capabilities().catch(() => ({})),
+            ]);
+            const capabilities = { ...checklistCapabilities, ...operationalCapabilities };
             const data = res.data || res;
             dispatchRaw({
                 type: "SET_CONTEXT",

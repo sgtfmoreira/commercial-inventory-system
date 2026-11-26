@@ -55,6 +55,7 @@ const collaboratorAllowed = new Set([
     'consumption_events.read', 'consumption_events.execute', 'events.read',
     'table_reservations.read', 'table_occupancies.read', 'checklists.execute'
 ]);
+const auditorDenied = new Set(['operational_structure.read']);
 
 const profilePermissions = {
     OWNER: without(PERMISSION_CODES, ownerDenied),
@@ -65,9 +66,9 @@ const profilePermissions = {
         && !permission.sensitive
         && permission.action !== 'delete'
     )),
-    SUPERVISOR: [...supervisorAllowed],
+    SUPERVISOR: [...supervisorAllowed, 'operational_structure.read'],
     COLLABORATOR: [...collaboratorAllowed],
-    AUDITOR: select(permission => permission.action === 'read' && !permission.financial && !permission.sensitive)
+    AUDITOR: select(permission => permission.action === 'read' && !permission.financial && !permission.sensitive && !auditorDenied.has(permission.code))
 };
 
 const PROFILES_V1 = Object.freeze(Object.fromEntries(PROFILE_CODES.map(code => [code, Object.freeze({

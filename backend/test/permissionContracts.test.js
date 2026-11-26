@@ -20,6 +20,7 @@ test('catálogo V1 é granular, único e separa capacidades sensíveis', () => {
     assert.ok(INDELEGABLE_PERMISSIONS.has('billing.manage'));
     assert.ok(INDELEGABLE_PERMISSIONS.has('checklists.runs.manage'));
     assert.equal(PERMISSIONS['checklists.runs.manage'].scope, 'establishment');
+    assert.equal(PERMISSIONS['operational_structure.read'].scope, 'establishment');
     assert.equal(PERMISSIONS['billing.manage'].financial, true);
     assert.equal(PERMISSIONS['event_budgets.approve'].sensitive, true);
 });
@@ -51,6 +52,15 @@ test('seis perfis V1 são imutáveis e AUDITOR não possui finanças por padrão
     assert.equal(PROFILES_V1.SUPERVISOR.permissions.includes('checklists.approve'), true);
     assert.equal(PROFILES_V1.COLLABORATOR.permissions.includes('checklists.approve'), false);
     assert.equal(PROFILES_V1.AUDITOR.permissions.includes('checklists.approve'), false);
+    assert.equal(PROFILES_V1.OWNER.permissions.includes('operational_structure.read'), true);
+    assert.equal(PROFILES_V1.ADMINISTRATOR.permissions.includes('operational_structure.read'), true);
+    assert.equal(PROFILES_V1.MANAGER.permissions.includes('operational_structure.read'), true);
+    assert.equal(PROFILES_V1.SUPERVISOR.permissions.includes('operational_structure.read'), true);
+    assert.equal(PROFILES_V1.COLLABORATOR.permissions.includes('operational_structure.read'), false);
+    assert.equal(PROFILES_V1.AUDITOR.permissions.includes('operational_structure.read'), false);
+    assert.equal(PROFILES_V1.OWNER.permissions.includes('operational_sectors.manage'), true);
+    assert.equal(PROFILES_V1.ADMINISTRATOR.permissions.includes('operational_functions.manage'), true);
+    assert.equal(PROFILES_V1.MANAGER.permissions.includes('operational_functions.manage'), true);
     assert.deepEqual(CHECKLIST_RUN_MANAGE_LEGACY_ROLES, ['ADMIN', 'MANAGER']);
     assert.equal(isLegacyAllowed('ADMIN', CHECKLIST_RUN_MANAGE_LEGACY_ROLES), true);
     assert.equal(isLegacyAllowed('MANAGER', CHECKLIST_RUN_MANAGE_LEGACY_ROLES), true);

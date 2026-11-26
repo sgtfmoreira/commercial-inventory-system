@@ -471,6 +471,7 @@ export const NAV_GROUPS = [
       { to: '/production', label: 'Produção', icon: <MdFactory /> },
       { to: '/portioning', label: 'Desossa e porcionamento', icon: <MdContentCut /> },
       { to: '/material-consumption', label: 'Consumo de materiais', icon: <MdReceiptLong /> },
+      { to: '/operational-structure', label: 'Estrutura operacional', icon: <MdAccountTree />, capability: 'operational_structure.read', end: true },
       { to: '/checklists', label: 'Checklists', icon: <MdChecklist />, capabilities: ['checklists.runs.manage', 'checklists.execute'], end: true },
       { to: '/checklists/approvals', label: 'Aprovações de checklists', icon: <MdChecklist />, capability: 'checklists.approve', end: true },
       { to: '/checklists/reports', label: 'Relatórios de checklists', icon: <MdChecklist />, capability: 'checklists.approve', end: true },

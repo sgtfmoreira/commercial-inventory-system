@@ -31,6 +31,7 @@
     "test:stock-movement": "jest --config scripts/stock-movement-jest.config.js --runInBand",
     "test:events": "jest --config scripts/events-jest.config.js --runInBand",
     "test:table-reservations": "jest --config scripts/table-reservations-jest.config.js --runInBand",
+    "test:operational-structure": "jest --config scripts/operational-structure-jest.config.js --runInBand",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

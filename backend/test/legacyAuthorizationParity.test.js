@@ -10,7 +10,11 @@ const { isPermissionCode } = require('../src/constants/permissions');
 const SRC_ROOT = path.join(__dirname, '..', 'src');
 const APP_FILE = path.join(SRC_ROOT, 'app.js');
 const LEGACY_ROLES = ['ADMIN', 'MANAGER', 'STOCK_COUNTER', 'STAFF', 'UNKNOWN'];
-const DIRECT_CAPABILITY_ROUTE_FILES = new Set(['userAccessRoutes.js', 'checklistTemplateRoutes.js']);
+const DIRECT_CAPABILITY_ROUTE_FILES = new Set([
+    'userAccessRoutes.js',
+    'checklistTemplateRoutes.js',
+    'operationalStructureRoutes.js'
+]);
 
 const lineAt = (source, offset) => source.slice(0, offset).split(/\r?\n/).length;
 
@@ -217,9 +221,11 @@ test('inventário B1 cobre todas as rotas Express montadas atualmente', () => {
     const legacyRoutes = routes.filter(route => !DIRECT_CAPABILITY_ROUTE_FILES.has(route.sourceFile));
     const phaseB2Routes = routes.filter(route => route.sourceFile === 'userAccessRoutes.js');
     const checklistRoutes = routes.filter(route => route.sourceFile === 'checklistTemplateRoutes.js');
+    const operationalStructureRoutes = routes.filter(route => route.sourceFile === 'operationalStructureRoutes.js');
     assert.equal(legacyRoutes.length, 197, 'Mudança nas 197 rotas legadas reconciliadas exige revisar o inventário B1');
     assert.equal(phaseB2Routes.length, 12, 'Mudança nas APIs B2 exige revisão explícita do inventário');
     assert.equal(checklistRoutes.length, 32, 'Mudança nas APIs de checklist exige revisão explícita do inventário');
+    assert.equal(operationalStructureRoutes.length, 11, 'Mudança nas APIs de estrutura operacional exige revisão explícita do inventário');
 
     for (const route of legacyRoutes) {
         const policy = currentPolicy(route);

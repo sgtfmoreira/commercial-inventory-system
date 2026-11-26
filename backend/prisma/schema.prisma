@@ -422,6 +422,8 @@ model establishments {
   securityAuditEvents  SecurityAuditEvent[]
   checklistRuns        ChecklistRun[]
   checklistSchedules   ChecklistSchedule[]
+  operationalSectors   OperationalSector[]
+  operationalRoles     OperationalRole[]
 }
 
 model users {
@@ -1000,6 +1002,8 @@ model Organization {
   checklistTemplates  ChecklistTemplate[]
   checklistRuns       ChecklistRun[]
   checklistSchedules  ChecklistSchedule[]
+  operationalSectors  OperationalSector[]
+  operationalRoles    OperationalRole[]
 }
 
 model OrganizationSupplier {
@@ -1255,8 +1259,68 @@ model UserEstablishment {
   checklistResponsesAnswered    ChecklistResponse[]         @relation("ChecklistResponseAnsweredBy")
   checklistEvidencesUploaded    ChecklistEvidence[]         @relation("ChecklistEvidenceUploadedBy")
   checklistApprovalsDecided     ChecklistApproval[]         @relation("ChecklistApprovalApprover")
+  operationalSectorsCreated     OperationalSector[]         @relation("OperationalSectorCreatedBy")
+  operationalSectorsUpdated     OperationalSector[]         @relation("OperationalSectorUpdatedBy")
+  operationalRolesCreated       OperationalRole[]           @relation("OperationalRoleCreatedBy")
+  operationalRolesUpdated       OperationalRole[]           @relation("OperationalRoleUpdatedBy")
 
   @@unique([userId, establishmentId])
+}
+
+model OperationalSector {
+  id                    String    @id @default(uuid()) @db.Uuid
+  organizationId        String
+  establishmentId       String    @db.Uuid
+  name                  String    @db.VarChar(120)
+  normalizedName        String    @db.VarChar(120)
+  description           String?   @db.VarChar(500)
+  isActive              Boolean   @default(true)
+  version               Int       @default(1)
+  createdByMembershipId String    @db.Uuid
+  updatedByMembershipId String    @db.Uuid
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deactivatedAt         DateTime?
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  establishment establishments    @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  createdBy     UserEstablishment @relation("OperationalSectorCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  updatedBy     UserEstablishment @relation("OperationalSectorUpdatedBy", fields: [updatedByMembershipId], references: [id], onDelete: Restrict)
+  roles         OperationalRole[]
+
+  @@unique([establishmentId, normalizedName])
+  @@unique([id, establishmentId])
+  @@index([organizationId, establishmentId, isActive])
+  @@index([establishmentId, name])
+  @@map("operational_sectors")
+}
+
+model OperationalRole {
+  id                    String    @id @default(uuid()) @db.Uuid
+  organizationId        String
+  establishmentId       String    @db.Uuid
+  sectorId              String    @db.Uuid
+  name                  String    @db.VarChar(120)
+  normalizedName        String    @db.VarChar(120)
+  description           String?   @db.VarChar(1000)
+  isActive              Boolean   @default(true)
+  version               Int       @default(1)
+  createdByMembershipId String    @db.Uuid
+  updatedByMembershipId String    @db.Uuid
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deactivatedAt         DateTime?
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  establishment establishments    @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  sector        OperationalSector @relation(fields: [sectorId, establishmentId], references: [id, establishmentId], onDelete: Restrict)
+  createdBy     UserEstablishment @relation("OperationalRoleCreatedBy", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  updatedBy     UserEstablishment @relation("OperationalRoleUpdatedBy", fields: [updatedByMembershipId], references: [id], onDelete: Restrict)
+
+  @@unique([establishmentId, normalizedName])
+  @@index([organizationId, establishmentId, isActive])
+  @@index([sectorId, isActive, name])
+  @@map("operational_roles")
 }
 
 enum TransferStatus {

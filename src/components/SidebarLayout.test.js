@@ -27,6 +27,7 @@ test('preserva todos os destinos da navegação ao reorganizar os grupos', () =>
     '/material-consumption',
     '/organization-products',
     '/organization-suppliers',
+    '/operational-structure',
     '/patrimony',
     '/portioning',
     '/products',
@@ -121,4 +122,15 @@ test('exibe relatórios de checklists sem ampliar o perfil auditor', () => {
     'checklists.approve': false,
   })).toBe(false);
   expect(isNavigationItemVisible(reports, 'estabelecimento-a', 'COLLABORATOR', {})).toBe(false);
+});
+
+test('exibe estrutura operacional somente com a capacidade efetiva', () => {
+  const structure = items.find(item => item.to === '/operational-structure');
+  expect(isNavigationItemVisible(structure, 'estabelecimento-a', 'SUPERVISOR', {
+    'operational_structure.read': true,
+  })).toBe(true);
+  expect(isNavigationItemVisible(structure, 'estabelecimento-a', 'MANAGER', {})).toBe(false);
+  expect(isNavigationItemVisible(structure, 'estabelecimento-a', 'AUDITOR', {
+    'operational_structure.read': false,
+  })).toBe(false);
 });

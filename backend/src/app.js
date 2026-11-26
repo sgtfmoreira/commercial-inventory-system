@@ -42,6 +42,7 @@ const billingController = require('./controllers/billingController');
 const organizationRoutes = require('./routes/organizationRoutes');
 const userAccessRoutes = require('./routes/userAccessRoutes');
 const checklistTemplateRoutes = require('./routes/checklistTemplateRoutes');
+const operationalStructureRoutes = require('./routes/operationalStructureRoutes');
 
 function normalizeCorsOrigin(value) {
     const candidate = String(value).trim();
@@ -174,6 +175,7 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/user-access', userAccessRoutes);
 app.use('/api/checklists', checklistTemplateRoutes);
+app.use('/api/operational-structure', operationalStructureRoutes);
 
 // Fallback for undefined routes
 app.use(notFoundMiddleware);

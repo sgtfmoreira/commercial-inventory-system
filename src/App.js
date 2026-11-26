@@ -48,6 +48,7 @@ import ChecklistRuns from "./pages/ChecklistRuns";
 import ChecklistExecution from "./pages/ChecklistExecution";
 import ChecklistApprovals from "./pages/ChecklistApprovals";
 import ChecklistReports from "./pages/ChecklistReports";
+import OperationalStructure from "./pages/OperationalStructure";
 
 import { AppProvider } from "./context/AppContext";
 import { ThemeModeProvider } from "./context/ThemeModeProvider";
@@ -121,6 +122,7 @@ function App() {
               <Route path="/checklists/approvals" element={<ChecklistApprovals />} />
               <Route path="/checklists/reports" element={<ChecklistReports />} />
               <Route path="/checklists/execute/:attemptId" element={<ChecklistExecution />} />
+              <Route path="/operational-structure" element={<OperationalStructure />} />
 
               <Route path="/products" element={<Products />} />
               <Route path="/organization-products" element={<OrganizationProducts />} />
